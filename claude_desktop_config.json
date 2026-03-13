@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "swiss-academic-libraries": {
+      "command": "uvx",
+      "args": [
+        "swiss-academic-libraries-mcp"
+      ]
+    }
+  }
+}

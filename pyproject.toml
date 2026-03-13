@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "swiss-academic-libraries-mcp"
+version = "0.1.0"
+description = "MCP Server für Schweizer Wissenschaftsbibliotheken: swisscovery (500+ Bibliotheken via SRU), e-rara, e-periodica und e-manuscripta (OAI-PMH). Kein API-Key erforderlich."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+keywords = [
+    "mcp",
+    "switzerland",
+    "libraries",
+    "swisscovery",
+    "slsp",
+    "e-rara",
+    "e-periodica",
+    "e-manuscripta",
+    "open-data",
+    "sru",
+    "oai-pmh",
+    "academic",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+swiss-academic-libraries-mcp = "swiss_academic_libraries_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/malkreide/swiss-academic-libraries-mcp"
+Repository = "https://github.com/malkreide/swiss-academic-libraries-mcp"
+Issues = "https://github.com/malkreide/swiss-academic-libraries-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/swiss_academic_libraries_mcp"]
+
+[tool.hatch.envs.default]
+dependencies = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.4.0",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "PYTHONPATH=src pytest tests/ -v"
+test-live = "PYTHONPATH=src pytest tests/ -v -m live"
+lint = "ruff check src/ tests/"
+fmt = "ruff format src/ tests/"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "live: marks tests as requiring live network access (deselect with '-m not live')",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
