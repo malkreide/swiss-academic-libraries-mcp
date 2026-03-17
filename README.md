@@ -1,10 +1,12 @@
-# swiss-academic-libraries-mcp
+> 🇨🇭 **Part of the [Swiss Public Data MCP Portfolio](https://github.com/malkreide)**
+
+# 📚 swiss-academic-libraries-mcp
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Python](https://img.shields.io/badge/python-3.11+-blue)
-![MCP](https://img.shields.io/badge/MCP-Compatible-brightgreen)
-![No Auth](https://img.shields.io/badge/auth-not%20required-lightgrey)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-purple)](https://modelcontextprotocol.io/)
+[![No Auth Required](https://img.shields.io/badge/auth-not%20required-lightgrey)](https://github.com/malkreide/swiss-academic-libraries-mcp)
 
 > MCP server providing access to Swiss academic libraries — swisscovery, e-rara, e-periodica, e-manuscripta. No API key required.
 
@@ -14,9 +16,13 @@
 
 ## Overview
 
-This MCP server connects AI models to the full Swiss academic library infrastructure via standardised, open protocols. It covers the [swisscovery](https://swisscovery.slsp.ch) union catalogue (500+ libraries, 10M+ records) and three digitalisation platforms: historical prints ([e-rara](https://www.e-rara.ch)), periodicals ([e-periodica](https://www.e-periodica.ch)) and manuscripts ([e-manuscripta](https://www.e-manuscripta.ch)).
+**swiss-academic-libraries-mcp** connects AI models to the full Swiss academic library infrastructure via standardised, open protocols. It covers the [swisscovery](https://swisscovery.slsp.ch) union catalogue (500+ libraries, 10M+ records) and three digitalisation platforms: historical prints ([e-rara](https://www.e-rara.ch)), periodicals ([e-periodica](https://www.e-periodica.ch)) and manuscripts ([e-manuscripta](https://www.e-manuscripta.ch)).
 
 All data sources use open, authentication-free protocols (SRU/MARC21, OAI-PMH/Dublin Core). The server supports both local use via Claude Desktop (stdio transport) and cloud deployment (Streamable HTTP).
+
+**Anchor demo query:** *"Which Swiss university dissertations on primary school pedagogy are held in Swiss libraries, and are any of them digitised in e-rara?"*
+
+---
 
 ## Features
 
@@ -30,14 +36,18 @@ All data sources use open, authentication-free protocols (SRU/MARC21, OAI-PMH/Du
 - **Markdown and JSON output** for all tools
 - **34 unit tests** (no network) + 6 live smoke tests
 
+---
+
 ## Data Sources
 
 | Source | Protocol | Content | Records |
-|--------|----------|---------|---------|
+|--------|----------|---------|---------||
 | [swisscovery (SLSP)](https://swisscovery.slsp.ch) | SRU / MARC21 | 500+ Swiss libraries | 10M+ |
 | [e-rara](https://www.e-rara.ch) | OAI-PMH / Dublin Core | Digitised historical prints | 250k+ |
 | [e-periodica](https://www.e-periodica.ch) | OAI-PMH / Dublin Core | Digitised periodicals (1750–today) | 1M+ articles |
 | [e-manuscripta](https://www.e-manuscripta.ch) | OAI-PMH / Dublin Core | Manuscripts & archival material | 100k+ |
+
+---
 
 ## Tools
 
@@ -55,11 +65,24 @@ All data sources use open, authentication-free protocols (SRU/MARC21, OAI-PMH/Du
 | `emanuscripta_get_record` | e-manuscripta | Single object by OAI identifier |
 | `emanuscripta_list_collections` | e-manuscripta | All archives / collections |
 
+### Example Use Cases
+
+| Query | Tool |
+|-------|------|
+| *"Which books about Swiss primary schools are held in Swiss libraries?"* | `swisscovery_search` |
+| *"Show digitised historical works from ETH Library"* | `erara_list_records` |
+| *"Which Swiss periodicals were digitised in 2023?"* | `eperiodica_list_records` |
+| *"What manuscript collections does e-manuscripta hold?"* | `emanuscripta_list_collections` |
+
+---
+
 ## Prerequisites
 
 - Python 3.11 or higher
 - [uv](https://docs.astral.sh/uv/) / uvx (recommended) or pip
 - Internet access (all APIs are publicly available)
+
+---
 
 ## Installation
 
@@ -67,7 +90,7 @@ All data sources use open, authentication-free protocols (SRU/MARC21, OAI-PMH/Du
 
 Add to `claude_desktop_config.json`:
 
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
@@ -97,7 +120,9 @@ cd swiss-academic-libraries-mcp
 pip install -e .
 ```
 
-## Usage / Quickstart
+---
+
+## Quickstart
 
 Start by calling `library_info` for a full overview. Then:
 
@@ -115,6 +140,8 @@ Start by calling `library_info` for a full overview. Then:
 → emanuscripta_list_collections()
 ```
 
+> 💡 *"No API key — just install and query."*
+
 ### CQL Search Syntax (swisscovery)
 
 ```
@@ -127,6 +154,8 @@ Combined:      title = "school" AND creator = "Pestalozzi"
 Pagination:    start_record = 11
 ```
 
+---
+
 ## Configuration
 
 No API keys or environment variables required.
@@ -135,6 +164,8 @@ No API keys or environment variables required.
 |-----------|---------|-------------|
 | `--http` | off | Enable Streamable HTTP transport |
 | `--port` | 8000 | Port for HTTP transport |
+
+---
 
 ## Project Structure
 
@@ -149,14 +180,63 @@ swiss-academic-libraries-mcp/
 │   └── test_server.py        # 34 unit tests + 6 live smoke tests
 ├── pyproject.toml
 ├── CHANGELOG.md
+├── CONTRIBUTING.md
 ├── LICENSE
 ├── README.md                 # This file (English)
 └── README.de.md              # German version
 ```
 
-## Related Servers
+---
 
-Part of the [Swiss Public Data MCP Portfolio](https://github.com/malkreide):
+## Testing
+
+```bash
+# Unit tests (no network required)
+PYTHONPATH=src pytest tests/ -m "not live"
+
+# Live smoke tests (internet required)
+PYTHONPATH=src pytest tests/ -m "live"
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
+
+- Reporting bugs and requesting features
+- Setting up the development environment
+- Code style and test requirements
+- Submitting pull requests
+
+This project follows the conventions of the [Swiss Public Data MCP Portfolio](https://github.com/malkreide).
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE)
+
+---
+
+## Author
+
+malkreide · [github.com/malkreide](https://github.com/malkreide)
+
+---
+
+## Credits & Related Projects
+
+- **Data:** [swisscovery / SLSP](https://swisscovery.slsp.ch) · [e-rara](https://www.e-rara.ch) · [e-periodica](https://www.e-periodica.ch) · [e-manuscripta](https://www.e-manuscripta.ch)
+- **Protocol:** [Model Context Protocol](https://modelcontextprotocol.io/) — Anthropic / Linux Foundation
+- **Related:** [eth-library-mcp](https://github.com/malkreide/eth-library-mcp) — ETH Library Discovery & Persons API
+- **Portfolio:** [Swiss Public Data MCP Portfolio](https://github.com/malkreide)
 
 | Server | Description |
 |--------|-------------|
@@ -164,16 +244,4 @@ Part of the [Swiss Public Data MCP Portfolio](https://github.com/malkreide):
 | [`eth-library-mcp`](https://github.com/malkreide/eth-library-mcp) | ETH Library Discovery & Persons API |
 | [`swiss-statistics-mcp`](https://github.com/malkreide/swiss-statistics-mcp) | Swiss Federal Statistics (BFS) |
 | [`fedlex-mcp`](https://github.com/malkreide/fedlex-mcp) | Swiss Federal Law via Fedlex SPARQL |
-| [`swiss-transport-mcp`](https://github.com/malkreide/swiss-transport-mcp) | OJP journey planning, SIRI-SX |
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md)
-
-## License
-
-MIT License — see [LICENSE](LICENSE)
-
-## Author
-
-malkreide · [github.com/malkreide](https://github.com/malkreide)
+| [`swiss-transport-mcp`](https://github.com/malkreide/swiss-transport-mcp) | OJP journey planning, SIRI-SX disruptions |
