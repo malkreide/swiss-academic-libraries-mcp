@@ -7,6 +7,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-purple)](https://modelcontextprotocol.io/)
 [![No Auth Required](https://img.shields.io/badge/auth-not%20required-lightgrey)](https://github.com/malkreide/swiss-academic-libraries-mcp)
+![CI](https://github.com/malkreide/swiss-academic-libraries-mcp/actions/workflows/ci.yml/badge.svg)
 
 > MCP server providing access to Swiss academic libraries — swisscovery, e-rara, e-periodica, e-manuscripta. No API key required.
 
