@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0](https://github.com/malkreide/swiss-academic-libraries-mcp/releases/tag/v0.1.0) - 2026-03-23
+Initial release. This server connects AI models to the full Swiss academic
+library infrastructure via open, authentication-free protocols: the
+[swisscovery](https://swisscovery.slsp.ch) union catalogue (500+ libraries,
+10 M+ records, SRU/MARC21) and three digitisation platforms —
+[e-rara](https://www.e-rara.ch), [e-periodica](https://www.e-periodica.ch)
+and [e-manuscripta](https://www.e-manuscripta.ch) (OAI-PMH/Dublin Core).
+No API key required. Part of the
+[Swiss Public Data MCP Portfolio](https://github.com/malkreide).
+
 ## [Unreleased]
 
 ## [0.1.0] - 2026-03-13
