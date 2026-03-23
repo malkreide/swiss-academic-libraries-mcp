@@ -35,9 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/swiss-academic-libraries-mcp
+      url: "https://pypi.org/p/swiss-academic-libraries-mcp"
     permissions:
-      id-token: write  # Pflicht für Trusted Publisher (OIDC)
+      id-token: write
 
     steps:
       - name: Download distribution artifacts
@@ -48,4 +48,3 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-└── ...
