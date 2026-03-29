@@ -20,21 +20,20 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Annotated, Any, Optional
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field
 
 from swiss_academic_libraries_mcp.api_client import (
-    ERARA_OAI_URL,
     EMANUSCRIPTA_OAI_URL,
     EPERIODICA_OAI_URL,
+    ERARA_OAI_URL,
     SWISSCOVERY_SRU_URL,
     format_marc_record_md,
     format_oai_record_md,
     handle_api_error,
     http_get,
-    parse_marc_record,
     parse_oai_response,
     parse_oai_sets,
     parse_sru_response,
@@ -103,17 +102,17 @@ class SwisscoveryGetRecordInput(BaseModel):
 class OaiSearchInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    from_date: Optional[str] = Field(
+    from_date: str | None = Field(
         default=None,
         description="Startdatum (ISO 8601: YYYY-MM-DD oder YYYY-MM-DDTHH:MM:SSZ). Beispiel: '2020-01-01'.",
         pattern=r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$",
     )
-    until_date: Optional[str] = Field(
+    until_date: str | None = Field(
         default=None,
         description="Enddatum (ISO 8601). Beispiel: '2023-12-31'.",
         pattern=r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$",
     )
-    set_spec: Optional[str] = Field(
+    set_spec: str | None = Field(
         default=None,
         description=(
             "OAI-Set-Bezeichner zur Einschränkung auf eine Teilsammlung (Bibliothek). "
@@ -122,7 +121,7 @@ class OaiSearchInput(BaseModel):
         ),
         max_length=100,
     )
-    resumption_token: Optional[str] = Field(
+    resumption_token: str | None = Field(
         default=None,
         description=(
             "Paginierungs-Token aus einer vorherigen Antwort (resumption_token-Feld). "
@@ -157,7 +156,7 @@ class OaiGetRecordInput(BaseModel):
 class ListCollectionsInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
 
-    filter_name: Optional[str] = Field(
+    filter_name: str | None = Field(
         default=None,
         description="Optionaler Filter: Nur Sammlungen anzeigen, deren Name diesen Text enthält.",
         max_length=100,
