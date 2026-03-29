@@ -66,7 +66,7 @@ class SwisscoverySearchInput(BaseModel):
         ),
         min_length=1,
         max_length=500,
-        examples=["Volksschule Zürich", "title = \"Bildung\" AND creator = \"Pestalozzi\""],
+        examples=["Volksschule Zürich", 'title = "Bildung" AND creator = "Pestalozzi"'],
     )
     max_records: int = Field(
         default=10,
@@ -92,8 +92,7 @@ class SwisscoveryGetRecordInput(BaseModel):
     mms_id: str = Field(
         ...,
         description=(
-            "MMS-ID des Eintrags (aus swisscovery_search-Ergebnissen). "
-            "Beispiel: '991134165199705501'."
+            "MMS-ID des Eintrags (aus swisscovery_search-Ergebnissen). Beispiel: '991134165199705501'."
         ),
         min_length=5,
     )
@@ -191,11 +190,14 @@ async def _oai_list_records(base_url: str, params: OaiSearchInput) -> dict[str, 
 
 async def _oai_get_record(base_url: str, oai_identifier: str) -> dict[str, Any]:
     """Generische OAI-PMH GetRecord-Abfrage."""
-    xml_text = await http_get(base_url, {
-        "verb": "GetRecord",
-        "identifier": oai_identifier,
-        "metadataPrefix": "oai_dc",
-    })
+    xml_text = await http_get(
+        base_url,
+        {
+            "verb": "GetRecord",
+            "identifier": oai_identifier,
+            "metadataPrefix": "oai_dc",
+        },
+    )
     result = parse_oai_response(xml_text)
     records = result.get("records", [])
     if not records:
@@ -244,7 +246,7 @@ def _format_oai_result(result: dict[str, Any], source_name: str, response_format
     if resumption_token:
         lines.append(
             f"---\n*Weitere Einträge verfügbar. Nächste Seite abrufen mit:*\n"
-            f"`resumption_token = \"{resumption_token}\"`"
+            f'`resumption_token = "{resumption_token}"`'
         )
 
     return "\n".join(lines)
@@ -416,10 +418,7 @@ async def swisscovery_search(params: SwisscoverySearchInput) -> str:
         lines.append("")
 
     if next_pos:
-        lines.append(
-            f"---\n*Weitere Treffer vorhanden. Nächste Seite:*\n"
-            f"`start_record = {next_pos}`"
-        )
+        lines.append(f"---\n*Weitere Treffer vorhanden. Nächste Seite:*\n`start_record = {next_pos}`")
 
     return "\n".join(lines)
 
@@ -457,7 +456,7 @@ async def swisscovery_get_record(params: SwisscoveryGetRecordInput) -> str:
         sru_params = {
             "version": "1.2",
             "operation": "searchRetrieve",
-            "query": f"rec.identifier = \"{params.mms_id}\"",
+            "query": f'rec.identifier = "{params.mms_id}"',
             "maximumRecords": "1",
             "recordSchema": "marcxml",
         }
@@ -505,8 +504,7 @@ async def swisscovery_get_record(params: SwisscoveryGetRecordInput) -> str:
 
     mms_id = rec.get("mms_id", params.mms_id)
     lines.append(
-        f"\n**swisscovery-Link:** "
-        f"https://swisscovery.slsp.ch/permalink/41SLSP_NETWORK/1ufb5t2/alma{mms_id}"
+        f"\n**swisscovery-Link:** https://swisscovery.slsp.ch/permalink/41SLSP_NETWORK/1ufb5t2/alma{mms_id}"
     )
 
     return "\n".join(lines)
@@ -653,7 +651,9 @@ async def erara_list_collections(params: ListCollectionsInput) -> str:
         return handle_api_error(e, "erara_list_collections")
 
     if not sets:
-        return "Keine Sammlungen gefunden" + (f" für Filter «{params.filter_name}»." if params.filter_name else ".")
+        return "Keine Sammlungen gefunden" + (
+            f" für Filter «{params.filter_name}»." if params.filter_name else "."
+        )
 
     lines = [f"## e-rara – {len(sets)} Sammlungen/Bibliotheken", ""]
     lines.append("| Set-Bezeichner | Bibliothek/Sammlung |")
@@ -661,9 +661,7 @@ async def erara_list_collections(params: ListCollectionsInput) -> str:
     for s in sets:
         lines.append(f"| `{s['spec']}` | {s['name']} |")
 
-    lines.append(
-        "\n*Tipp: Verwende den Set-Bezeichner als `set_spec` in `erara_list_records`.*"
-    )
+    lines.append("\n*Tipp: Verwende den Set-Bezeichner als `set_spec` in `erara_list_records`.*")
     return "\n".join(lines)
 
 
@@ -912,7 +910,9 @@ async def emanuscripta_list_collections(params: ListCollectionsInput) -> str:
         return handle_api_error(e, "emanuscripta_list_collections")
 
     if not sets:
-        return "Keine Sammlungen gefunden" + (f" für Filter «{params.filter_name}»." if params.filter_name else ".")
+        return "Keine Sammlungen gefunden" + (
+            f" für Filter «{params.filter_name}»." if params.filter_name else "."
+        )
 
     lines = [f"## e-manuscripta – {len(sets)} Sammlungen/Archive", ""]
     lines.append("| Set-Bezeichner | Sammlung/Archiv |")
@@ -920,9 +920,7 @@ async def emanuscripta_list_collections(params: ListCollectionsInput) -> str:
     for s in sets:
         lines.append(f"| `{s['spec']}` | {s['name']} |")
 
-    lines.append(
-        "\n*Tipp: Verwende den Set-Bezeichner als `set_spec` in `emanuscripta_list_records`.*"
-    )
+    lines.append("\n*Tipp: Verwende den Set-Bezeichner als `set_spec` in `emanuscripta_list_records`.*")
     return "\n".join(lines)
 
 
@@ -963,7 +961,11 @@ async def get_sources() -> str:
             "url": EMANUSCRIPTA_OAI_URL,
             "records": "100'000+",
             "auth_required": False,
-            "tools": ["emanuscripta_list_records", "emanuscripta_get_record", "emanuscripta_list_collections"],
+            "tools": [
+                "emanuscripta_list_records",
+                "emanuscripta_get_record",
+                "emanuscripta_list_collections",
+            ],
         },
     }
     return json.dumps(sources, ensure_ascii=False, indent=2)

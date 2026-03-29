@@ -257,11 +257,7 @@ def _dc_field(dc_el: ET.Element, field: str) -> str | None:
 
 def _dc_fields(dc_el: ET.Element, field: str) -> list[str]:
     """Liefert alle Texte der DC-Elemente des angegebenen Namens."""
-    return [
-        el.text.strip()
-        for el in dc_el.findall(f"{{{NS_DC}}}{field}")
-        if el.text and el.text.strip()
-    ]
+    return [el.text.strip() for el in dc_el.findall(f"{{{NS_DC}}}{field}") if el.text and el.text.strip()]
 
 
 def parse_oai_dc_record(record_el: ET.Element) -> dict[str, Any]:
@@ -372,10 +368,12 @@ def parse_oai_sets(xml_text: str) -> list[dict[str, str]]:
         spec = set_el.find(f"{{{NS_OAI}}}setSpec")
         name = set_el.find(f"{{{NS_OAI}}}setName")
         if spec is not None and spec.text:
-            sets.append({
-                "spec": spec.text.strip(),
-                "name": name.text.strip() if name is not None and name.text else "",
-            })
+            sets.append(
+                {
+                    "spec": spec.text.strip(),
+                    "name": name.text.strip() if name is not None and name.text else "",
+                }
+            )
     return sets
 
 
@@ -403,7 +401,9 @@ def format_marc_record_md(rec: dict[str, Any], index: int | None = None) -> str:
         lines.append(f"  ISSN: {rec['issn']}")
     if rec.get("mms_id"):
         lines.append(f"  MMS-ID: {rec['mms_id']}")
-        lines.append(f"  Link: https://swisscovery.slsp.ch/permalink/41SLSP_NETWORK/1ufb5t2/alma{rec['mms_id']}")
+        lines.append(
+            f"  Link: https://swisscovery.slsp.ch/permalink/41SLSP_NETWORK/1ufb5t2/alma{rec['mms_id']}"
+        )
     if rec.get("subjects"):
         lines.append(f"  Schlagworte: {' | '.join(rec['subjects'][:3])}")
     if rec.get("abstract"):
