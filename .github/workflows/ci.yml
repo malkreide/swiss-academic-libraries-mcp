@@ -28,7 +28,7 @@ jobs:
         run: uv pip install -e "." --system
 
       - name: Test-Abhängigkeiten installieren
-        run: uv pip install pytest pytest-asyncio respx --system
+        run: uv pip install pytest pytest-asyncio respx ruff --system
 
       - name: Linting mit ruff
         run: ruff check src/
