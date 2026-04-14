@@ -46,7 +46,7 @@ All data sources use open, authentication-free protocols (SRU/MARC21, OAI-PMH/Du
 ## Data Sources
 
 | Source | Protocol | Content | Records |
-|--------|----------|---------|---------||
+|--------|----------|---------|---------|
 | [swisscovery (SLSP)](https://swisscovery.slsp.ch) | SRU / MARC21 | 500+ Swiss libraries | 10M+ |
 | [e-rara](https://www.e-rara.ch) | OAI-PMH / Dublin Core | Digitised historical prints | 250k+ |
 | [e-periodica](https://www.e-periodica.ch) | OAI-PMH / Dublin Core | Digitised periodicals (1750–today) | 1M+ articles |
