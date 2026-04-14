@@ -13,6 +13,10 @@
 
 [🇩🇪 Deutsche Version](README.de.md)
 
+### Demo
+
+![Demo: Claude using swisscovery_search and erara_list_records](docs/assets/demo.svg)
+
 ---
 
 ## Overview
@@ -198,6 +202,17 @@ PYTHONPATH=src pytest tests/ -m "not live"
 # Live smoke tests (internet required)
 PYTHONPATH=src pytest tests/ -m "live"
 ```
+
+---
+
+## Safety & Limits
+
+- **Read-only:** All tools perform HTTP GET requests against public SRU and OAI-PMH endpoints — no data is written, modified, or deleted.
+- **No personal data:** The APIs return bibliographic metadata (titles, authors, publication info, subject headings) and public digitisation records. No personally identifiable information (PII) about library users is processed or stored.
+- **Rate limits:** swisscovery SRU and the OAI-PMH endpoints are public and have no documented hard limits, but OAI-PMH harvesting is paginated via resumption tokens — use `from_date` / `until_date` and keep `max_records` reasonable. The server enforces a 30s timeout per request.
+- **Data freshness:** Results reflect the upstream catalogues at query time. No caching is performed by this server; indexing latency is controlled by SLSP and the digitisation platforms.
+- **Terms of service:** Data is subject to the ToS and licences of each source — [swisscovery / SLSP](https://slsp.ch), [e-rara](https://www.e-rara.ch), [e-periodica](https://www.e-periodica.ch), [e-manuscripta](https://www.e-manuscripta.ch). Most digitised material is in the public domain or under Creative Commons licences; always check the rights statement on the individual record before redistribution.
+- **No guarantees:** This is a community project, not affiliated with SLSP, ETH Library, or any of the participating institutions. Availability depends on the upstream APIs.
 
 ---
 
