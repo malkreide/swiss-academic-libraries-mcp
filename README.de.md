@@ -139,6 +139,8 @@ Starte mit `library_info` für eine vollständige Übersicht. Dann:
 
 «Welche Handschriften-Sammlungen hat e-manuscripta?»
 → emanuscripta_list_collections()
+
+→ [Weitere Anwendungsbeispiele nach Zielgruppe](EXAMPLES.md) →
 ```
 
 > 💡 *«Kein API-Key — einfach installieren und loslegen.»*

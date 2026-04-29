@@ -143,6 +143,8 @@ Start by calling `library_info` for a full overview. Then:
 
 "What manuscript collections does e-manuscripta hold?"
 → emanuscripta_list_collections()
+
+→ [More use cases by audience](EXAMPLES.md) →
 ```
 
 > 💡 *"No API key — just install and query."*
