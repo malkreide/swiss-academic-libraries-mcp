@@ -1,0 +1,22 @@
+{
+  "server_name": "swiss-academic-libraries-mcp",
+  "version": "0.2.0",
+  "repo_url": "https://github.com/malkreide/swiss-academic-libraries-mcp",
+  "transport": ["stdio", "streamable_http"],
+  "auth_model": "none",
+  "data_class": "public_open_data",
+  "write_access": "read_only",
+  "deployment": ["claude_desktop_stdio", "self_hosted_http"],
+  "sdk": "fastmcp_python",
+  "dependencies": ["mcp[cli]>=1.6.0", "httpx>=0.27.0", "pydantic>=2.0.0"],
+  "languages": ["python>=3.11"],
+  "upstream_apis": [
+    "https://swisscovery.slsp.ch/view/sru/41SLSP_NETWORK",
+    "https://www.e-rara.ch/oai",
+    "https://www.e-periodica.ch/oai/dataprovider",
+    "https://www.e-manuscripta.ch/oai"
+  ],
+  "tools_count": 11,
+  "tools_destructive": 0,
+  "ch_context": "Schweizer Wissenschaftsbibliotheken (SLSP), öffentliche Bestandsdaten – kein DSG-Personendatenbezug"
+}

@@ -1,0 +1,19 @@
+{
+  "run_id": "2026-05-21T00:00:00+02:00-swiss-academic-libraries-mcp",
+  "audit_date": "2026-05-21",
+  "skill_source": "https://github.com/malkreide/mcp-audit-skill",
+  "catalog_checks_total": 68,
+  "checks_applicable": 31,
+  "checks_not_applicable": 37,
+  "findings_count": {
+    "critical": 0,
+    "high": 4,
+    "medium": 5,
+    "low": 4,
+    "info": 2
+  },
+  "production_ready": false,
+  "blocker_findings": [],
+  "recommended_release": null,
+  "rationale": "Keine critical-Findings, aber vier high-Findings (XML-Parsing, HTTP-Transport-Härtung, Logging, Supply-Chain-Scan) sollten vor einem stable-1.0-Release adressiert werden. Für stdio-only-Nutzung in Claude Desktop ist der Server heute sicher einsetzbar."
+}
