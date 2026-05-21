@@ -114,8 +114,17 @@ Restart Claude Desktop — the server starts automatically on first use.
 ### Cloud / Self-hosted (Streamable HTTP)
 
 ```bash
-uvx swiss-academic-libraries-mcp --http --port 8000
+uvx swiss-academic-libraries-mcp --http --port 8000 [--host 127.0.0.1]
 ```
+
+**Security & Deployment Notes**
+
+- **Default binding is `127.0.0.1`** (loopback only). The server has no
+  built-in authentication.
+- Use `--host 0.0.0.0` only when running **behind a reverse proxy that
+  provides authentication and per-IP rate limits** (e.g. nginx with
+  `limit_req` + OAuth2-Proxy). Non-loopback bindings emit a WARN log.
+- Logs go to **stderr**; set verbosity with `MCP_LOG_LEVEL=DEBUG|INFO|WARNING`.
 
 ### Development
 

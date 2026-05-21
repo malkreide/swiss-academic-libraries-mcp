@@ -10,12 +10,15 @@ Kein API-Key erforderlich – alle Quellen sind öffentlich zugänglich.
 
 from __future__ import annotations
 
+import logging
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 from xml.etree import ElementTree as ET
 
 import httpx
 from defusedxml.ElementTree import fromstring as _safe_fromstring
+
+logger = logging.getLogger(__name__)
 
 try:
     _PKG_VERSION = version("swiss-academic-libraries-mcp")
@@ -80,12 +83,28 @@ MARC_FIELD_MAP: dict[str, str] = {
 
 async def http_get(url: str, params: dict[str, Any] | None = None) -> str:
     """Generischer GET-Request, gibt Response-Text zurück."""
+    param_keys = sorted((params or {}).keys())
+    logger.info("upstream_request url=%s params=%s", url, param_keys)
     async with httpx.AsyncClient(
         timeout=REQUEST_TIMEOUT,
         headers={"User-Agent": USER_AGENT},
     ) as client:
-        response = await client.get(url, params=params or {})
-        response.raise_for_status()
+        try:
+            response = await client.get(url, params=params or {})
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "upstream_http_error url=%s status=%d",
+                url,
+                exc.response.status_code,
+            )
+            raise
+        except httpx.TimeoutException:
+            logger.warning("upstream_timeout url=%s timeout=%ss", url, REQUEST_TIMEOUT)
+            raise
+        logger.info(
+            "upstream_response url=%s status=%d bytes=%d", url, response.status_code, len(response.text)
+        )
         return response.text
 
 

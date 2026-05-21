@@ -110,8 +110,19 @@ Claude Desktop neu starten — der Server startet beim ersten Aufruf automatisch
 ### Cloud / Self-hosted (Streamable HTTP)
 
 ```bash
-uvx swiss-academic-libraries-mcp --http --port 8000
+uvx swiss-academic-libraries-mcp --http --port 8000 [--host 127.0.0.1]
 ```
+
+**Sicherheit & Deployment**
+
+- **Default-Binding ist `127.0.0.1`** (nur loopback). Der Server hat
+  keine eingebaute Authentifizierung.
+- `--host 0.0.0.0` nur einsetzen, wenn der Server **hinter einem
+  Reverse Proxy mit Authentifizierung und per-IP-Rate-Limit läuft**
+  (z.B. nginx mit `limit_req` + OAuth2-Proxy). Non-Loopback-Bindings
+  erzeugen eine WARN-Log-Zeile.
+- Logs werden auf **stderr** geschrieben; Verbosity via
+  `MCP_LOG_LEVEL=DEBUG|INFO|WARNING` steuerbar.
 
 ### Entwicklung
 
