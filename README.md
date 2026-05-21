@@ -246,6 +246,26 @@ See [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
+## Deployment for Swiss Public Administration
+
+If you self-host this server for a Swiss school authority, archive,
+or municipal use case:
+
+- **Data residency:** prefer on-premise or a CH-based cloud provider.
+  The query patterns themselves (which library searches a civil
+  servant runs) may reveal ongoing research and are best kept on
+  Swiss infrastructure.
+- **Upstream calls** go exclusively to CH-hosted services: SLSP /
+  swisscovery, ETH-Bibliothek (e-rara, e-periodica, e-manuscripta).
+  No data leaves Switzerland.
+- **Logging:** logs are written to stderr; configure your IT
+  retention policy accordingly (e.g. systemd-journal `MaxRetentionSec`).
+- **HTTP transport** must run behind a reverse proxy with
+  authentication and per-IP rate limits (see *Security & Deployment
+  Notes* above).
+
+---
+
 ## License
 
 MIT License — see [LICENSE](LICENSE)

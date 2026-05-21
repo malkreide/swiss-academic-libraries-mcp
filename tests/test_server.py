@@ -365,6 +365,62 @@ class TestUserAgent:
         assert "github.com/malkreide/swiss-academic-libraries-mcp" in USER_AGENT
 
 
+# ─── Shared httpx client (F-05) ───────────────────────────────────────────────
+
+
+class TestSharedClient:
+    """F-05: modulweiter httpx-Client mit Concurrency-Limit."""
+
+    def test_get_client_is_singleton(self) -> None:
+        from swiss_academic_libraries_mcp import api_client
+        c1 = api_client._get_client()
+        c2 = api_client._get_client()
+        assert c1 is c2
+
+    def test_user_agent_header_on_client(self) -> None:
+        from swiss_academic_libraries_mcp import api_client
+        client = api_client._get_client()
+        assert "swiss-academic-libraries-mcp/" in client.headers.get("user-agent", "")
+
+    async def test_shutdown_closes_client(self) -> None:
+        from swiss_academic_libraries_mcp import api_client
+        client = api_client._get_client()
+        await api_client.shutdown()
+        assert client.is_closed
+        # Next _get_client must return a fresh, open client
+        new_client = api_client._get_client()
+        assert not new_client.is_closed
+        assert new_client is not client
+
+
+# ─── McpError conversion (F-07) ───────────────────────────────────────────────
+
+
+class TestMcpError:
+    """F-07: Tool-Fehler werden als McpError geworfen, nicht als Daten-Strings."""
+
+    def test_to_mcp_error_wraps_value_error(self) -> None:
+        from mcp import McpError
+
+        from swiss_academic_libraries_mcp.server import _to_mcp_error
+        err = _to_mcp_error(ValueError("boom"), "swisscovery_search")
+        assert isinstance(err, McpError)
+        assert "swisscovery_search" in err.error.message
+        assert "boom" in err.error.message
+
+
+# ─── Data disclaimer (F-08) ───────────────────────────────────────────────────
+
+
+class TestDataDisclaimer:
+    """F-08: Markdown- und JSON-Antworten kennzeichnen Daten als Nicht-Instruktion."""
+
+    def test_disclaimer_constant(self) -> None:
+        from swiss_academic_libraries_mcp.server import DATA_DISCLAIMER
+        assert "Daten" in DATA_DISCLAIMER
+        assert "Instruktionen" in DATA_DISCLAIMER
+
+
 # ─── CLI Argument Parsing (F-02) ──────────────────────────────────────────────
 
 

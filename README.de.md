@@ -233,6 +233,26 @@ Siehe [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
+## Deployment für Schweizer Behörden
+
+Beim Self-Hosting für Schulämter, Archive oder kommunale Anwendungen:
+
+- **Datenresidenz:** Wenn möglich On-Premise oder bei einem CH-Cloud-
+  Anbieter betreiben. Die Anfragen-Pattern (welche Bibliothekssuchen
+  ein:e Sachbearbeiter:in durchführt) können Rückschlüsse auf
+  laufende Recherchen erlauben und gehören auf Schweizer Infrastruktur.
+- **Upstream-Calls** gehen ausschliesslich an CH-gehostete Dienste:
+  SLSP / swisscovery, ETH-Bibliothek (e-rara, e-periodica,
+  e-manuscripta). Es verlassen keine Daten die Schweiz.
+- **Logging:** Logs werden auf stderr geschrieben; Aufbewahrungsdauer
+  gemäss Behörden-IT-Richtlinie konfigurieren (z.B. systemd-journal
+  `MaxRetentionSec`).
+- **HTTP-Transport** muss hinter einem Reverse Proxy mit
+  Authentifizierung und per-IP-Rate-Limit laufen (siehe *Sicherheit &
+  Deployment* oben).
+
+---
+
 ## Lizenz
 
 MIT-Lizenz — siehe [LICENSE](LICENSE)
