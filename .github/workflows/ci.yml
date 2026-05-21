@@ -31,7 +31,7 @@ jobs:
         run: uv pip install pytest pytest-asyncio respx ruff --system
 
       - name: Linting mit ruff
-        run: ruff check src/
+        run: ruff check src/ tests/
 
       - name: Syntax-Prüfung
         run: |
@@ -41,8 +41,7 @@ jobs:
       - name: Import-Test
         run: python -c "from swiss_academic_libraries_mcp.server import mcp; print('Import OK')"
 
-      - name: Unit-Tests (nur Python 3.11)
-        if: matrix.python-version == '3.11'
+      - name: Unit-Tests
         run: pytest tests/ -v -m "not live"
         env:
           PYTHONPATH: src
@@ -60,7 +59,7 @@ jobs:
 
       - run: pip install ruff
 
-      - run: ruff check src/
+      - run: ruff check src/ tests/
 
       - run: ruff format --check src/
 

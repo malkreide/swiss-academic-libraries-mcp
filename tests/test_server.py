@@ -179,16 +179,12 @@ class TestParseSruResponse:
         assert any("Pädagogik" in s for s in subjects)
 
     def test_empty_result(self) -> None:
-        empty_xml = (
-            SAMPLE_SRU_XML.replace("42", "0")
-            .replace("<records>", "<records_unused>")
-            .replace("</records>", "</records_unused>")
-        )
-        # Vereinfachter Test: total = 0 bei modifiziertem XML
         import re
 
         modified = re.sub(
-            r"<numberOfRecords>\d+</numberOfRecords>", "<numberOfRecords>0</numberOfRecords>", SAMPLE_SRU_XML
+            r"<numberOfRecords>\d+</numberOfRecords>",
+            "<numberOfRecords>0</numberOfRecords>",
+            SAMPLE_SRU_XML,
         )
         result = parse_sru_response(modified)
         assert result["total"] == 0
@@ -567,6 +563,54 @@ class TestParseArgs:
     def test_invalid_port_falls_back_to_default(self) -> None:
         _, _, port = self._parse(["server", "--http", "--port", "abc"])
         assert port == 8000
+
+
+# ─── Mocked http_get integration (uses respx) ────────────────────────────────
+
+
+class TestHttpGetMocked:
+    """End-to-end-Verhalten von http_get gegen einen gemockten Upstream-Server.
+
+    Validiert das Zusammenspiel von shared client (F-05), User-Agent (F-06),
+    request_id (F-13) und Logging (F-03) — Bereiche, die zuvor nur isoliert
+    getestet wurden.
+    """
+
+    async def test_user_agent_and_request_id_set(self) -> None:
+        import respx
+        from httpx import Response
+
+        from swiss_academic_libraries_mcp import api_client
+
+        await api_client.shutdown()  # frischer Client
+        async with respx.mock(assert_all_called=True) as mock:
+            route = mock.get("https://example.test/probe").mock(
+                return_value=Response(200, text="<ok/>")
+            )
+            body = await api_client.http_get("https://example.test/probe")
+            assert body == "<ok/>"
+            sent_request = route.calls.last.request
+            ua = sent_request.headers.get("user-agent", "")
+            assert ua.startswith("swiss-academic-libraries-mcp/")
+            # http_get muss eine neue 8-Hex-request_id im Context gesetzt haben
+            current = api_client.request_id_var.get()
+            assert current != "-"
+            assert len(current) == 8
+
+    async def test_raises_on_http_error(self) -> None:
+        import respx
+        from httpx import HTTPStatusError, Response
+
+        from swiss_academic_libraries_mcp import api_client
+
+        await api_client.shutdown()
+        async with respx.mock() as mock:
+            mock.get("https://example.test/boom").mock(return_value=Response(503))
+            try:
+                await api_client.http_get("https://example.test/boom")
+                raise AssertionError("Expected HTTPStatusError")
+            except HTTPStatusError as exc:
+                assert exc.response.status_code == 503
 
 
 # ─── Live-Tests (nur mit -m live) ─────────────────────────────────────────────
