@@ -5,17 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0](https://github.com/malkreide/swiss-academic-libraries-mcp/releases/tag/v0.1.0) - 2026-03-23
-Initial release. This server connects AI models to the full Swiss academic
-library infrastructure via open, authentication-free protocols: the
-[swisscovery](https://swisscovery.slsp.ch) union catalogue (500+ libraries,
-10 M+ records, SRU/MARC21) and three digitisation platforms —
-[e-rara](https://www.e-rara.ch), [e-periodica](https://www.e-periodica.ch)
-and [e-manuscripta](https://www.e-manuscripta.ch) (OAI-PMH/Dublin Core).
-No API key required. Part of the
-[Swiss Public Data MCP Portfolio](https://github.com/malkreide).
-
 ## [Unreleased]
+
+## [1.0.2] - 2026-05-21
+
+Sweep der Re-Audit-Findings (NEW-01, NEW-03, NEW-04, NEW-06). Keine
+funktionalen Änderungen am Server selbst.
+
+### Fixed
+- **NEW-01** CHANGELOG hatte zwei `[0.1.0]`-Einträge — konsolidiert
+  zu einem kanonischen Eintrag (Datum 2026-03-23 mit Release-Tag-Link).
+- **NEW-03** Drei pre-existing ruff-Errors in `tests/` behoben (zwei
+  ungenutzte Variablen + `# noqa: E402` für Pfad-abhängige Imports).
+
+### Changed
+- **NEW-04** Unit-Tests laufen jetzt auf allen drei Matrix-Versionen
+  (3.11, 3.12, 3.13) statt nur auf 3.11. Runtime-Bugs auf 3.12+
+  werden damit gefangen.
+- **NEW-04** CI lintet jetzt auch `tests/` (vorher nur `src/`).
+
+### Added
+- **NEW-06** Mocked-Integration-Test für `http_get` via `respx`
+  (vorher als Test-Dep installiert, aber ungenutzt). Validiert
+  User-Agent-Header, request_id-Setzen und HTTP-Error-Propagation
+  in einem End-to-end-Pfad.
 
 ## [1.0.1] - 2026-05-21
 
@@ -120,7 +133,16 @@ Audit vom 2026-05-21 ab.
 - Adressiert Findings aus dem Audit vom 2026-05-21
   (`audits/2026-05-21-swiss-academic-libraries-mcp/`).
 
-## [0.1.0] - 2026-03-13
+## [0.1.0](https://github.com/malkreide/swiss-academic-libraries-mcp/releases/tag/v0.1.0) - 2026-03-23
+
+Initial release. Connects AI models to the full Swiss academic library
+infrastructure via open, authentication-free protocols: the
+[swisscovery](https://swisscovery.slsp.ch) union catalogue (500+ libraries,
+10 M+ records, SRU/MARC21) and three digitisation platforms —
+[e-rara](https://www.e-rara.ch), [e-periodica](https://www.e-periodica.ch)
+and [e-manuscripta](https://www.e-manuscripta.ch) (OAI-PMH/Dublin Core).
+No API key required. Part of the
+[Swiss Public Data MCP Portfolio](https://github.com/malkreide).
 
 ### Added
 - **swisscovery** (SLSP network): search and record retrieval via SRU / MARC21

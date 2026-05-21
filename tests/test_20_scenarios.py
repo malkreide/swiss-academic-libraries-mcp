@@ -24,7 +24,9 @@ pytestmark = pytest.mark.live
 # ─── Pfad-Setup ─────────────────────────────────────────────────────────────
 sys.path.insert(0, "src")
 
-from swiss_academic_libraries_mcp.server import (
+# Imports unterhalb sys.path.insert sind beabsichtigt — Pfad muss zuerst gesetzt
+# werden, damit der lokale src-Tree gefunden wird.
+from swiss_academic_libraries_mcp.server import (  # noqa: E402
     ListCollectionsInput,
     OaiGetRecordInput,
     OaiSearchInput,
@@ -49,7 +51,6 @@ results: list[dict] = []
 
 
 def record_result(name: str, passed: bool, detail: str = "", duration: float = 0):
-    status = "PASS" if passed else "FAIL"
     results.append({"name": name, "passed": passed, "detail": detail, "duration": duration})
     icon = "PASS" if passed else "FAIL"
     dur = f" ({duration:.1f}s)" if duration > 0 else ""
