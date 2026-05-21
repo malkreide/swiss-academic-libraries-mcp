@@ -17,6 +17,25 @@ No API key required. Part of the
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-21
+
+### Security
+- **F-01** XML-Parsing nutzt jetzt `defusedxml.ElementTree.fromstring`
+  statt `xml.etree.ElementTree.fromstring`. Schützt gegen XML-Bomben
+  (billion-laughs, quadratic blowup) bei kompromittierten Upstream-
+  Antworten oder MITM-Angriffen.
+
+### Changed
+- **F-06** Alle Upstream-HTTP-Requests senden jetzt einen identifizierenden
+  `User-Agent`-Header
+  (`swiss-academic-libraries-mcp/<version> (+<repo-url>)`).
+  Best Practice gegenüber SLSP / ETH-Bibliothek; ermöglicht Whitelisting
+  und Abuse-Differenzierung.
+
+### Audit
+- Adressiert Findings aus dem Audit vom 2026-05-21
+  (`audits/2026-05-21-swiss-academic-libraries-mcp/`).
+
 ## [0.1.0] - 2026-03-13
 
 ### Added

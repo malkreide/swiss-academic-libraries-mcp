@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 
 from swiss_academic_libraries_mcp.api_client import (
+    USER_AGENT,
     format_marc_record_md,
     format_oai_record_md,
     parse_marc_record,
@@ -322,6 +323,46 @@ class TestFormatOaiRecordMd:
     def test_url_present(self) -> None:
         output = format_oai_record_md(self.rec)
         assert "https://" in output
+
+
+# ─── Security: XML-Bomben (F-01) ──────────────────────────────────────────────
+
+
+BILLION_LAUGHS_XML = """<?xml version="1.0"?>
+<!DOCTYPE lolz [
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+  <!ENTITY lol4 "&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;">
+]>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
+  <ListRecords>&lol4;</ListRecords>
+</OAI-PMH>"""
+
+
+class TestXmlBombProtection:
+    """F-01: defusedxml muss Entity-Expansion blockieren."""
+
+    def test_billion_laughs_rejected_oai(self) -> None:
+        from defusedxml.common import EntitiesForbidden
+        with pytest.raises((EntitiesForbidden, ValueError)):
+            parse_oai_response(BILLION_LAUGHS_XML)
+
+    def test_billion_laughs_rejected_sru(self) -> None:
+        from defusedxml.common import EntitiesForbidden
+        with pytest.raises((EntitiesForbidden, ValueError)):
+            parse_sru_response(BILLION_LAUGHS_XML)
+
+
+# ─── Security: User-Agent (F-06) ──────────────────────────────────────────────
+
+
+class TestUserAgent:
+    """F-06: Identifizierender User-Agent für Upstream-Calls."""
+
+    def test_user_agent_format(self) -> None:
+        assert "swiss-academic-libraries-mcp/" in USER_AGENT
+        assert "github.com/malkreide/swiss-academic-libraries-mcp" in USER_AGENT
 
 
 # ─── Live-Tests (nur mit -m live) ─────────────────────────────────────────────

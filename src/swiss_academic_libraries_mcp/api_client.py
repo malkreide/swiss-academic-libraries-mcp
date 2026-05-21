@@ -10,10 +10,22 @@ Kein API-Key erforderlich – alle Quellen sind öffentlich zugänglich.
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 from xml.etree import ElementTree as ET
 
 import httpx
+from defusedxml.ElementTree import fromstring as _safe_fromstring
+
+try:
+    _PKG_VERSION = version("swiss-academic-libraries-mcp")
+except PackageNotFoundError:
+    _PKG_VERSION = "0.0.0+local"
+
+USER_AGENT = (
+    f"swiss-academic-libraries-mcp/{_PKG_VERSION} "
+    "(+https://github.com/malkreide/swiss-academic-libraries-mcp)"
+)
 
 # ─── Basis-URLs ───────────────────────────────────────────────────────────────
 
@@ -68,7 +80,10 @@ MARC_FIELD_MAP: dict[str, str] = {
 
 async def http_get(url: str, params: dict[str, Any] | None = None) -> str:
     """Generischer GET-Request, gibt Response-Text zurück."""
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+    async with httpx.AsyncClient(
+        timeout=REQUEST_TIMEOUT,
+        headers={"User-Agent": USER_AGENT},
+    ) as client:
         response = await client.get(url, params=params or {})
         response.raise_for_status()
         return response.text
@@ -229,7 +244,7 @@ def parse_sru_response(xml_text: str) -> dict[str, Any]:
     Parst eine komplette SRU-Response.
     Liefert {'total': int, 'records': [...], 'next_record_position': int|None}
     """
-    root = ET.fromstring(xml_text)
+    root = _safe_fromstring(xml_text)
 
     total_el = root.find(f"{{{NS_SRW}}}numberOfRecords")
     total = int(total_el.text) if total_el is not None and total_el.text else 0
@@ -325,7 +340,7 @@ def parse_oai_response(xml_text: str) -> dict[str, Any]:
     Parst eine OAI-PMH ListRecords- oder GetRecord-Response.
     Liefert {'records': [...], 'resumption_token': str|None, 'total_size': int|None}
     """
-    root = ET.fromstring(xml_text)
+    root = _safe_fromstring(xml_text)
 
     # Fehlerbehandlung auf OAI-Ebene
     error_el = root.find(f"{{{NS_OAI}}}error")
@@ -362,7 +377,7 @@ def parse_oai_response(xml_text: str) -> dict[str, Any]:
 
 def parse_oai_sets(xml_text: str) -> list[dict[str, str]]:
     """Parst OAI-PMH ListSets-Response."""
-    root = ET.fromstring(xml_text)
+    root = _safe_fromstring(xml_text)
     sets = []
     for set_el in root.findall(f".//{{{NS_OAI}}}set"):
         spec = set_el.find(f"{{{NS_OAI}}}setSpec")
