@@ -17,6 +17,34 @@ No API key required. Part of the
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-21
+
+Adressiert die verbleibenden low-Findings aus dem Audit vom 2026-05-21.
+Damit sind alle 13 Findings (4 high, 5 medium, 4 low) abgehakt.
+
+### Changed
+- **F-10** Datenquellen-Metadaten leben jetzt einmalig in der
+  `SOURCES`-Konstante. `library_info`-Tool und `library://sources`-
+  Resource generieren ihren Output daraus — kein Drift mehr zwischen
+  Markdown- und JSON-Repräsentation.
+- **F-11** README-Version-Badge (DE/EN) zeigt jetzt dynamisch die
+  aktuelle PyPI-Version (`shields.io/pypi/v/...`) statt eines
+  hardkodierten Wertes.
+
+### Added
+- **F-12** `oai_identifier` wird gegen ein striktes Regex-Pattern
+  validiert (`^oai:[A-Za-z0-9.\-_]+:[A-Za-z0-9.\-_:/]+$`), zusätzlich
+  `max_length=200`. Defense-in-depth gegen Input-Manipulation.
+- **F-13** Korrelations-ID (`request_id`) für Upstream-Log-Zeilen.
+  Jeder `http_get`-Call setzt eine neue 8-stellige Hex-ID via
+  `contextvars`; das Log-Format zeigt sie zwischen `[ ]`.
+  `upstream_request` und `upstream_response` einer Anfrage sind
+  damit eindeutig zuordenbar.
+
+### Audit
+- Adressiert Findings F-10, F-11, F-12, F-13. **Alle 13 Audit-
+  Findings vom 2026-05-21 sind damit geschlossen.**
+
 ## [1.0.0] - 2026-05-21
 
 Stable release. Schliesst die verbleibenden Medium-Findings aus dem

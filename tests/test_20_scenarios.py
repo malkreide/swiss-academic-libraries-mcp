@@ -19,22 +19,22 @@ import time
 sys.path.insert(0, "src")
 
 from swiss_academic_libraries_mcp.server import (
-    library_info,
-    swisscovery_search,
-    swisscovery_get_record,
-    erara_list_records,
-    erara_get_record,
-    erara_list_collections,
-    eperiodica_list_records,
-    eperiodica_get_record,
-    emanuscripta_list_records,
+    ListCollectionsInput,
+    OaiGetRecordInput,
+    OaiSearchInput,
+    SwisscoveryGetRecordInput,
+    SwisscoverySearchInput,
     emanuscripta_get_record,
     emanuscripta_list_collections,
-    SwisscoverySearchInput,
-    SwisscoveryGetRecordInput,
-    OaiSearchInput,
-    OaiGetRecordInput,
-    ListCollectionsInput,
+    emanuscripta_list_records,
+    eperiodica_get_record,
+    eperiodica_list_records,
+    erara_get_record,
+    erara_list_collections,
+    erara_list_records,
+    library_info,
+    swisscovery_get_record,
+    swisscovery_search,
 )
 
 # ─── Test-Infrastruktur ────────────────────────────────────────────────────
@@ -53,6 +53,7 @@ def record_result(name: str, passed: bool, detail: str = "", duration: float = 0
 
 
 # ─── Szenario 1: library_info Grundfunktion ────────────────────────────────
+
 
 async def test_01_library_info_overview():
     """Szenario 1: Einstiegspunkt liefert vollständige Übersicht aller Quellen."""
@@ -78,13 +79,16 @@ async def test_01_library_info_overview():
 
 # ─── Szenario 2: swisscovery Volltextsuche ─────────────────────────────────
 
+
 async def test_02_swisscovery_fulltext():
     """Szenario 2: Einfache Volltextsuche in swisscovery."""
     t = time.time()
-    result = await swisscovery_search(SwisscoverySearchInput(
-        query="Volksschule Zürich",
-        max_records=5,
-    ))
+    result = await swisscovery_search(
+        SwisscoverySearchInput(
+            query="Volksschule Zürich",
+            max_records=5,
+        )
+    )
     dur = time.time() - t
     checks = [
         "swisscovery" in result,
@@ -101,13 +105,16 @@ async def test_02_swisscovery_fulltext():
 
 # ─── Szenario 3: swisscovery CQL Feldsuche ─────────────────────────────────
 
+
 async def test_03_swisscovery_cql_field_search():
     """Szenario 3: CQL-Feldsuche nach Autor."""
     t = time.time()
-    result = await swisscovery_search(SwisscoverySearchInput(
-        query='creator = "Einstein"',
-        max_records=3,
-    ))
+    result = await swisscovery_search(
+        SwisscoverySearchInput(
+            query='creator = "Einstein"',
+            max_records=3,
+        )
+    )
     dur = time.time() - t
     checks = [
         "Treffer" in result or "treffer" in result.lower() or "Einstein" in result,
@@ -123,14 +130,17 @@ async def test_03_swisscovery_cql_field_search():
 
 # ─── Szenario 4: swisscovery JSON-Ausgabe ──────────────────────────────────
 
+
 async def test_04_swisscovery_json_format():
     """Szenario 4: Maschinenlesbares JSON-Format."""
     t = time.time()
-    result = await swisscovery_search(SwisscoverySearchInput(
-        query='subject = "Pädagogik"',
-        max_records=3,
-        response_format="json",
-    ))
+    result = await swisscovery_search(
+        SwisscoverySearchInput(
+            query='subject = "Pädagogik"',
+            max_records=3,
+            response_format="json",
+        )
+    )
     dur = time.time() - t
     try:
         data = json.loads(result)
@@ -152,19 +162,24 @@ async def test_04_swisscovery_json_format():
 
 # ─── Szenario 5: swisscovery Pagination ────────────────────────────────────
 
+
 async def test_05_swisscovery_pagination():
     """Szenario 5: Pagination über start_record."""
     t = time.time()
-    page1 = await swisscovery_search(SwisscoverySearchInput(
-        query="Bildung",
-        max_records=3,
-        start_record=1,
-    ))
-    page2 = await swisscovery_search(SwisscoverySearchInput(
-        query="Bildung",
-        max_records=3,
-        start_record=4,
-    ))
+    page1 = await swisscovery_search(
+        SwisscoverySearchInput(
+            query="Bildung",
+            max_records=3,
+            start_record=1,
+        )
+    )
+    page2 = await swisscovery_search(
+        SwisscoverySearchInput(
+            query="Bildung",
+            max_records=3,
+            start_record=4,
+        )
+    )
     dur = time.time() - t
     # Prüfe, dass beide Seiten gültige Antworten sind (kein Crash)
     checks = [
@@ -185,15 +200,18 @@ async def test_05_swisscovery_pagination():
 
 # ─── Szenario 6: swisscovery Einzeltitel ───────────────────────────────────
 
+
 async def test_06_swisscovery_get_record():
     """Szenario 6: Einzeltitel via MMS-ID abrufen (zuerst suchen, dann abrufen)."""
     t = time.time()
     # Schritt 1: Suche um MMS-ID zu finden
-    search_result = await swisscovery_search(SwisscoverySearchInput(
-        query='creator = "Pestalozzi"',
-        max_records=1,
-        response_format="json",
-    ))
+    search_result = await swisscovery_search(
+        SwisscoverySearchInput(
+            query='creator = "Pestalozzi"',
+            max_records=1,
+            response_format="json",
+        )
+    )
     try:
         data = json.loads(search_result)
         records = data.get("records", [])
@@ -215,7 +233,9 @@ async def test_06_swisscovery_get_record():
             )
         else:
             dur = time.time() - t
-            record_result("06 swisscovery: Einzeltitel via MMS-ID", False, "Keine MMS-ID in Suchergebnis", dur)
+            record_result(
+                "06 swisscovery: Einzeltitel via MMS-ID", False, "Keine MMS-ID in Suchergebnis", dur
+            )
     except Exception as e:
         dur = time.time() - t
         record_result("06 swisscovery: Einzeltitel via MMS-ID", False, str(e), dur)
@@ -223,13 +243,17 @@ async def test_06_swisscovery_get_record():
 
 # ─── Szenario 7: swisscovery ungültige MMS-ID ─────────────────────────────
 
+
 async def test_07_swisscovery_invalid_mms_id():
     """Szenario 7: Fehlerbehandlung bei ungültiger MMS-ID."""
     t = time.time()
     result = await swisscovery_get_record(SwisscoveryGetRecordInput(mms_id="000000000000"))
     dur = time.time() - t
     checks = [
-        "Kein Eintrag" in result or "nicht gefunden" in result.lower() or "Fehler" in result or "0 Treffer" in result,
+        "Kein Eintrag" in result
+        or "nicht gefunden" in result.lower()
+        or "Fehler" in result
+        or "0 Treffer" in result,
     ]
     record_result(
         "07 swisscovery: Ungültige MMS-ID Fehlerbehandlung",
@@ -241,13 +265,16 @@ async def test_07_swisscovery_invalid_mms_id():
 
 # ─── Szenario 8: swisscovery ISBN-Suche ────────────────────────────────────
 
+
 async def test_08_swisscovery_isbn_search():
     """Szenario 8: Suche nach ISBN."""
     t = time.time()
-    result = await swisscovery_search(SwisscoverySearchInput(
-        query='isbn = "978-3-0340-1630-5"',
-        max_records=3,
-    ))
+    result = await swisscovery_search(
+        SwisscoverySearchInput(
+            query='isbn = "978-3-0340-1630-5"',
+            max_records=3,
+        )
+    )
     dur = time.time() - t
     # ISBN-Suche kann Treffer haben oder nicht – wichtig ist, dass sie ohne Fehler läuft
     checks = [
@@ -263,6 +290,7 @@ async def test_08_swisscovery_isbn_search():
 
 
 # ─── Szenario 9: e-rara Sammlungen auflisten ──────────────────────────────
+
 
 async def test_09_erara_list_collections():
     """Szenario 9: Alle e-rara Sammlungen/Bibliotheken auflisten."""
@@ -283,6 +311,7 @@ async def test_09_erara_list_collections():
 
 # ─── Szenario 10: e-rara Sammlungen filtern ───────────────────────────────
 
+
 async def test_10_erara_filter_collections():
     """Szenario 10: e-rara Sammlungen nach Name filtern."""
     t = time.time()
@@ -301,14 +330,17 @@ async def test_10_erara_filter_collections():
 
 # ─── Szenario 11: e-rara Einträge nach Datum ──────────────────────────────
 
+
 async def test_11_erara_list_by_date():
     """Szenario 11: e-rara Einträge eines bestimmten Zeitraums (ETH-Sammlung)."""
     t = time.time()
-    result = await erara_list_records(OaiSearchInput(
-        set_spec="zut",
-        from_date="2024-01-01",
-        until_date="2024-06-30",
-    ))
+    result = await erara_list_records(
+        OaiSearchInput(
+            set_spec="zut",
+            from_date="2024-01-01",
+            until_date="2024-06-30",
+        )
+    )
     dur = time.time() - t
     checks = [
         "e-rara" in result,
@@ -324,14 +356,17 @@ async def test_11_erara_list_by_date():
 
 # ─── Szenario 12: e-rara JSON-Format ──────────────────────────────────────
 
+
 async def test_12_erara_json_format():
     """Szenario 12: e-rara Einträge im JSON-Format."""
     t = time.time()
-    result = await erara_list_records(OaiSearchInput(
-        from_date="2024-01-01",
-        until_date="2024-03-31",
-        response_format="json",
-    ))
+    result = await erara_list_records(
+        OaiSearchInput(
+            from_date="2024-01-01",
+            until_date="2024-03-31",
+            response_format="json",
+        )
+    )
     dur = time.time() - t
     try:
         data = json.loads(result)
@@ -352,14 +387,17 @@ async def test_12_erara_json_format():
 
 # ─── Szenario 13: e-rara Einzelwerk abrufen ────────────────────────────────
 
+
 async def test_13_erara_get_record():
     """Szenario 13: e-rara Einzelwerk via OAI-Identifier (zuerst suchen)."""
     t = time.time()
-    search = await erara_list_records(OaiSearchInput(
-        from_date="2024-01-01",
-        until_date="2024-06-30",
-        response_format="json",
-    ))
+    search = await erara_list_records(
+        OaiSearchInput(
+            from_date="2024-01-01",
+            until_date="2024-06-30",
+            response_format="json",
+        )
+    )
     try:
         data = json.loads(search)
         records = data.get("records", [])
@@ -388,13 +426,16 @@ async def test_13_erara_get_record():
 
 # ─── Szenario 14: e-periodica Zeitschriftenartikel ────────────────────────
 
+
 async def test_14_eperiodica_list_records():
     """Szenario 14: e-periodica aktuelle Zeitschriftenartikel (kürzerer Zeitraum wegen Timeout-Risiko)."""
     t = time.time()
-    result = await eperiodica_list_records(OaiSearchInput(
-        from_date="2024-03-01",
-        until_date="2024-03-15",
-    ))
+    result = await eperiodica_list_records(
+        OaiSearchInput(
+            from_date="2024-03-01",
+            until_date="2024-03-15",
+        )
+    )
     dur = time.time() - t
     # Timeout oder OAI-Fehler ist ein bekanntes API-Verhalten, kein MCP-Fehler
     checks = [
@@ -410,6 +451,7 @@ async def test_14_eperiodica_list_records():
 
 
 # ─── Szenario 15: e-periodica Einzelartikel ───────────────────────────────
+
 
 async def test_15_eperiodica_get_record():
     """Szenario 15: e-periodica Einzelartikel via bekanntem OAI-Identifier."""
@@ -433,6 +475,7 @@ async def test_15_eperiodica_get_record():
 
 # ─── Szenario 16: e-manuscripta Sammlungen ────────────────────────────────
 
+
 async def test_16_emanuscripta_list_collections():
     """Szenario 16: e-manuscripta Sammlungen auflisten."""
     t = time.time()
@@ -452,13 +495,16 @@ async def test_16_emanuscripta_list_collections():
 
 # ─── Szenario 17: e-manuscripta Handschriften ─────────────────────────────
 
+
 async def test_17_emanuscripta_list_records():
     """Szenario 17: e-manuscripta Handschriften eines Zeitraums."""
     t = time.time()
-    result = await emanuscripta_list_records(OaiSearchInput(
-        from_date="2024-01-01",
-        until_date="2024-12-31",
-    ))
+    result = await emanuscripta_list_records(
+        OaiSearchInput(
+            from_date="2024-01-01",
+            until_date="2024-12-31",
+        )
+    )
     dur = time.time() - t
     checks = [
         "e-manuscripta" in result,
@@ -474,14 +520,17 @@ async def test_17_emanuscripta_list_records():
 
 # ─── Szenario 18: e-manuscripta Einzelobjekt ──────────────────────────────
 
+
 async def test_18_emanuscripta_get_record():
     """Szenario 18: e-manuscripta Einzelobjekt abrufen."""
     t = time.time()
-    search = await emanuscripta_list_records(OaiSearchInput(
-        from_date="2024-01-01",
-        until_date="2024-12-31",
-        response_format="json",
-    ))
+    search = await emanuscripta_list_records(
+        OaiSearchInput(
+            from_date="2024-01-01",
+            until_date="2024-12-31",
+            response_format="json",
+        )
+    )
     try:
         data = json.loads(search)
         records = data.get("records", [])
@@ -509,13 +558,16 @@ async def test_18_emanuscripta_get_record():
 
 # ─── Szenario 19: swisscovery kombinierte CQL-Suche ───────────────────────
 
+
 async def test_19_swisscovery_combined_cql():
     """Szenario 19: Komplexe CQL-Suche mit AND-Verknüpfung."""
     t = time.time()
-    result = await swisscovery_search(SwisscoverySearchInput(
-        query='title = "Schule" AND subject = "Zürich"',
-        max_records=5,
-    ))
+    result = await swisscovery_search(
+        SwisscoverySearchInput(
+            query='title = "Schule" AND subject = "Zürich"',
+            max_records=5,
+        )
+    )
     dur = time.time() - t
     checks = [
         "swisscovery" in result,
@@ -531,6 +583,7 @@ async def test_19_swisscovery_combined_cql():
 
 # ─── Szenario 20: Cross-Source Workflow ────────────────────────────────────
 
+
 async def test_20_cross_source_research():
     """Szenario 20: Quellenübergreifende Recherche – 3 Quellen (ohne e-periodica wegen Timeout)."""
     t = time.time()
@@ -538,11 +591,13 @@ async def test_20_cross_source_research():
     source_results = {}
 
     # swisscovery
-    sc_result = await swisscovery_search(SwisscoverySearchInput(
-        query=f'creator = "{topic}"',
-        max_records=2,
-        response_format="json",
-    ))
+    sc_result = await swisscovery_search(
+        SwisscoverySearchInput(
+            query=f'creator = "{topic}"',
+            max_records=2,
+            response_format="json",
+        )
+    )
     try:
         sc_data = json.loads(sc_result)
         source_results["swisscovery"] = sc_data.get("total", 0)
@@ -550,11 +605,13 @@ async def test_20_cross_source_research():
         source_results["swisscovery"] = f"Parse-Fehler: {sc_result[:80]}"
 
     # e-rara
-    er_result = await erara_list_records(OaiSearchInput(
-        from_date="2024-01-01",
-        until_date="2024-06-30",
-        response_format="json",
-    ))
+    er_result = await erara_list_records(
+        OaiSearchInput(
+            from_date="2024-01-01",
+            until_date="2024-06-30",
+            response_format="json",
+        )
+    )
     try:
         er_data = json.loads(er_result)
         source_results["e-rara"] = len(er_data.get("records", []))
@@ -562,11 +619,13 @@ async def test_20_cross_source_research():
         source_results["e-rara"] = f"Parse-Fehler: {er_result[:80]}"
 
     # e-manuscripta
-    em_result = await emanuscripta_list_records(OaiSearchInput(
-        from_date="2024-01-01",
-        until_date="2024-12-31",
-        response_format="json",
-    ))
+    em_result = await emanuscripta_list_records(
+        OaiSearchInput(
+            from_date="2024-01-01",
+            until_date="2024-12-31",
+            response_format="json",
+        )
+    )
     try:
         em_data = json.loads(em_result)
         source_results["e-manuscripta"] = len(em_data.get("records", []))
@@ -590,6 +649,7 @@ async def test_20_cross_source_research():
 
 
 # ─── Hauptprogramm ─────────────────────────────────────────────────────────
+
 
 async def run_all():
     tests = [
