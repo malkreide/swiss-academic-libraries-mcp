@@ -78,8 +78,23 @@ jobs:
       - name: pip-audit installieren
         run: pip install pip-audit
 
-      - name: Paket inkl. Dependencies installieren
-        run: pip install -e .
+      - name: Runtime-Dependencies aus pyproject.toml extrahieren
+        run: |
+          python -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              data = tomllib.load(f)
+          print('\n'.join(data['project']['dependencies']))
+          " > /tmp/requirements-runtime.txt
+          cat /tmp/requirements-runtime.txt
 
-      - name: CVE-Scan
-        run: pip-audit --strict --progress-spinner off
+      - name: CVE-Scan auf Runtime-Dependencies
+        # Ignorierte CVEs (mit Begründung dokumentieren — Liste regelmässig prüfen):
+        # - PYSEC-2025-183 / CVE-2025-45768: pyjwt "weak encryption"; vom Maintainer
+        #   disputed (Key-Länge wird vom Anwender gewählt, nicht von der Library).
+        #   Kein Upstream-Fix. pyjwt ist transitive Dep von mcp[cli]; dieser Server
+        #   nutzt pyjwt nicht (keine Auth). Re-evaluieren wenn fix_versions verfügbar.
+        run: |
+          pip-audit --strict --progress-spinner off \
+            -r /tmp/requirements-runtime.txt \
+            --ignore-vuln PYSEC-2025-183
