@@ -14,8 +14,6 @@ from swiss_academic_libraries_mcp.api_client import (
     USER_AGENT,
     format_marc_record_md,
     format_oai_record_md,
-    parse_marc_record,
-    parse_oai_dc_record,
     parse_oai_response,
     parse_oai_sets,
     parse_sru_response,
@@ -181,13 +179,17 @@ class TestParseSruResponse:
         assert any("Pädagogik" in s for s in subjects)
 
     def test_empty_result(self) -> None:
-        empty_xml = SAMPLE_SRU_XML.replace("42", "0").replace(
-            "<records>", "<records_unused>"
-        ).replace("</records>", "</records_unused>")
+        empty_xml = (
+            SAMPLE_SRU_XML.replace("42", "0")
+            .replace("<records>", "<records_unused>")
+            .replace("</records>", "</records_unused>")
+        )
         # Vereinfachter Test: total = 0 bei modifiziertem XML
         import re
-        modified = re.sub(r"<numberOfRecords>\d+</numberOfRecords>",
-                          "<numberOfRecords>0</numberOfRecords>", SAMPLE_SRU_XML)
+
+        modified = re.sub(
+            r"<numberOfRecords>\d+</numberOfRecords>", "<numberOfRecords>0</numberOfRecords>", SAMPLE_SRU_XML
+        )
         result = parse_sru_response(modified)
         assert result["total"] == 0
 
@@ -345,11 +347,13 @@ class TestXmlBombProtection:
 
     def test_billion_laughs_rejected_oai(self) -> None:
         from defusedxml.common import EntitiesForbidden
+
         with pytest.raises((EntitiesForbidden, ValueError)):
             parse_oai_response(BILLION_LAUGHS_XML)
 
     def test_billion_laughs_rejected_sru(self) -> None:
         from defusedxml.common import EntitiesForbidden
+
         with pytest.raises((EntitiesForbidden, ValueError)):
             parse_sru_response(BILLION_LAUGHS_XML)
 
@@ -365,6 +369,111 @@ class TestUserAgent:
         assert "github.com/malkreide/swiss-academic-libraries-mcp" in USER_AGENT
 
 
+# ─── library_info / get_sources Single-Source (F-10) ─────────────────────────
+
+
+class TestSourcesSingleSource:
+    """F-10: SOURCES ist Single Source of Truth für library_info und get_sources."""
+
+    def test_sources_contains_all_four(self) -> None:
+        from swiss_academic_libraries_mcp.server import SOURCES
+
+        assert set(SOURCES.keys()) == {"swisscovery", "e-rara", "e-periodica", "e-manuscripta"}
+
+    def test_render_sources_md_lists_all(self) -> None:
+        from swiss_academic_libraries_mcp.server import _render_sources_md
+
+        md = _render_sources_md()
+        for key in ("swisscovery", "e-rara", "e-periodica", "e-manuscripta"):
+            assert key in md
+        assert "swisscovery_search" in md
+        assert "emanuscripta_list_collections" in md
+
+    async def test_get_sources_resource_uses_sources(self) -> None:
+        import json
+
+        from swiss_academic_libraries_mcp.server import get_sources
+
+        # Resources sind als FunctionResource gewrappt; via .fn aufrufen
+        fn = getattr(get_sources, "fn", get_sources)
+        data = json.loads(await fn())
+        assert set(data.keys()) == {"swisscovery", "e-rara", "e-periodica", "e-manuscripta"}
+        # 'label'/'content' sind UI-only und nicht in der JSON-Resource
+        assert "label" not in data["swisscovery"]
+
+
+# ─── OAI-Identifier-Pattern (F-12) ────────────────────────────────────────────
+
+
+class TestOaiIdentifierPattern:
+    """F-12: oai_identifier muss dem RFC-3986-Subset für OAI-IDs entsprechen."""
+
+    def test_valid_erara_identifier(self) -> None:
+        from swiss_academic_libraries_mcp.server import OaiGetRecordInput
+
+        inp = OaiGetRecordInput(oai_identifier="oai:www.e-rara.ch:29725195")
+        assert inp.oai_identifier.startswith("oai:")
+
+    def test_valid_eperiodica_identifier(self) -> None:
+        from swiss_academic_libraries_mcp.server import OaiGetRecordInput
+
+        inp = OaiGetRecordInput(oai_identifier="oai:agora.ch:ars-006:2023:1::62")
+        assert "ars-006" in inp.oai_identifier
+
+    def test_rejects_injection_attempt(self) -> None:
+        import pytest as _pytest
+        from pydantic import ValidationError
+
+        from swiss_academic_libraries_mcp.server import OaiGetRecordInput
+
+        with _pytest.raises(ValidationError):
+            OaiGetRecordInput(oai_identifier="<script>alert(1)</script>")
+
+    def test_rejects_missing_prefix(self) -> None:
+        import pytest as _pytest
+        from pydantic import ValidationError
+
+        from swiss_academic_libraries_mcp.server import OaiGetRecordInput
+
+        with _pytest.raises(ValidationError):
+            OaiGetRecordInput(oai_identifier="just-a-string-no-oai-prefix")
+
+
+# ─── request_id Correlation (F-13) ────────────────────────────────────────────
+
+
+class TestRequestId:
+    """F-13: Jeder upstream-Call bekommt eine neue 8-stellige Korrelations-ID."""
+
+    def test_new_request_id_is_8_hex_chars(self) -> None:
+        from swiss_academic_libraries_mcp.api_client import new_request_id
+
+        rid = new_request_id()
+        assert len(rid) == 8
+        int(rid, 16)  # muss hex sein
+
+    def test_new_request_id_changes(self) -> None:
+        from swiss_academic_libraries_mcp.api_client import new_request_id
+
+        a = new_request_id()
+        b = new_request_id()
+        assert a != b
+
+    def test_log_filter_injects_request_id(self) -> None:
+        import logging
+
+        from swiss_academic_libraries_mcp.api_client import (
+            RequestIdLogFilter,
+            new_request_id,
+            request_id_var,
+        )
+
+        new_request_id()
+        record = logging.LogRecord("x", logging.INFO, "y", 1, "msg", None, None)
+        assert RequestIdLogFilter().filter(record)
+        assert record.request_id == request_id_var.get()
+
+
 # ─── Shared httpx client (F-05) ───────────────────────────────────────────────
 
 
@@ -373,17 +482,20 @@ class TestSharedClient:
 
     def test_get_client_is_singleton(self) -> None:
         from swiss_academic_libraries_mcp import api_client
+
         c1 = api_client._get_client()
         c2 = api_client._get_client()
         assert c1 is c2
 
     def test_user_agent_header_on_client(self) -> None:
         from swiss_academic_libraries_mcp import api_client
+
         client = api_client._get_client()
         assert "swiss-academic-libraries-mcp/" in client.headers.get("user-agent", "")
 
     async def test_shutdown_closes_client(self) -> None:
         from swiss_academic_libraries_mcp import api_client
+
         client = api_client._get_client()
         await api_client.shutdown()
         assert client.is_closed
@@ -403,6 +515,7 @@ class TestMcpError:
         from mcp import McpError
 
         from swiss_academic_libraries_mcp.server import _to_mcp_error
+
         err = _to_mcp_error(ValueError("boom"), "swisscovery_search")
         assert isinstance(err, McpError)
         assert "swisscovery_search" in err.error.message
@@ -417,6 +530,7 @@ class TestDataDisclaimer:
 
     def test_disclaimer_constant(self) -> None:
         from swiss_academic_libraries_mcp.server import DATA_DISCLAIMER
+
         assert "Daten" in DATA_DISCLAIMER
         assert "Instruktionen" in DATA_DISCLAIMER
 
@@ -429,6 +543,7 @@ class TestParseArgs:
 
     def _parse(self, argv: list[str]):
         from swiss_academic_libraries_mcp.server import _parse_args
+
         return _parse_args(argv)
 
     def test_default_is_stdio(self) -> None:
@@ -460,45 +575,59 @@ class TestParseArgs:
 @pytest.mark.live
 class TestSwisscoveryLive:
     async def test_basic_search(self) -> None:
-        from swiss_academic_libraries_mcp.api_client import http_get, parse_sru_response, SWISSCOVERY_SRU_URL
-        xml_text = await http_get(SWISSCOVERY_SRU_URL, {
-            "version": "1.2",
-            "operation": "searchRetrieve",
-            "query": "title = \"Volksschule\"",
-            "maximumRecords": "3",
-            "recordSchema": "marcxml",
-        })
+        from swiss_academic_libraries_mcp.api_client import SWISSCOVERY_SRU_URL, http_get, parse_sru_response
+
+        xml_text = await http_get(
+            SWISSCOVERY_SRU_URL,
+            {
+                "version": "1.2",
+                "operation": "searchRetrieve",
+                "query": 'title = "Volksschule"',
+                "maximumRecords": "3",
+                "recordSchema": "marcxml",
+            },
+        )
         result = parse_sru_response(xml_text)
         assert result["total"] > 0
         assert len(result["records"]) > 0
         print(f"\n  ✅ swisscovery: {result['total']:,} Treffer für 'Volksschule'")
 
     async def test_search_returns_mms_id(self) -> None:
-        from swiss_academic_libraries_mcp.api_client import http_get, parse_sru_response, SWISSCOVERY_SRU_URL
-        xml_text = await http_get(SWISSCOVERY_SRU_URL, {
-            "version": "1.2",
-            "operation": "searchRetrieve",
-            "query": "creator = \"Pestalozzi\"",
-            "maximumRecords": "2",
-            "recordSchema": "marcxml",
-        })
+        from swiss_academic_libraries_mcp.api_client import SWISSCOVERY_SRU_URL, http_get, parse_sru_response
+
+        xml_text = await http_get(
+            SWISSCOVERY_SRU_URL,
+            {
+                "version": "1.2",
+                "operation": "searchRetrieve",
+                "query": 'creator = "Pestalozzi"',
+                "maximumRecords": "2",
+                "recordSchema": "marcxml",
+            },
+        )
         result = parse_sru_response(xml_text)
         if result["records"]:
             assert "mms_id" in result["records"][0]
-            print(f"\n  ✅ swisscovery Pestalozzi: {result['total']} Treffer, MMS-ID: {result['records'][0]['mms_id']}")
+            print(
+                f"\n  ✅ swisscovery Pestalozzi: {result['total']} Treffer, MMS-ID: {result['records'][0]['mms_id']}"
+            )
 
 
 @pytest.mark.live
 class TestEraraLive:
     async def test_list_records(self) -> None:
-        from swiss_academic_libraries_mcp.api_client import http_get, parse_oai_response, ERARA_OAI_URL
-        xml_text = await http_get(ERARA_OAI_URL, {
-            "verb": "ListRecords",
-            "metadataPrefix": "oai_dc",
-            "set": "zut",
-            "from": "2024-01-01",
-            "until": "2024-03-31",
-        })
+        from swiss_academic_libraries_mcp.api_client import ERARA_OAI_URL, http_get, parse_oai_response
+
+        xml_text = await http_get(
+            ERARA_OAI_URL,
+            {
+                "verb": "ListRecords",
+                "metadataPrefix": "oai_dc",
+                "set": "zut",
+                "from": "2024-01-01",
+                "until": "2024-03-31",
+            },
+        )
         result = parse_oai_response(xml_text)
         assert len(result["records"]) > 0
         first = result["records"][0]
@@ -507,7 +636,8 @@ class TestEraraLive:
         print(f"\n  ✅ e-rara (ETH): {len(result['records'])} Einträge, erster: {first['title'][:60]}")
 
     async def test_list_sets(self) -> None:
-        from swiss_academic_libraries_mcp.api_client import http_get, parse_oai_sets, ERARA_OAI_URL
+        from swiss_academic_libraries_mcp.api_client import ERARA_OAI_URL, http_get, parse_oai_sets
+
         xml_text = await http_get(ERARA_OAI_URL, {"verb": "ListSets"})
         sets = parse_oai_sets(xml_text)
         assert len(sets) > 5
@@ -519,13 +649,17 @@ class TestEraraLive:
 @pytest.mark.live
 class TestEperiodicaLive:
     async def test_list_records(self) -> None:
-        from swiss_academic_libraries_mcp.api_client import http_get, parse_oai_response, EPERIODICA_OAI_URL
-        xml_text = await http_get(EPERIODICA_OAI_URL, {
-            "verb": "ListRecords",
-            "metadataPrefix": "oai_dc",
-            "from": "2024-01-01",
-            "until": "2024-02-28",
-        })
+        from swiss_academic_libraries_mcp.api_client import EPERIODICA_OAI_URL, http_get, parse_oai_response
+
+        xml_text = await http_get(
+            EPERIODICA_OAI_URL,
+            {
+                "verb": "ListRecords",
+                "metadataPrefix": "oai_dc",
+                "from": "2024-01-01",
+                "until": "2024-02-28",
+            },
+        )
         result = parse_oai_response(xml_text)
         assert len(result["records"]) > 0
         first = result["records"][0]
@@ -536,13 +670,17 @@ class TestEperiodicaLive:
 @pytest.mark.live
 class TestEmanuscriptaLive:
     async def test_list_records(self) -> None:
-        from swiss_academic_libraries_mcp.api_client import http_get, parse_oai_response, EMANUSCRIPTA_OAI_URL
-        xml_text = await http_get(EMANUSCRIPTA_OAI_URL, {
-            "verb": "ListRecords",
-            "metadataPrefix": "oai_dc",
-            "from": "2024-01-01",
-            "until": "2024-06-30",
-        })
+        from swiss_academic_libraries_mcp.api_client import EMANUSCRIPTA_OAI_URL, http_get, parse_oai_response
+
+        xml_text = await http_get(
+            EMANUSCRIPTA_OAI_URL,
+            {
+                "verb": "ListRecords",
+                "metadataPrefix": "oai_dc",
+                "from": "2024-01-01",
+                "until": "2024-06-30",
+            },
+        )
         result = parse_oai_response(xml_text)
         assert len(result["records"]) >= 0  # Kann 0 sein wenn keine neuen Einträge
         print(f"\n  ✅ e-manuscripta: {len(result['records'])} Einträge im Zeitraum")

@@ -4,7 +4,7 @@
 
 # 📚 swiss-academic-libraries-mcp
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+[![PyPI Version](https://img.shields.io/pypi/v/swiss-academic-libraries-mcp)](https://pypi.org/project/swiss-academic-libraries-mcp/)
 [![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-purple)](https://modelcontextprotocol.io/)

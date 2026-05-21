@@ -11,7 +11,9 @@ Kein API-Key erforderlich – alle Quellen sind öffentlich zugänglich.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
+import uuid
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 from xml.etree import ElementTree as ET
@@ -20,6 +22,25 @@ import httpx
 from defusedxml.ElementTree import fromstring as _safe_fromstring
 
 logger = logging.getLogger(__name__)
+
+# Korrelations-ID, die Upstream-Log-Zeilen einer Anfrage zuordnet (F-13).
+request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
+
+
+class RequestIdLogFilter(logging.Filter):
+    """Injiziert die aktuelle request_id in jeden LogRecord."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_var.get()
+        return True
+
+
+def new_request_id() -> str:
+    """Erzeugt eine 8-stellige Korrelations-ID und setzt sie im Context."""
+    rid = uuid.uuid4().hex[:8]
+    request_id_var.set(rid)
+    return rid
+
 
 try:
     _PKG_VERSION = version("swiss-academic-libraries-mcp")
@@ -127,6 +148,7 @@ async def http_get(url: str, params: dict[str, Any] | None = None) -> str:
     parallelen Upstream-Anfragen via Semaphore, um Rate-Limits zu schonen.
     """
     param_keys = sorted((params or {}).keys())
+    new_request_id()
     logger.info("upstream_request url=%s params=%s", url, param_keys)
     client = _get_client()
     async with _get_semaphore():
