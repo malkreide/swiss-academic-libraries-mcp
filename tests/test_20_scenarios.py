@@ -15,6 +15,12 @@ import json
 import sys
 import time
 
+import pytest
+
+# Alle Tests in diesem Modul machen Live-Netzwerkanfragen an Schweizer
+# Bibliotheks-APIs. Werden bei `pytest -m "not live"` automatisch übersprungen.
+pytestmark = pytest.mark.live
+
 # ─── Pfad-Setup ─────────────────────────────────────────────────────────────
 sys.path.insert(0, "src")
 
