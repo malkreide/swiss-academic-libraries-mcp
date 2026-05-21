@@ -1,0 +1,32 @@
+{
+  "run_id": "2026-05-21T07:35:00+02:00-rerun-swiss-academic-libraries-mcp",
+  "audit_date": "2026-05-21",
+  "audit_type": "re-audit",
+  "previous_audit": "audits/2026-05-21-swiss-academic-libraries-mcp/",
+  "skill_source": "https://github.com/malkreide/mcp-audit-skill",
+  "previous_findings_status": {
+    "F-01_defusedxml": "closed",
+    "F-02_http_hardening": "closed",
+    "F-03_logging": "closed",
+    "F-04_pip_audit": "closed",
+    "F-05_shared_client": "closed",
+    "F-06_user_agent": "closed",
+    "F-07_mcp_error": "closed",
+    "F-08_disclaimer": "closed",
+    "F-09_ch_hosting": "closed",
+    "F-10_sources_sot": "closed",
+    "F-11_dynamic_badge": "closed",
+    "F-12_oai_pattern": "closed",
+    "F-13_request_id": "closed"
+  },
+  "regressions_found": 0,
+  "new_findings_count": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 4,
+    "info": 2
+  },
+  "production_ready": true,
+  "rationale": "Alle 13 Audit-Findings von 0.2.0 sind sauber geschlossen, keine Regressionen. 4 neue low-Findings betreffen CI-Coverage und Release-Hygiene (PyPI-Drift, Test-Lint, Matrix-Test-Coverage, CHANGELOG-Duplikat). Keine Sicherheits- oder Funktionsrisiken."
+}

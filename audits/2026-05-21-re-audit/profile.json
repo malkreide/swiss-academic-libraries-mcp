@@ -1,0 +1,20 @@
+{
+  "server_name": "swiss-academic-libraries-mcp",
+  "version": "1.0.1",
+  "previous_audit_version": "0.2.0",
+  "repo_url": "https://github.com/malkreide/swiss-academic-libraries-mcp",
+  "transport": ["stdio", "streamable_http"],
+  "auth_model": "none",
+  "data_class": "public_open_data",
+  "write_access": "read_only",
+  "deployment": ["claude_desktop_stdio", "self_hosted_http"],
+  "sdk": "fastmcp_python",
+  "dependencies": [
+    "mcp[cli]>=1.6.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+    "defusedxml>=0.7.1"
+  ],
+  "tools_count": 11,
+  "tools_destructive": 0
+}
