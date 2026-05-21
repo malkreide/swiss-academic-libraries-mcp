@@ -10,6 +10,7 @@ Kein API-Key erforderlich – alle Quellen sind öffentlich zugänglich.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
@@ -38,6 +39,44 @@ EPERIODICA_OAI_URL = "https://www.e-periodica.ch/oai/dataprovider"
 EMANUSCRIPTA_OAI_URL = "https://www.e-manuscripta.ch/oai"
 
 REQUEST_TIMEOUT = 30.0
+MAX_CONCURRENT_REQUESTS = 5
+MAX_CONNECTIONS = 10
+MAX_KEEPALIVE_CONNECTIONS = 5
+
+_client: httpx.AsyncClient | None = None
+_semaphore: asyncio.Semaphore | None = None
+
+
+def _get_semaphore() -> asyncio.Semaphore:
+    """Lazy-init der Semaphore (muss innerhalb eines Event-Loops erfolgen)."""
+    global _semaphore
+    if _semaphore is None:
+        _semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+    return _semaphore
+
+
+def _get_client() -> httpx.AsyncClient:
+    """Modulweiter httpx.AsyncClient mit Connection-Pool und UA-Header."""
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(
+            timeout=REQUEST_TIMEOUT,
+            headers={"User-Agent": USER_AGENT},
+            limits=httpx.Limits(
+                max_connections=MAX_CONNECTIONS,
+                max_keepalive_connections=MAX_KEEPALIVE_CONNECTIONS,
+            ),
+        )
+    return _client
+
+
+async def shutdown() -> None:
+    """Schliesst den globalen httpx-Client. Im Server-Lifespan aufrufen."""
+    global _client
+    if _client is not None and not _client.is_closed:
+        await _client.aclose()
+    _client = None
+
 
 # ─── XML-Namespaces ───────────────────────────────────────────────────────────
 
@@ -82,13 +121,15 @@ MARC_FIELD_MAP: dict[str, str] = {
 
 
 async def http_get(url: str, params: dict[str, Any] | None = None) -> str:
-    """Generischer GET-Request, gibt Response-Text zurück."""
+    """Generischer GET-Request, gibt Response-Text zurück.
+
+    Nutzt einen modulweiten Client (Connection-Reuse) und limitiert die
+    parallelen Upstream-Anfragen via Semaphore, um Rate-Limits zu schonen.
+    """
     param_keys = sorted((params or {}).keys())
     logger.info("upstream_request url=%s params=%s", url, param_keys)
-    async with httpx.AsyncClient(
-        timeout=REQUEST_TIMEOUT,
-        headers={"User-Agent": USER_AGENT},
-    ) as client:
+    client = _get_client()
+    async with _get_semaphore():
         try:
             response = await client.get(url, params=params or {})
             response.raise_for_status()
@@ -102,10 +143,13 @@ async def http_get(url: str, params: dict[str, Any] | None = None) -> str:
         except httpx.TimeoutException:
             logger.warning("upstream_timeout url=%s timeout=%ss", url, REQUEST_TIMEOUT)
             raise
-        logger.info(
-            "upstream_response url=%s status=%d bytes=%d", url, response.status_code, len(response.text)
-        )
-        return response.text
+    logger.info(
+        "upstream_response url=%s status=%d bytes=%d",
+        url,
+        response.status_code,
+        len(response.text),
+    )
+    return response.text
 
 
 def handle_api_error(e: Exception, context: str = "") -> str:
