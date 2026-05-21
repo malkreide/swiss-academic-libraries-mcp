@@ -365,6 +365,39 @@ class TestUserAgent:
         assert "github.com/malkreide/swiss-academic-libraries-mcp" in USER_AGENT
 
 
+# ─── CLI Argument Parsing (F-02) ──────────────────────────────────────────────
+
+
+class TestParseArgs:
+    """F-02: --host/--port mit Loopback-Default."""
+
+    def _parse(self, argv: list[str]):
+        from swiss_academic_libraries_mcp.server import _parse_args
+        return _parse_args(argv)
+
+    def test_default_is_stdio(self) -> None:
+        transport, host, port = self._parse(["server"])
+        assert transport == "stdio"
+
+    def test_http_default_host_is_loopback(self) -> None:
+        transport, host, port = self._parse(["server", "--http"])
+        assert transport == "streamable_http"
+        assert host == "127.0.0.1"
+        assert port == 8000
+
+    def test_custom_port(self) -> None:
+        _, _, port = self._parse(["server", "--http", "--port", "9000"])
+        assert port == 9000
+
+    def test_custom_host(self) -> None:
+        _, host, _ = self._parse(["server", "--http", "--host", "0.0.0.0"])
+        assert host == "0.0.0.0"
+
+    def test_invalid_port_falls_back_to_default(self) -> None:
+        _, _, port = self._parse(["server", "--http", "--port", "abc"])
+        assert port == 8000
+
+
 # ─── Live-Tests (nur mit -m live) ─────────────────────────────────────────────
 
 

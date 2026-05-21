@@ -63,3 +63,23 @@ jobs:
       - run: ruff check src/
 
       - run: ruff format --check src/
+
+  security:
+    name: Dependency security scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: pip-audit installieren
+        run: pip install pip-audit
+
+      - name: Paket inkl. Dependencies installieren
+        run: pip install -e .
+
+      - name: CVE-Scan
+        run: pip-audit --strict --progress-spinner off

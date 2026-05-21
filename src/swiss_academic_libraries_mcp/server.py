@@ -19,6 +19,8 @@ Verwendung (HTTP):
 from __future__ import annotations
 
 import json
+import logging
+import os
 import sys
 from typing import Any
 
@@ -38,6 +40,14 @@ from swiss_academic_libraries_mcp.api_client import (
     parse_oai_sets,
     parse_sru_response,
 )
+
+# Logging IMMER auf stderr — stdout würde stdio-JSON-RPC korrumpieren.
+logging.basicConfig(
+    stream=sys.stderr,
+    level=os.environ.get("MCP_LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger("swiss_academic_libraries_mcp")
 
 # ─── Server-Initialisierung ───────────────────────────────────────────────────
 
@@ -1026,19 +1036,39 @@ Fokus: Schweizer Kontext, Volksschule, praktische Anwendbarkeit für Schulamt Z�
 # ─── Einstiegspunkt ───────────────────────────────────────────────────────────
 
 
-def main() -> None:
-    transport = "streamable_http" if "--http" in sys.argv else "stdio"
+def _parse_args(argv: list[str]) -> tuple[str, str, int]:
+    """Parse CLI-Args. Default-Bind: 127.0.0.1 (loopback) für HTTP-Sicherheit (F-02)."""
+    transport = "streamable_http" if "--http" in argv else "stdio"
+    host = "127.0.0.1"
     port = 8000
-    for i, arg in enumerate(sys.argv):
-        if arg == "--port" and i + 1 < len(sys.argv):
+    for i, arg in enumerate(argv):
+        if arg == "--port" and i + 1 < len(argv):
             try:
-                port = int(sys.argv[i + 1])
+                port = int(argv[i + 1])
             except ValueError:
                 pass
+        elif arg == "--host" and i + 1 < len(argv):
+            host = argv[i + 1]
+    return transport, host, port
+
+
+def main() -> None:
+    transport, host, port = _parse_args(sys.argv)
 
     if transport == "streamable_http":
-        mcp.run(transport="streamable_http", port=port)
+        if host not in ("127.0.0.1", "localhost", "::1"):
+            logger.warning(
+                "non_loopback_binding host=%s port=%d — nur hinter Reverse Proxy "
+                "mit Authentifizierung und Rate-Limit betreiben!",
+                host,
+                port,
+            )
+        mcp.settings.host = host
+        mcp.settings.port = port
+        logger.info("starting transport=streamable-http host=%s port=%d", host, port)
+        mcp.run(transport="streamable-http")
     else:
+        logger.info("starting transport=stdio")
         mcp.run()
 
 

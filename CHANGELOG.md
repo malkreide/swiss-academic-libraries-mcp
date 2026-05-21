@@ -17,6 +17,34 @@ No API key required. Part of the
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-21
+
+### Security
+- **F-02** Streamable-HTTP-Transport bindet jetzt explizit auf
+  `127.0.0.1` (Loopback). Neues `--host`-CLI-Flag erlaubt anderes
+  Binding; bei Non-Loopback wird eine WARN-Log mit Hinweis auf
+  Reverse-Proxy-Pflicht ausgegeben.
+- **F-04** CI-Job `security` scannt Dependencies mit `pip-audit`.
+  Dependabot wöchentlich für `pip` und `github-actions`.
+
+### Added
+- **F-03** Strukturiertes Logging auf **stderr** (niemals stdout —
+  würde stdio-JSON-RPC korrumpieren). Log-Level konfigurierbar via
+  `MCP_LOG_LEVEL` (Default: `INFO`). Logs für Tool-Start, Upstream-
+  Requests, HTTP-Fehler, Timeouts.
+- `--host <addr>`-CLI-Flag für Streamable-HTTP-Transport.
+- `.github/dependabot.yml` für automatische Dependency-Updates.
+
+### Fixed
+- Transport-Bezeichner korrigiert: `streamable-http` (mit Bindestrich)
+  gemäß aktueller MCP-Spec. Vorher `streamable_http`, was mit
+  neueren `mcp`-Versionen einen TypeError ausgelöst hätte.
+- Host/Port werden jetzt via `mcp.settings.host`/`.port` gesetzt,
+  da `FastMCP.run()` keine `host`/`port`-kwargs akzeptiert.
+
+### Audit
+- Adressiert Findings F-02, F-03, F-04 aus dem Audit vom 2026-05-21.
+
 ## [0.2.1] - 2026-05-21
 
 ### Security
