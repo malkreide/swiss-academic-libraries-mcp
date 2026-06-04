@@ -194,7 +194,10 @@ swiss-academic-libraries-mcp/
 │   └── test_server.py        # 34 Unit-Tests + 6 Live-Smoke-Tests
 ├── pyproject.toml
 ├── CHANGELOG.md
-├── CONTRIBUTING.md
+├── CONTRIBUTING.md            # Beitragsleitfaden (Englisch)
+├── CONTRIBUTING.de.md         # Beitragsleitfaden (Deutsch)
+├── SECURITY.md               # Sicherheitsrichtlinie (Englisch)
+├── SECURITY.de.md            # Sicherheitsrichtlinie (Deutsch)
 ├── LICENSE
 ├── README.md                 # Englische Version
 └── README.de.md              # Diese Datei
@@ -216,7 +219,7 @@ PYTHONPATH=src pytest tests/ -m "live"
 
 ## Contributing
 
-Beiträge sind willkommen! Lies bitte [CONTRIBUTING.md](CONTRIBUTING.md) für Hinweise zu:
+Beiträge sind willkommen! Lies bitte [CONTRIBUTING.de.md](CONTRIBUTING.de.md) für Hinweise zu:
 
 - Fehler melden und Funktionen vorschlagen
 - Entwicklungsumgebung einrichten
@@ -224,6 +227,12 @@ Beiträge sind willkommen! Lies bitte [CONTRIBUTING.md](CONTRIBUTING.md) für Hi
 - Pull Requests einreichen
 
 Dieses Projekt folgt den Konventionen des [Swiss Public Data MCP Portfolios](https://github.com/malkreide).
+
+---
+
+## Sicherheit
+
+Um eine Schwachstelle zu melden, folgen Sie bitte dem Responsible-Disclosure-Prozess in [SECURITY.de.md](SECURITY.de.md). Der Server ist nur lesend und benötigt keinen API-Key; das Sicherheitsmodell ist in [SECURITY.de.md](SECURITY.de.md) beschrieben.
 
 ---
 
