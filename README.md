@@ -196,7 +196,10 @@ swiss-academic-libraries-mcp/
 │   └── test_server.py        # 34 unit tests + 6 live smoke tests
 ├── pyproject.toml
 ├── CHANGELOG.md
-├── CONTRIBUTING.md
+├── CONTRIBUTING.md            # Contributing guide (English)
+├── CONTRIBUTING.de.md         # Contributing guide (German)
+├── SECURITY.md               # Security policy (English)
+├── SECURITY.de.md            # Security policy (German)
 ├── LICENSE
 ├── README.md                 # This file (English)
 └── README.de.md              # German version
@@ -237,6 +240,12 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for gu
 - Submitting pull requests
 
 This project follows the conventions of the [Swiss Public Data MCP Portfolio](https://github.com/malkreide).
+
+---
+
+## Security
+
+To report a vulnerability, please follow the responsible disclosure process in [SECURITY.md](SECURITY.md). The server is read-only and requires no API key; see the *Safety & Limits* section above for the security model.
 
 ---
 
