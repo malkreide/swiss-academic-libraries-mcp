@@ -42,6 +42,7 @@ dependencies = [
 swiss-academic-libraries-mcp = "swiss_academic_libraries_mcp.server:main"
 
 [project.urls]
+"mcp-name" = "io.github.malkreide/swiss-academic-libraries-mcp"
 Homepage = "https://github.com/malkreide/swiss-academic-libraries-mcp"
 Repository = "https://github.com/malkreide/swiss-academic-libraries-mcp"
 Issues = "https://github.com/malkreide/swiss-academic-libraries-mcp/issues"
