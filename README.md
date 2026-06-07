@@ -301,3 +301,5 @@ Hayal Oezkan · [github.com/malkreide](https://github.com/malkreide)
 | [`swiss-statistics-mcp`](https://github.com/malkreide/swiss-statistics-mcp) | Swiss Federal Statistics (BFS) |
 | [`fedlex-mcp`](https://github.com/malkreide/fedlex-mcp) | Swiss Federal Law via Fedlex SPARQL |
 | [`swiss-transport-mcp`](https://github.com/malkreide/swiss-transport-mcp) | OJP journey planning, SIRI-SX disruptions |
+
+<!-- mcp-name: io.github.malkreide/swiss-academic-libraries-mcp -->
