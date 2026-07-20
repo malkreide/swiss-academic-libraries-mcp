@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-20
+
+Neuer zweiter Erschliessungspfad: **Open-Access-Rechtsliteratur** aus sui generis,
+ex/ante und Repositorium.ch — als Metadaten, nie als Volltext. Das bestehende
+Katalogverhalten (swisscovery, e-rara, e-periodica, e-manuscripta) bleibt
+unverändert.
+
+### Added
+- **Zwei neue Tools** (beide `readOnlyHint=True`): `oa_law_search` (Suche über
+  Titel/Abstract/Autorschaft mit Filtern für Quelle, Sprache, Jahr, Peer-Review)
+  und `oa_law_get` (Einzelbeitrag via DOI oder auflösbare URL). Damit 13 Tools.
+- **Modul `oa_legal.py`** mit deklarativer Quellen-Registry (`OA_LEGAL_SOURCES`):
+  zwei OAI-PMH-Quellen (sui generis, ex/ante) und ein Supabase/PostgREST-Adapter
+  (Repositorium.ch). Neue Quellen kommen mit einem Registry-Eintrag hinzu.
+- **Pydantic-v2-Modell `OaLegalPublication`** — nur Metadaten, `license` nie leer
+  (`"unknown"` statt Weglassen), kein Volltext-Feld.
+- **Crossref-Lizenzanreicherung** (best-effort, per DOI): hebt `"unknown"` auf die
+  echte CC-Lizenz an, wo ein DOI auflöst. Default an, abschaltbar via
+  `OA_LAW_CROSSREF_ENRICH=0`. Fällt Crossref aus, bleibt die Suche funktionsfähig.
+- **`http_get_with_retry`** in `api_client.py`: Retry mit exponentiellem Backoff
+  (2s/4s/8s) für 5xx/429/Netzwerkfehler, keine Retries bei anderen 4xx. Additiv —
+  das bestehende `http_get` bleibt unangetastet.
+- **Resource `library://oa-legal-sources`** und OA-Abschnitt in `library_info`.
+- **16 neue Tests** (`tests/test_oa_legal.py`, `respx`-gemockt): Treffer mit
+  DOI+Lizenz, fehlende Lizenz → `"unknown"`, kein DOI → persistente URL,
+  FR-Beitrag, kein Volltext-Leak, Resumption-Token-Pagination, partieller
+  Quellenausfall (ausgewiesen), Totalausfall (erklärender Fehler), Crossref-Pfad.
+
+### Known findings (Live-Probe 2026-07-20)
+- **Zwei Protokolle, nicht eines:** sui generis und ex/ante sprechen OAI-PMH
+  (OJS 3.4), Repositorium.ch eine offene Supabase/PostgREST-JSON-API. Ein
+  generischer OAI-Adapter deckt zwei von drei ab; Repositorium braucht einen
+  dünnen REST-Adapter (kein Scraping).
+- **Aggregator-Lücke:** Crossref deckt sui generis vollständig ab (inkl.
+  CC BY-SA 4.0), verfehlt aber ex/ante (0 DOIs) und indexiert Repositorium.ch
+  nicht als Quelle — daher natives Harvesting je Quelle statt Aggregator-only.
+- **Lizenz ≠ dc:rights:** Die native OAI-`dc:rights` führt nur Copyright-Statements
+  («Copyright (c) 2016 …»), keine maschinenlesbare CC-Lizenz → `"unknown"` ist der
+  Normalfall; Crossref liefert die echte Lizenz per DOI.
+- **Schmutzige XML-Rohdaten:** Der ex/ante-OAI-Feed enthält vereinzelt rohe
+  Steuerzeichen (z.B. `0x17` mitten im Wort «oft»), die als XML 1.0 nicht
+  wohlgeformt sind. `strip_invalid_xml_chars` säubert vor dem Parsen.
+  *Schweizer OAI-Feeds sind wie Fondue — köstlich, aber es lauert immer ein
+  Steuerzeichen im Käse.*
+
 ## [1.0.2] - 2026-05-21
 
 Sweep der Re-Audit-Findings (NEW-01, NEW-03, NEW-04, NEW-06). Keine
