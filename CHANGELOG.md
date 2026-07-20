@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-20
+
+Neue **internationale Metadatenebene**: DOI-Auflösung und internationale
+Forschungsliteratur (Crossref) sowie Preprints (arXiv). Damit beantwortet der
+Server «gibt es das in der Schweiz?» und «was ist das überhaupt und wo steht es
+sonst?» in derselben Konversation. Tool-Extension, kein neuer Server — gleiches
+Domänenfeld, gemeinsamer HTTP-Client, gemeinsamer Provenance-Envelope. Das
+bestehende Katalog- und OA-Recht-Verhalten bleibt unverändert.
+
+### Added
+- **Drei neue Tools** (alle `readOnlyHint=True`): `resolve_doi` (DOI → volle
+  Metadaten via Crossref), `search_publications` (Crossref-Suche mit
+  Jahresfilter) und `search_preprints` (arXiv, mit automatischer
+  Phrasen-Quotierung + Throttle). Damit **16 Tools**.
+- **Modul `intl_metadata.py`** mit Crossref- und arXiv-Adaptern, Pydantic-v2-
+  Modellen `CrossrefWork` und `Preprint` (nur Metadaten, kein Volltext, `license`
+  nie leer) und einer Code-Layer-Egress-Allow-List (`api.crossref.org`,
+  `export.arxiv.org`). Retry/Backoff über `http_get_with_retry` wiederverwendet.
+- **Portfolio-Verkettung national ↔ international:** jede aufgelöste DOI liefert
+  Titel, ISSN, ISBN und Autor:innen als saubere Top-Level-Felder; die Docstrings
+  führen das Modell explizit zur Weitersuche in `swisscovery_search`. Neuer Prompt
+  `doi-to-swiss-shelf` und neue Resource `library://intl-metadata-sources`.
+- **Crossref polite pool** via `CROSSREF_MAILTO` (mailto in User-Agent + Query);
+  fehlt die Variable, läuft die Abfrage funktionsfähig im anonymen Pool weiter.
+- **arXiv-Throttle** (`ARXIV_MIN_INTERVAL_SECONDS`, Default 3 s) und
+  Atom-XML-Parser via `defusedxml` (bestehende Dependency, keine neue).
+- **Attribution pro Quelle** (nicht gesammelt): jede Response trägt die
+  Attribution genau ihrer Quelle — Crossref (Metadaten CC0 1.0) bzw. arXiv
+  (Metadaten CC0 1.0 + erbetene Danksagung).
+- **20 neue Tests** (`tests/test_intl_metadata.py`, `respx`-gemockt): Happy Path
+  je Tool, Retry bei 503, Timeout, Atom-XML-Parser, Phrasen-Quotierung,
+  polite-pool-mailto, Egress-Allow-List, Attribution pro Quelle; plus 2
+  Live-Smoke-Tests.
+
+### Fixed
+- **Versions-Drift behoben:** `__init__.py` stand auf `0.1.0`, während
+  `pyproject.toml` `1.1.0` führte. Beide sind jetzt synchron auf `1.2.0`.
+
+### Known findings (Live-Probe 2026-07-20)
+- **Crossref schwach bei deutschsprachiger CH-Bildungsliteratur:**
+  `query.bibliographic=Lehrplan 21` liefert als Top-Treffer ein Buchkapitel von
+  **1881**. Crossref ist stark bei DOI-Auflösung und internationaler Forschung,
+  nicht bei CH-Bildungspublikationen → dort `swisscovery_search`/`oa_law_search`.
+  *Crossref kennt die Weltliteratur, aber nicht den Zürcher Lehrplan — wie ein
+  Weltatlas ohne die Quartierpläne.*
+- **arXiv-Phrasen-Falle:** `all:model context protocol` = ~1'296'686 Treffer
+  (OR), `all:"model context protocol"` = 462 (Phrase). `search_preprints`
+  quotiert automatisch, damit Nutzende keine arXiv-Syntax lernen müssen.
+- **arXiv `http`→`https`-Redirect (301):** Der geteilte httpx-Client folgt
+  Redirects bewusst nicht; der `https://`-Endpoint wird direkt angesprochen.
+- **SHARE (share.osf.io) — geprüft, nicht gebaut:** Endpoint antwortet (≈58,9
+  Mio. Records), aber Harvesting seit 2020 heruntergefahren, DB in CurateND
+  archiviert, keine Wartungszusage. Für ein auf Verlässlichkeit positioniertes
+  Portfolio kein tragbarer Abhängigkeitskandidat.
+- **Open Library — Entscheidungs-Gate durchgefallen:** 10 reale CH-Lehrmittel-
+  ISBNs (aus swisscovery geharvestet) → **0/10 = 0 %** (Schwelle 60 %).
+  Kontrollen (EN + Trade-DE) lösen auf → echte Abdeckungslücke, kein Netzfehler.
+  swisscovery deckt CH-Lehrmittel bereits ab; für den Buchhandel wäre GVI oder
+  ein Verlagsverzeichnis passender. `lookup_isbn` daher nicht gebaut.
+
 ## [1.1.0] - 2026-07-20
 
 Neuer zweiter Erschliessungspfad: **Open-Access-Rechtsliteratur** aus sui generis,
