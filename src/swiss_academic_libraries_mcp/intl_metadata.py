@@ -403,11 +403,7 @@ def parse_arxiv_feed(xml_text: str, limit: int) -> list[Preprint]:
             for a in entry.findall(f"{{{NS_ATOM}}}author/{{{NS_ATOM}}}name")
             if a.text and a.text.strip()
         ]
-        categories = [
-            c.get("term")
-            for c in entry.findall(f"{{{NS_ATOM}}}category")
-            if c.get("term")
-        ]
+        categories = [c.get("term") for c in entry.findall(f"{{{NS_ATOM}}}category") if c.get("term")]
         primary = entry.find(f"{{{NS_ARXIV}}}primary_category")
         published = _arxiv_text(entry, f"{{{NS_ATOM}}}published")
         year = int(published[:4]) if published and published[:4].isdigit() else None

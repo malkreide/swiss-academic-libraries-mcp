@@ -258,9 +258,7 @@ async def test_search_preprints_retries_on_503_then_succeeds():
 
 @respx.mock
 async def test_search_publications_timeout_raises_clean():
-    respx.get(host="api.crossref.org", path="/works").mock(
-        side_effect=httpx.ConnectTimeout("timed out")
-    )
+    respx.get(host="api.crossref.org", path="/works").mock(side_effect=httpx.ConnectTimeout("timed out"))
     with pytest.raises(httpx.RequestError):
         await intl_metadata.search_publications("x")
 
