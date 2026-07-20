@@ -497,13 +497,91 @@ async def _enrich_page(pubs: list[OaLegalPublication]) -> None:
 # ─── Filterung & Suche ───────────────────────────────────────────────────────
 
 
-def _matches(pub: OaLegalPublication, tokens: list[str]) -> bool:
-    if not tokens:
-        return True
+# Häufige DE/EN-Füllwörter, die keine Themenbegriffe sind (z.B. «im» in
+# «Datenschutz im Bildungsbereich»). Werden bei der Relevanzbewertung ignoriert.
+_STOPWORDS = frozenset(
+    {
+        "der",
+        "die",
+        "das",
+        "den",
+        "dem",
+        "des",
+        "ein",
+        "eine",
+        "einer",
+        "einem",
+        "einen",
+        "und",
+        "oder",
+        "im",
+        "in",
+        "an",
+        "auf",
+        "zu",
+        "zur",
+        "zum",
+        "von",
+        "vom",
+        "für",
+        "mit",
+        "bei",
+        "aus",
+        "als",
+        "auch",
+        "nach",
+        "über",
+        "unter",
+        "bis",
+        "the",
+        "a",
+        "an",
+        "of",
+        "in",
+        "on",
+        "to",
+        "for",
+        "and",
+        "or",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+    }
+)
+
+
+def _query_terms(query: str) -> list[str]:
+    """Zerlegt die Anfrage in Themenbegriffe (Füllwörter/Kurzwörter entfernt).
+
+    Fällt auf die Rohtokens zurück, falls nach dem Filtern nichts übrig bleibt.
+    """
+    tokens = [t for t in re.findall(r"\w+", query.lower()) if t]
+    content = [t for t in tokens if len(t) >= 3 and t not in _STOPWORDS]
+    return content or tokens
+
+
+def relevance_score(pub: OaLegalPublication, terms: list[str]) -> int:
+    """Zahl der Themenbegriffe, die auf den Beitrag zutreffen (Titel/Abstract/Autor).
+
+    Ein Begriff trifft zu, wenn er als Teilzeichenkette vorkommt ODER wenn der
+    Begriff mit einem Wort des Beitrags beginnt — so trifft die Anfrage
+    «Bildungsbereich» auch Beiträge, die «Bildung» führen (deutsche Komposita
+    sind kopf-final: der suchbare Wortstamm ist das Präfix). Die Präfix-Regel
+    vermeidet Fehltreffer wie «Schutz» ⊂ «Datenschutz».
+    """
+    if not terms:
+        return 0
     haystack = " ".join(
         filter(None, [pub.title, pub.abstract or "", " ".join(pub.authors), pub.source_name])
     ).lower()
-    return all(tok in haystack for tok in tokens)
+    words = {w for w in re.findall(r"\w+", haystack) if len(w) >= 6}
+    score = 0
+    for term in terms:
+        if term in haystack or any(term.startswith(w) for w in words):
+            score += 1
+    return score
 
 
 async def search_publications(
@@ -526,8 +604,8 @@ async def search_publications(
             "Alle OA-Rechtsquellen sind derzeit nicht erreichbar. Bitte in einigen Minuten erneut versuchen."
         )
 
-    tokens = [t for t in query.lower().split() if t]
-    results: list[OaLegalPublication] = []
+    terms = _query_terms(query)
+    scored: list[tuple[int, OaLegalPublication]] = []
     for pub in corpus:
         if source and _source_key_for(pub) != source:
             continue
@@ -539,10 +617,14 @@ async def search_publications(
             continue
         if peer_reviewed is not None and pub.is_peer_reviewed is not peer_reviewed:
             continue
-        if _matches(pub, tokens):
-            results.append(pub)
+        score = relevance_score(pub, terms)
+        if score > 0:
+            scored.append((score, pub))
 
-    results.sort(key=lambda p: (p.year is None, -(p.year or 0), p.title.lower()))
+    # Relevanz zuerst: Beiträge, die ALLE Begriffe treffen, stehen oben; danach
+    # neuere Jahre. Kein Treffer wird erfunden — jeder trifft mindestens einen Begriff.
+    scored.sort(key=lambda sp: (-sp[0], sp[1].year is None, -(sp[1].year or 0), sp[1].title.lower()))
+    results = [pub for _, pub in scored]
     total = len(results)
     page = results[:max_records]
     await _enrich_page(page)

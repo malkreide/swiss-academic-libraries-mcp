@@ -25,7 +25,7 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 
 **Anker-Demo-Abfrage (Katalog):** *«Welche Schweizer Hochschul-Dissertationen zur Primarschulpädagogik sind in Schweizer Bibliotheken vorhanden – und sind einige davon in e-rara digitalisiert?»*
 
-**Anker-Demo-Abfrage (OA-Rechtsliteratur):** *«Welche frei zugänglichen rechtswissenschaftlichen Beiträge gibt es zu Datenschutz? Gib mir Titel, Autorschaft, Jahr, Lizenz und DOI.»* → `oa_law_search(query="Datenschutz")`
+**Anker-Demo-Abfrage (OA-Rechtsliteratur):** *«Welche frei zugänglichen rechtswissenschaftlichen Beiträge gibt es zu Datenschutz im Bildungsbereich? Gib mir Titel, Autorschaft, Jahr, Lizenz und DOI.»* → `oa_law_search(query="Datenschutz im Bildungsbereich")` — Ergebnisse werden nach Relevanz sortiert: Beiträge, die alle Begriffe treffen, stehen oben, Teiltreffer (nur der Kernbegriff «Datenschutz») folgen. So liefert die Abfrage den echten Datenschutz-Bestand statt einer leeren Menge.
 
 ---
 
@@ -138,7 +138,7 @@ Der Server ist bewusst zurückhaltend bei dem, was er ausgibt — ein Portfolio,
 
 ## Bekannte Einschränkungen
 
-- **Kleiner, fokussierter Bestand.** Die drei OA-Quellen umfassen zusammen einige hundert Beiträge. Themenkombinierende UND-Abfragen (z.B. *«Datenschutz Bildung»*) können berechtigt **null** Treffer liefern, während breitere Abfragen (*«Datenschutz»*) viele liefern — dieses leere Resultat ist die ehrliche Antwort, kein Fehler. Mit dem Kernbegriff suchen und danach eingrenzen.
+- **Kleiner, fokussierter Bestand.** Die drei OA-Quellen umfassen zusammen einige hundert Beiträge. Ergebnisse werden nach Relevanz sortiert — Beiträge, die alle Begriffe treffen, zuerst, danach Teiltreffer — sodass eine themenkombinierende Abfrage wie *«Datenschutz im Bildungsbereich»* den (nach Relevanz sortierten) Datenschutz-Bestand liefert statt nichts; deckt kein Beitrag die volle Themenschnittmenge ab, werden die nächstliegenden echten Treffer geliefert, nie ein erfundener. Eine Abfrage, die keinen einzigen Begriff trifft, liefert weiterhin ein ehrliches Leerresultat.
 - **Keine Volltextsuche.** Gesucht wird nur über Metadaten (Titel, Abstract, Autorschaft), nie im Aufsatzinhalt.
 - **Ungleiche DOI-Abdeckung.** sui generis ≈ 100 %, Repositorium.ch teilweise, ex/ante hat **keine DOIs** (nur persistente URLs). Aggregatoren (Crossref/OpenAlex) decken daher sui generis gut ab, verfehlen ex/ante ganz und indexieren Repositorium.ch nicht als Quelle — deshalb harvestet der Server jede Quelle nativ statt auf einen Aggregator zu vertrauen.
 - **Lizenzlücken.** Die native Metadatenschicht führt selten eine maschinenlesbare Lizenz; `"unknown"` ist häufig und wird nur dort angehoben, wo ein DOI in Crossref auflöst.
