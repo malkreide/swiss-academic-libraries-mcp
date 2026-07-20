@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.malkreide/swiss-academic-libraries-mcp",
-  "description": "Swiss academic libraries (swisscovery, e-rara, e-periodica, e-manuscripta via SRU/OAI-PMH) plus open-access legal literature (sui generis, ex/ante, Repositorium.ch)",
+  "description": "Swiss academic libraries + open-access Swiss legal literature (SRU/OAI-PMH, no API key)",
   "version": "1.1.0",
   "repository": {
     "url": "https://github.com/malkreide/swiss-academic-libraries-mcp",
