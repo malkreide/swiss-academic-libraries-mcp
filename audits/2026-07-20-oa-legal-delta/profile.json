@@ -1,0 +1,18 @@
+{
+  "server_name": "swiss-academic-libraries-mcp",
+  "version": "1.1.0",
+  "previous_audit_version": "1.0.2",
+  "repo_url": "https://github.com/malkreide/swiss-academic-libraries-mcp",
+  "transport": ["stdio", "streamable_http"],
+  "auth_model": "none",
+  "data_class": "public_open_data",
+  "write_access": "read_only",
+  "deployment": ["claude_desktop_stdio", "self_hosted_http"],
+  "sdk": "fastmcp_python",
+  "tools_make_external_requests": true,
+  "audit_scope": "delta",
+  "scope_note": "Nur der neue Open-Access-Rechtsliteratur-Pfad (v1.1.0): src/swiss_academic_libraries_mcp/oa_legal.py, Tools oa_law_search/oa_law_get in server.py, http_get_with_retry in api_client.py. Der Katalog-Pfad wurde am 2026-05-21 auditiert und ist unverändert.",
+  "new_external_hosts": ["sui-generis.ch", "ex-ante.ch", "api.repositorium.ch", "api.crossref.org"],
+  "tools_count": 13,
+  "tools_destructive": 0
+}
