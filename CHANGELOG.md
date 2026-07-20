@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **OA-Suche jetzt relevanzbasiert statt striktem UND.** `oa_law_search` sortiert
+  Treffer nach Zahl der getroffenen Themenbegriffe: Beiträge, die *alle* Begriffe
+  treffen, stehen oben, Teiltreffer folgen. Damit liefert die Anker-Abfrage
+  «Datenschutz im Bildungsbereich» den (nach Relevanz sortierten) Datenschutz-
+  Bestand statt einer leeren Menge — ohne je eine Fundstelle zu erfinden (jeder
+  Treffer trifft mindestens einen Begriff). Füllwörter (im, in, und …) werden
+  ignoriert; deutsche Komposita werden per Präfix aufgelöst («Bildungsbereich»
+  trifft «Bildung»), wobei die Präfix-Regel Fehltreffer wie «Schutz» ⊂
+  «Datenschutz» vermeidet.
+
 ## [1.1.0] - 2026-07-20
 
 Neuer zweiter Erschliessungspfad: **Open-Access-Rechtsliteratur** aus sui generis,

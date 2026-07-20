@@ -220,6 +220,50 @@ async def test_missing_license_becomes_unknown_not_dropped():
     assert copyright_only and copyright_only[0].license == "unknown"
 
 
+# ─── Relevanz-Ranking: Anker-Query «Datenschutz im Bildungsbereich» ──────────
+
+RANKING_OAI = """<?xml version="1.0" encoding="UTF-8"?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/"
+  xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <ListRecords>
+    <record><header><identifier>oai:x:edu</identifier></header><metadata><oai_dc:dc>
+      <dc:title xml:lang="de">Datenschutz in der Bildung</dc:title>
+      <dc:date>2023-01-01</dc:date>
+      <dc:identifier>info:doi/10.21257/sg.900</dc:identifier>
+      <dc:language>deu</dc:language>
+    </oai_dc:dc></metadata></record>
+    <record><header><identifier>oai:x:only</identifier></header><metadata><oai_dc:dc>
+      <dc:title xml:lang="de">Datenschutz beim Kreditscoring</dc:title>
+      <dc:date>2024-01-01</dc:date>
+      <dc:identifier>info:doi/10.21257/sg.901</dc:identifier>
+      <dc:language>deu</dc:language>
+    </oai_dc:dc></metadata></record>
+    <record><header><identifier>oai:x:none</identifier></header><metadata><oai_dc:dc>
+      <dc:title xml:lang="de">Rechtsschutz im Zivilprozess</dc:title>
+      <dc:date>2024-01-01</dc:date>
+      <dc:identifier>info:doi/10.21257/sg.902</dc:identifier>
+      <dc:language>deu</dc:language>
+    </oai_dc:dc></metadata></record>
+  </ListRecords>
+</OAI-PMH>"""
+
+
+@respx.mock
+async def test_anchor_query_returns_ranked_hits_not_empty():
+    _mock_sources(sui=RANKING_OAI, exante=EMPTY_OAI, repo=[])
+    out = await oa_legal.search_publications(query="Datenschutz im Bildungsbereich", max_records=10)
+
+    dois = [p.doi for p in out["results"]]
+    # Beide Datenschutz-Beiträge werden geliefert (nicht mehr leer bei striktem UND).
+    assert "10.21257/sg.900" in dois
+    assert "10.21257/sg.901" in dois
+    # «Rechtsschutz» darf NICHT über «Schutz» ⊂ «Datenschutz» einsickern (Präfix-Regel).
+    assert "10.21257/sg.902" not in dois
+    # Der Beitrag, der BEIDE Begriffe trifft (Datenschutz + Bildung/Bildungsbereich), steht oben.
+    assert dois[0] == "10.21257/sg.900"
+
+
 # ─── Pflicht-Testfall 3: Kein DOI → persistente URL vorhanden ────────────────
 
 

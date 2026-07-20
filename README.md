@@ -29,7 +29,7 @@ Beyond the catalogue, the server also covers **Swiss open-access legal literatur
 
 **Anchor demo query (catalogue):** *"Which Swiss university dissertations on primary school pedagogy are held in Swiss libraries, and are any of them digitised in e-rara?"*
 
-**Anchor demo query (OA legal literature):** *"Which freely accessible legal-scholarship articles exist on data protection? Give me title, authorship, year, licence and DOI."* → `oa_law_search(query="Datenschutz")`
+**Anchor demo query (OA legal literature):** *"Which freely accessible legal-scholarship articles exist on data protection in education? Give me title, authorship, year, licence and DOI."* → `oa_law_search(query="Datenschutz im Bildungsbereich")` — results are ranked by relevance: articles matching **all** terms rank first, articles matching only the core term (`Datenschutz`) follow, so the query returns the real privacy-law corpus rather than an empty set.
 
 ---
 
@@ -142,7 +142,7 @@ This server is deliberately conservative about what it emits — a portfolio tha
 
 ## Known Limitations
 
-- **Small, focused corpus.** The three OA sources together hold on the order of a few hundred articles. Topically narrow AND-queries (e.g. *"Datenschutz Bildung"*) may legitimately return **zero** hits even though broader queries (*"Datenschutz"*) return many — that empty result is the honest answer, not a bug. Search with the core term and narrow afterwards.
+- **Small, focused corpus.** The three OA sources together hold on the order of a few hundred articles. Results are ranked by relevance — articles matching all query terms first, then partial matches — so a topical query like *"Datenschutz im Bildungsbereich"* returns the privacy-law corpus (ranked) rather than nothing; if no article covers the full topic intersection, the closest real matches are returned, never a fabricated one. A query that matches no term at all still returns an honest empty result.
 - **No full-text search.** Matching runs over metadata (title, abstract, authorship) only — never the article body.
 - **Uneven DOI coverage.** sui generis ≈ 100 %, Repositorium.ch partial, ex/ante has **no DOIs** (persistent URLs only). Aggregators (Crossref/OpenAlex) therefore cover sui generis well but miss ex/ante entirely and do not index Repositorium.ch as a source — which is why the server harvests each source natively rather than relying on an aggregator.
 - **Licence gaps.** The native metadata rarely carries a machine-readable licence; `"unknown"` is common and only lifted where a DOI resolves in Crossref.

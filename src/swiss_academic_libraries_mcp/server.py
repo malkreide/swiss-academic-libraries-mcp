@@ -264,8 +264,10 @@ class OaLawSearchInput(BaseModel):
     query: str = Field(
         ...,
         description=(
-            "Suchbegriffe (Volltext über Titel, Abstract, Autorschaft). Alle Begriffe "
-            "müssen vorkommen. Beispiel: 'Datenschutz Bildung'."
+            "Suchbegriffe (Volltext über Titel, Abstract, Autorschaft). Ergebnisse "
+            "werden nach Relevanz sortiert: Beiträge, die alle Begriffe treffen, stehen "
+            "oben, gefolgt von solchen, die nur einen Teil treffen. Füllwörter (im, in, "
+            "und …) werden ignoriert. Beispiel: 'Datenschutz im Bildungsbereich'."
         ),
         min_length=1,
         max_length=300,
@@ -1205,19 +1207,20 @@ async def oa_law_search(params: OaLawSearchInput) -> str:
 
     if not results:
         return (
-            f"Keine frei zugänglichen Rechtsbeiträge für «{params.query}» gefunden.\n\n"
-            "*Tipp: Alle Suchbegriffe müssen vorkommen. Bei themenkombinierenden Anfragen "
-            "(z.B. «Datenschutz Bildung») zuerst mit dem Kernbegriff suchen («Datenschutz») "
-            "und die Treffer dann inhaltlich eingrenzen — statt eine Fundstelle zu erfinden.*\n\n"
+            f"Keine frei zugänglichen Rechtsbeiträge für «{params.query}» gefunden — "
+            "kein Beitrag trifft auch nur einen der Suchbegriffe.\n\n"
+            "*Tipp: breitere oder alternative Begriffe verwenden. Es wird keine Fundstelle "
+            "erfunden — lieber ein Treffer weniger als einer erfunden.*\n\n"
             f"*Quellen-Status: {_format_oa_status(status)}*"
         )
 
-    header = f"## OA-Rechtsliteratur — {total} Treffer für «{params.query}»"
+    header = f"## OA-Rechtsliteratur — {total} Treffer für «{params.query}» (nach Relevanz sortiert)"
     lines = [
         header,
         "",
         DATA_DISCLAIMER,
         "> *Open Access heisst frei lesbar, nicht zwingend frei weiterverwendbar — Lizenz je Beitrag beachten.*",
+        "> *Sortiert nach Relevanz: Beiträge, die alle Begriffe treffen, zuerst; danach Teiltreffer.*",
         "",
     ]
     for i, pub in enumerate(results, 1):
