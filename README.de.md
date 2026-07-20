@@ -23,6 +23,10 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 
 Über den Katalog hinaus erschliesst der Server **frei zugängliche schweizerische Rechtsliteratur** — Beiträge aus [sui generis](https://sui-generis.ch), [ex/ante](https://ex-ante.ch) und [Repositorium.ch](https://www.repositorium.ch) — als **Metadaten** (Titel, Autorschaft, Jahr, Lizenz, DOI, Link), nie als Volltext.
 
+Zusätzlich kommt die **internationale Metadatenebene** dazu: DOI-Auflösung und internationale Forschungsliteratur via [Crossref](https://www.crossref.org), Preprints via [arXiv](https://arxiv.org). So beantwortet dieselbe Konversation sowohl «gibt es das in der Schweiz?» (nationale Ebene) als auch «was ist das überhaupt und wo steht es sonst?» (internationale Ebene). Jede aufgelöste DOI liefert Titel, ISSN, ISBN und Autor:innen als saubere Top-Level-Felder — direkt weitersuchbar in swisscovery.
+
+**Anker-Demo-Abfrage (national ↔ international):** *«Finde die Originalpublikation zu dieser DOI, prüfe ob eine Preprint-Version existiert, und zeige ob eine Schweizer Bibliothek sie führt.»* → `resolve_doi` → `search_preprints` → `swisscovery_search(query="<ISSN aus resolve_doi>")`.
+
 **Anker-Demo-Abfrage (Katalog):** *«Welche Schweizer Hochschul-Dissertationen zur Primarschulpädagogik sind in Schweizer Bibliotheken vorhanden – und sind einige davon in e-rara digitalisiert?»*
 
 **Anker-Demo-Abfrage (OA-Rechtsliteratur):** *«Welche frei zugänglichen rechtswissenschaftlichen Beiträge gibt es zu Datenschutz im Bildungsbereich? Gib mir Titel, Autorschaft, Jahr, Lizenz und DOI.»* → `oa_law_search(query="Datenschutz im Bildungsbereich")` — Ergebnisse werden nach Relevanz sortiert: Beiträge, die alle Begriffe treffen, stehen oben, Teiltreffer (nur der Kernbegriff «Datenschutz») folgen. So liefert die Abfrage den echten Datenschutz-Bestand statt einer leeren Menge.
@@ -31,16 +35,17 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 
 ## Funktionen
 
-- **13 Tools** für 4 Katalogquellen + 3 OA-Rechtsliteratur-Quellen — alle nur lesend, kein API-Key
+- **16 Tools** für 4 Katalogquellen + 3 OA-Rechtsliteratur-Quellen + 2 internationale Metadatenquellen — alle nur lesend, kein API-Key
 - **swisscovery-Suche** mit vollständiger CQL-Syntax: Volltext, Titel, Autor, Schlagwort, ISBN/ISSN
 - **OAI-PMH-Harvesting** mit Datums- und Sammlungsfilter sowie Pagination via Resumption Tokens
 - **MARC21-Parser** mit 20+ Feldern (Titel, Autor, Erscheinungsinfo, Schlagworte, Abstract, URLs)
 - **Dublin-Core-Parser** für alle drei Digitalportale
 - **Dual Transport**: stdio (Claude Desktop) · Streamable HTTP (Cloud/Self-hosted)
 - **OA-Rechtsliteratur-Suche** über sui generis, ex/ante und Repositorium.ch mit deklarativer Quellen-Registry (neue Quelle = eine Konfigurationszeile), best-effort Crossref-Lizenzanreicherung und Graceful Degradation pro Quelle
-- **2 eingebaute Prompts**: `research-workflow` und `education-research`
+- **Internationale Metadatenebene**: DOI-Auflösung und bibliografische Suche via Crossref (polite pool via `CROSSREF_MAILTO`), Preprint-Suche via arXiv mit automatischer Phrasen-Quotierung und Request-Throttling — saubere Titel-/ISSN-/ISBN-/Autor:innen-Felder zur Weitersuche in swisscovery
+- **3 eingebaute Prompts**: `research-workflow`, `education-research` und `doi-to-swiss-shelf`
 - **Markdown- und JSON-Ausgabe** für alle Tools
-- **76 Unit-Tests** (kein Netzwerk) + 28 Live-Smoke-Tests
+- **97 Unit-/Mock-Tests** (kein Netzwerk) + 30 Live-Smoke-Tests
 
 ---
 
@@ -61,6 +66,13 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 | [ex/ante](https://ex-ante.ch) | OAI-PMH / Dublin Core | Peer-reviewte Zeitschrift für (junge) Rechtswissenschaft, mehrsprachig | keine (persistente URL) |
 | [Repositorium.ch](https://www.repositorium.ch) | Supabase / PostgREST (JSON) | Fachrepositorium zum Schweizer Recht | teilweise |
 
+### Internationale Metadatenebene (nur Metadaten)
+
+| Quelle | Protokoll | Inhalt | Lizenz |
+|--------|-----------|--------|--------|
+| [Crossref](https://www.crossref.org) | REST / JSON | DOI-Auflösung + internationale Forschungsliteratur | Metadaten CC0 1.0 (gemeinfrei) |
+| [arXiv](https://arxiv.org) | Atom / XML | Preprints (Informatik, Physik, Mathematik, Statistik …) | Metadaten CC0 1.0; Preprints je Autor:innen-Lizenz |
+
 ---
 
 ## Tools
@@ -80,6 +92,9 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 | `emanuscripta_list_collections` | e-manuscripta | Alle Archive/Sammlungen |
 | `oa_law_search` | OA-Recht (alle 3) | OA-Rechtsbeiträge durchsuchen (Titel/Abstract/Autor) mit Filtern für Quelle, Sprache, Jahr, Peer-Review |
 | `oa_law_get` | OA-Recht (alle 3) | Einzelbeitrag via DOI oder auflösbare URL |
+| `resolve_doi` | Crossref | DOI zu vollständigen Metadaten auflösen (Titel/ISSN/ISBN/Autor:innen → Weitersuche in swisscovery) |
+| `search_publications` | Crossref | Internationale Forschungsliteratur durchsuchen; jeder Treffer trägt eine DOI |
+| `search_preprints` | arXiv | Preprints durchsuchen, mit automatischer Phrasen-Quotierung; verknüpfte Journal-DOIs führen zu `resolve_doi` |
 
 ### Beispiel-Abfragen
 
@@ -90,37 +105,40 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 | *«Welche Zeitschriften wurden 2023 in e-periodica ergänzt?»* | `eperiodica_list_records` |
 | *«Welche Handschriften-Sammlungen hat e-manuscripta?»* | `emanuscripta_list_collections` |
 | *«Welche OA-Rechtsbeiträge gibt es zu Gesichtserkennung?»* | `oa_law_search` |
+| *«Löse DOI 10.1038/nature14539 auf und gib mir die ISSN»* | `resolve_doi` |
+| *«Finde aktuelle Preprints zu model context protocol»* | `search_preprints` |
+| *«Finde die DOI dieses Papers, prüfe auf Preprint, und ob eine CH-Bibliothek es führt»* | `resolve_doi` → `search_preprints` → `swisscovery_search` |
 
 ---
 
 ## Architektur
 
-Zwei unabhängige Pfade teilen sich einen HTTP-Client (Retry mit exponentiellem Backoff, gemeinsamer Connection-Pool, Projekt-`User-Agent`):
+Drei unabhängige Pfade teilen sich einen HTTP-Client (Retry mit exponentiellem Backoff, gemeinsamer Connection-Pool, Projekt-`User-Agent`):
 
 ```
-                        ┌─────────────────────────────────────────────┐
-                        │        swiss-academic-libraries-mcp          │
-                        │        (FastMCP · stdio / HTTP)              │
-                        └───────────────┬──────────────┬──────────────┘
-                                        │              │
-                ┌───── KATALOG-Pfad ────┘              └── OA-RECHT-Pfad ──────┐
-                │  (api_client.py)                        (oa_legal.py)        │
-                │                                                              │
-      ┌─────────┴─────────┐                        ┌─────────────────────────┴──────────┐
-      │ swisscovery  SRU  │                        │  deklarative Quellen-Registry        │
-      │ e-rara       OAI  │                        │   ├─ sui generis   → OAI-PMH         │
-      │ e-periodica  OAI  │                        │   ├─ ex/ante       → OAI-PMH         │
-      │ e-manuscripta OAI │                        │   └─ Repositorium  → PostgREST/JSON  │
-      └─────────┬─────────┘                        │  Harvest → In-Memory-Cache → Filter │
-                │                                   │  Crossref DOI→Lizenz-Anreicherung ⟳  │
-        MARC21 / Dublin Core                        │  (best-effort, OA_LAW_CROSSREF_ENRICH)│
-        → Katalogeinträge                           └────────────────────┬────────────────┘
-                                                       OaLegalPublication (nur Metadaten,
-                                                       Lizenz nie leer, kein Volltext)
+                    ┌──────────────────────────────────────────────────────┐
+                    │            swiss-academic-libraries-mcp               │
+                    │            (FastMCP · stdio / HTTP)                   │
+                    └────────┬───────────────┬────────────────┬────────────┘
+                             │               │                │
+          ┌── KATALOG ───────┘   ┌── OA-RECHT ┘     ┌── INTERNATIONAL ──┐
+          │   (api_client.py)    │   (oa_legal.py)  │  (intl_metadata.py)│
+          │                      │                  │                    │
+ ┌────────┴────────┐   ┌─────────┴──────────┐   ┌───┴──────────────────┐ │
+ │ swisscovery SRU │   │ Quellen-Registry    │   │ Crossref  REST/JSON  │ │
+ │ e-rara      OAI │   │  ├ sui generis  OAI │   │  ├ resolve_doi        │ │
+ │ e-periodica OAI │   │  ├ ex/ante      OAI │   │  └ search_publications│ │
+ │ e-manuscripta   │   │  └ Repositorium REST│   │ arXiv     Atom/XML   │ │
+ └────────┬────────┘   │ Harvest→Cache→Filter│   │  └ search_preprints   │ │
+          │            │ Crossref-Lizenz ⟳   │   │ (Phrasen-Quote+Throttle)│
+ MARC21 / Dublin Core  └─────────┬──────────┘   └───┬──────────────────┘ │
+ → Katalogeinträge     OaLegalPublication         CrossrefWork / Preprint │
+                       (nur Metadaten, kein Volltext) (Metadaten, kein Volltext)│
 ```
 
 - **Katalog-Pfad** liefert bibliografische Einträge (Bücher, Digitalisate, Zeitschriften, Handschriften).
 - **OA-Recht-Pfad** harvestet die OA-Rechtsliteratur-Metadaten einmalig, hält sie im Speicher (kleiner Bestand) und filtert lokal — denn OAI-PMH kennt keine eigene Volltextsuche. Eine vierte OA-Quelle ist ein einzelner Registry-Eintrag, kein neuer Code.
+- **Internationaler Pfad** löst DOIs auf und durchsucht Crossref/arXiv live (Architektur A — die Endpoints sind klein, stabil und öffentlich, also kein Dump/Cache nötig). Jede Antwort trägt ihre **eigene Quellen-Attribution** (Crossref CC0 · arXiv-Danksagung), nie eine gesammelte, und liefert saubere Top-Level-Felder (Titel/ISSN/ISBN/Autor:innen) zur Weitersuche im Katalog-Pfad. Eine Egress-Allow-List im Code beschränkt ausgehende Aufrufe auf `api.crossref.org` und `export.arxiv.org`.
 
 ---
 
@@ -132,6 +150,7 @@ Der Server ist bewusst zurückhaltend bei dem, was er ausgibt — ein Portfolio,
 - **`license` ist immer gesetzt.** Open Access heisst *frei lesbar*, **nicht** *frei weiterverwendbar*. Die Bandbreite reicht von CC0 über CC BY bis CC BY-NC-ND, manche Beiträge sind schlicht «kostenlos lesbar» ohne offene Lizenz. Fehlt eine maschinenlesbare Lizenz, steht dort `"unknown"` — nie geraten, nie weggelassen. Die native OAI-Metadatenschicht aller drei Quellen führt nur Copyright-Statements, also ist `"unknown"` der Normalfall; eine best-effort **Crossref**-Abfrage hebt ihn auf die echte CC-Lizenz an, wo ein DOI auflöst (z.B. sui generis → `CC BY-SA 4.0`). Abschaltbar mit `OA_LAW_CROSSREF_ENRICH=0`.
 - **Zitierintegrität.** Jeder Treffer trägt eine auflösbare Referenz — einen DOI wo vorhanden, sonst eine persistente URL. Kein Treffer ohne. Eine erfundene Fundstelle in der Rechtsliteratur ist schädlicher als gar keine — lieber ein Treffer weniger als einer erfunden.
 - **Sprache wird geführt, nie still gefiltert.** ex/ante und Repositorium.ch sind mehrsprachig (DE/FR/IT/EN). Das Feld `language` ist immer gesetzt, gefiltert wird aber nur auf ausdrücklichen Wunsch — sonst verschwände die halbe Romandie aus den Resultaten.
+- **Attribution pro Quelle, nicht gesammelt.** Crossref, arXiv und die OA-Rechtsquellen haben unterschiedliche Lizenz- und Nennungsbedingungen, deshalb trägt jede Antwort die Attribution genau der Quelle, aus der sie stammt. Crossref-Metadaten stehen unter **CC0 1.0** (Fakten sind frei); arXiv-Metadaten unter **CC0 1.0** mit der erbetenen Danksagung *«Thank you to arXiv for use of its open access interoperability»*; Preprint- und Aufsatz-Volltexte bleiben unter ihrer je eigenen Lizenz (hier nie ausgegeben).
 - **Abgrenzung.** OA-Rechtsliteratur gehört hierhin, weil es dieselbe *Fähigkeit* ist, die dieser Server schon hat — authentifizierungsfreies bibliografisches Metadaten-Harvesting Schweizer Wissenschaftsquellen über Standardprotokolle — mit demselben Output-Vertrag (Metadaten, kein Volltext). Sie ist institutionsunabhängig und fachbezogen und überschneidet daher nicht [`eth-library-mcp`](https://github.com/malkreide/eth-library-mcp) (ETH-Bibliothek Discovery & Persons).
 
 ---
@@ -143,6 +162,16 @@ Der Server ist bewusst zurückhaltend bei dem, was er ausgibt — ein Portfolio,
 - **Ungleiche DOI-Abdeckung.** sui generis ≈ 100 %, Repositorium.ch teilweise, ex/ante hat **keine DOIs** (nur persistente URLs). Aggregatoren (Crossref/OpenAlex) decken daher sui generis gut ab, verfehlen ex/ante ganz und indexieren Repositorium.ch nicht als Quelle — deshalb harvestet der Server jede Quelle nativ statt auf einen Aggregator zu vertrauen.
 - **Lizenzlücken.** Die native Metadatenschicht führt selten eine maschinenlesbare Lizenz; `"unknown"` ist häufig und wird nur dort angehoben, wo ein DOI in Crossref auflöst.
 - **Kein Ersatz für eine kostenpflichtige juristische Datenbank.** Erschlossen wird ausschliesslich *frei zugängliche* Schweizer Rechtsliteratur — dies ist kein Swisslex/Weblaw und deckt kein kommerzielles oder kostenpflichtiges juristisches Publizieren ab.
+
+### Known findings — internationale Ebene (Live-Probe 2026-07-20)
+
+| Befund | Detail | Konsequenz |
+|---|---|---|
+| **Crossref schwach bei deutschsprachiger CH-Bildungsliteratur** | `query.bibliographic=Lehrplan 21` liefert als Top-Treffer ein **Buchkapitel von 1881**; weitere CH-Bildungs-Abfragen ergeben Millionen irrelevanter Treffer mit alten/abseitigen Spitzen. Crossref ist stark bei DOI-Auflösung und internationaler Forschung, nicht bei CH-Bildungspublikationen. | `search_publications` dokumentiert das und verweist für CH-Bildungsthemen auf `swisscovery_search` / `oa_law_search`. |
+| **arXiv interpretiert Leerzeichen als OR, nicht als Phrase** | `all:model context protocol` → ~1'296'686 Treffer (OR); `all:"model context protocol"` → 462 Treffer (Phrase). | `search_preprints` quotiert automatisch; Nutzende brauchen keine arXiv-Syntax. Feld-Syntax (`ti:`, `au:`) und eigene Anführungszeichen werden respektiert. |
+| **arXiv liefert Atom-XML, throttlet und leitet `http`→`https` um (301)** | Antwort ist Atom, kein JSON; arXiv bittet um ~3 s zwischen Requests; der `http://`-Endpoint leitet per 301 um. | Parser nutzt `defusedxml` (bereits Dependency — keine neue); ein modulweiter Throttle (`ARXIV_MIN_INTERVAL_SECONDS`, Default 3 s) hält den Abstand; der Client ruft direkt den `https://`-Endpoint. |
+| **SHARE (share.osf.io) — geprüft, nicht gebaut** | Der `_search`-Endpoint antwortet (≈58,9 Mio. Records, Elasticsearch-artig), **aber** SHARE hat das Harvesting 2020 heruntergefahren, die Datenbank in CurateND archiviert und führt keine API-Wartungszusage («shutting down / new phase», heute «trove»-Search-API). Für ein auf Verlässlichkeit positioniertes Portfolio ist ein Index ohne Support-Zusage ein schlechter Abhängigkeitskandidat. | **Nicht implementiert.** |
+| **Open Library — geprüft, Gate durchgefallen** | Eine 10-ISBN-Probe realer CH-/deutschsprachiger Lehrmittel (Lehrmittelverlag Zürich, Klett und Balmer; ISBNs aus swisscovery geharvestet) ergab **0/10 = 0 %** (Schwelle 60 %). Kontrollen bestätigen, dass Open Library funktioniert (englische + deutschsprachige Trade-Titel lösen auf) — also eine echte Abdeckungslücke, kein Netz-Artefakt. | **Nicht implementiert.** swisscovery deckt CH-Lehrmittel bereits ab; für den Buchhandel wäre GVI oder ein Verlagsverzeichnis der passende Weg. |
 
 ---
 
@@ -250,6 +279,8 @@ Kein API-Key erforderlich. Alle Umgebungsvariablen sind optional.
 | `MCP_LOG_LEVEL` | `INFO` | Log-Verbosität (`DEBUG`/`INFO`/`WARNING`) |
 | `OA_LAW_CROSSREF_ENRICH` | `1` | OA-Recht: DOI→Lizenz-Anreicherung via Crossref; `0` deaktiviert sie |
 | `OA_LAW_REPOSITORIUM_ANON_KEY` | *(öffentl. Key)* | OA-Recht: Override für den öffentlichen, read-only Supabase-Anon-Key von Repositorium.ch (Rotation ohne Code-Änderung) |
+| `CROSSREF_MAILTO` | *(nicht gesetzt)* | International: Kontakt-E-Mail für Crossrefs «polite pool» (besserer Durchsatz). Fehlt sie, läuft die Abfrage im anonymen Pool — funktionsfähig, nur langsamer. |
+| `ARXIV_MIN_INTERVAL_SECONDS` | `3.0` | International: Mindestabstand zwischen arXiv-Requests (arXiv bittet um Zurückhaltung). |
 
 ---
 
@@ -260,13 +291,15 @@ swiss-academic-libraries-mcp/
 ├── src/
 │   └── swiss_academic_libraries_mcp/
 │       ├── __init__.py       # Package-Init
-│       ├── server.py         # FastMCP-Server, 13 Tools, 2 Prompts, 2 Resources
+│       ├── server.py         # FastMCP-Server, 16 Tools, 3 Prompts, 3 Resources
 │       ├── api_client.py     # HTTP-Client (+ Retry), MARC21- + OAI-PMH/DC-Parser
-│       └── oa_legal.py       # OA-Rechtsliteratur: Registry, Adapter, Modell
+│       ├── oa_legal.py       # OA-Rechtsliteratur: Registry, Adapter, Modell
+│       └── intl_metadata.py  # Internationale Ebene: Crossref- + arXiv-Adapter, Modelle
 ├── tests/
 │   ├── test_server.py        # Katalog-Unit-Tests + Live-Smoke-Tests
 │   ├── test_20_scenarios.py  # End-to-End-Katalog-Szenarien
-│   └── test_oa_legal.py      # OA-Rechtsliteratur-Tests (gemockt + live)
+│   ├── test_oa_legal.py      # OA-Rechtsliteratur-Tests (gemockt + live)
+│   └── test_intl_metadata.py # Tests der internationalen Ebene (gemockt + live)
 ├── pyproject.toml
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md            # Beitragsleitfaden (Englisch)

@@ -31,7 +31,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import INTERNAL_ERROR, ErrorData
 from pydantic import BaseModel, ConfigDict, Field
 
-from swiss_academic_libraries_mcp import oa_legal
+from swiss_academic_libraries_mcp import intl_metadata, oa_legal
 from swiss_academic_libraries_mcp.api_client import (
     EMANUSCRIPTA_OAI_URL,
     EPERIODICA_OAI_URL,
@@ -48,6 +48,12 @@ from swiss_academic_libraries_mcp.api_client import (
 )
 from swiss_academic_libraries_mcp.api_client import (
     shutdown as _api_client_shutdown,
+)
+from swiss_academic_libraries_mcp.intl_metadata import (
+    ARXIV_ATTRIBUTION,
+    CROSSREF_ATTRIBUTION,
+    CrossrefWork,
+    Preprint,
 )
 from swiss_academic_libraries_mcp.oa_legal import (
     OA_LEGAL_SOURCES,
@@ -318,6 +324,84 @@ class OaLawGetInput(BaseModel):
     )
 
 
+class ResolveDoiInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    doi: str = Field(
+        ...,
+        description=(
+            "DOI der Publikation, blank ('10.1145/3292500.3330701') oder als URL "
+            "('https://doi.org/10.1145/3292500.3330701'). Aus einer Literaturangabe, "
+            "einem Preprint (search_preprints-Feld 'doi') oder einer Zitation."
+        ),
+        min_length=6,
+        max_length=300,
+        examples=["10.1145/3292500.3330701", "https://doi.org/10.1038/nature14539"],
+    )
+    response_format: str = Field(
+        default="markdown",
+        description="Ausgabeformat: 'markdown' oder 'json'.",
+        pattern="^(markdown|json)$",
+    )
+
+
+class SearchPublicationsInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    query: str = Field(
+        ...,
+        description=(
+            "Bibliografische Suchanfrage (Titel, Autor:innen, Stichworte gemischt). "
+            "Wird gegen den Crossref-Index abgeglichen. Für internationale "
+            "Forschungsliteratur stark, für deutschsprachige CH-Bildungsliteratur "
+            "schwach (siehe Known findings) — dort swisscovery_search verwenden."
+        ),
+        min_length=2,
+        max_length=300,
+        examples=["attention is all you need", "CRISPR gene editing ethics"],
+    )
+    year_from: int | None = Field(default=None, description="Erscheinungsjahr ab (inkl.).", ge=1500, le=2100)
+    year_to: int | None = Field(default=None, description="Erscheinungsjahr bis (inkl.).", ge=1500, le=2100)
+    limit: int = Field(default=10, description="Maximale Anzahl Treffer (1–50).", ge=1, le=50)
+    response_format: str = Field(
+        default="markdown",
+        description="Ausgabeformat: 'markdown' oder 'json'.",
+        pattern="^(markdown|json)$",
+    )
+
+
+class SearchPreprintsInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    query: str = Field(
+        ...,
+        description=(
+            "Suchbegriffe in natürlicher Sprache. Wird automatisch als exakte "
+            "Phrase gesucht (arXiv würde Leerzeichen sonst als OR interpretieren) — "
+            "du musst keine arXiv-Syntax kennen. Feld-Syntax (ti:, au:, abs:) und "
+            "eigene Anführungszeichen werden respektiert, falls angegeben."
+        ),
+        min_length=2,
+        max_length=300,
+        examples=["model context protocol", "diffusion models image generation"],
+    )
+    category: str | None = Field(
+        default=None,
+        description=(
+            "Optionale arXiv-Kategorie zur Einschränkung (z.B. 'cs.CL', 'cs.AI', "
+            "'stat.ML', 'math.CO'). Ohne Angabe wird über alle Kategorien gesucht."
+        ),
+        max_length=30,
+        pattern=r"^[a-z\-]+(\.[A-Za-z\-]+)?$",
+    )
+    limit: int = Field(default=10, description="Maximale Anzahl Treffer (1–50).", ge=1, le=50)
+    response_format: str = Field(
+        default="markdown",
+        description="Ausgabeformat: 'markdown' oder 'json'.",
+        pattern="^(markdown|json)$",
+    )
+
+
 # ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
 
@@ -475,6 +559,28 @@ vorliegt). Es wird kein Volltext geliefert.*
 
 Beispiel: *«Welche frei zugänglichen Beiträge gibt es zu Datenschutz im
 Bildungsbereich?»* → `oa_law_search(query="Datenschutz Bildung")`
+
+## Internationale Metadatenebene (DOI, Preprints — kein Volltext)
+
+Beantwortet «was ist das überhaupt und wo steht es sonst?» und verbindet sich
+mit der nationalen Ebene:
+
+- `resolve_doi` — DOI → vollständige Metadaten (Crossref). Liefert Titel, ISSN,
+  ISBN, Autor:innen als Top-Level-Felder → direkt weitersuchbar in swisscovery.
+- `search_publications` — Suche in internationaler Forschungsliteratur (Crossref),
+  jeder Treffer mit DOI.
+- `search_preprints` — Preprints auf arXiv, mit automatischer Phrasen-Quotierung
+  (keine arXiv-Syntax nötig); verknüpfte Journal-DOIs führen via `resolve_doi`
+  zur peer-reviewten Fassung.
+
+*Ehrliche Einschränkung: Crossref ist stark bei internationaler Forschung,
+**schwach bei deutschsprachiger CH-Bildungsliteratur** — dort swisscovery/OA-Recht
+verwenden. Attribution steht pro Quelle in jeder Antwort.*
+
+Anker-Abfrage (national ↔ international): *«Finde die Originalpublikation zu
+dieser DOI, prüfe ob eine Preprint-Version existiert, und zeige ob eine
+Schweizer Bibliothek sie führt.»* → `resolve_doi` → `search_preprints` →
+`swisscovery_search(query="<ISSN aus resolve_doi>")`.
 
 ## CQL-Syntax für swisscovery_search
 
@@ -1299,6 +1405,280 @@ async def oa_law_get(params: OaLawGetInput) -> str:
     return "\n".join(lines)
 
 
+# ─── Internationale Metadatenebene: Formatierung ─────────────────────────────
+
+
+def _format_crossref_work_md(work: CrossrefWork) -> str:
+    lines = [f"# {work.title}", "", DATA_DISCLAIMER, ""]
+    if work.authors:
+        lines.append(f"**Autor:innen:** {', '.join(work.authors[:10])}")
+    if work.year is not None:
+        lines.append(f"**Jahr:** {work.year}")
+    if work.type:
+        lines.append(f"**Typ:** {work.type}")
+    if work.container_title:
+        lines.append(f"**Erschienen in:** {work.container_title}")
+    if work.publisher:
+        lines.append(f"**Verlag:** {work.publisher}")
+    if work.issn:
+        lines.append(f"**ISSN:** {', '.join(work.issn)}")
+    if work.isbn:
+        lines.append(f"**ISBN:** {', '.join(work.isbn)}")
+    lines.append(f"**Lizenz:** {work.license}")
+    lines.append(f"**DOI:** https://doi.org/{work.doi}")
+    lines.append(f"**Link:** {work.url}")
+    if work.abstract:
+        abstract = work.abstract if len(work.abstract) <= 500 else work.abstract[:500] + "…"
+        lines.append(f"\n**Abstract:** {abstract}")
+    # Verkettung zur nationalen Ebene explizit machen.
+    hint = work.issn[0] if work.issn else (work.isbn[0] if work.isbn else f'"{work.title[:40]}"')
+    lines.append(
+        f"\n> *In einer Schweizer Bibliothek prüfen:* "
+        f"`swisscovery_search(query='{hint}')` — oder mit Titel/Autor:in kombinieren."
+    )
+    lines.append(f"\n*{work.source} · Abgerufen: {work.retrieved_at}*")
+    return "\n".join(lines)
+
+
+def _format_crossref_work_short_md(work: CrossrefWork, index: int) -> str:
+    lines = [f"**{index}. {work.title}**"]
+    if work.authors:
+        lines.append(f"  Autor:innen: {', '.join(work.authors[:5])}")
+    meta = []
+    if work.year is not None:
+        meta.append(f"Jahr: {work.year}")
+    if work.type:
+        meta.append(f"Typ: {work.type}")
+    if work.container_title:
+        meta.append(f"in: {work.container_title}")
+    if meta:
+        lines.append("  " + " · ".join(meta))
+    if work.issn:
+        lines.append(f"  ISSN: {', '.join(work.issn)}")
+    if work.isbn:
+        lines.append(f"  ISBN: {', '.join(work.isbn)}")
+    lines.append(f"  Lizenz: {work.license}")
+    lines.append(f"  DOI: https://doi.org/{work.doi}")
+    return "\n".join(lines)
+
+
+def _format_preprint_md(pre: Preprint, index: int) -> str:
+    lines = [f"**{index}. {pre.title}**"]
+    if pre.authors:
+        lines.append(f"  Autor:innen: {', '.join(pre.authors[:5])}")
+    meta = [f"arXiv: {pre.arxiv_id}"]
+    if pre.primary_category:
+        meta.append(f"Kategorie: {pre.primary_category}")
+    if pre.published:
+        meta.append(f"Publiziert: {pre.published[:10]}")
+    lines.append("  " + " · ".join(meta))
+    if pre.doi:
+        lines.append(f"  Journal-DOI: https://doi.org/{pre.doi}  *(peer-reviewte Fassung → resolve_doi)*")
+    lines.append(f"  Link: {pre.abs_url}")
+    if pre.summary:
+        summary = pre.summary if len(pre.summary) <= 300 else pre.summary[:300] + "…"
+        lines.append(f"  Abstract: {summary}")
+    return "\n".join(lines)
+
+
+# ─── TOOL 14: resolve_doi ─────────────────────────────────────────────────────
+
+
+@mcp.tool(
+    name="resolve_doi",
+    annotations={
+        "title": "DOI auflösen (Crossref)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def resolve_doi(params: ResolveDoiInput) -> str:
+    """
+    Löst eine DOI über Crossref zu vollständigen Publikationsmetadaten auf.
+
+    Beantwortet «was ist das überhaupt?» für eine DOI und liefert die Brücke zur
+    nationalen Ebene: Titel, ISSN, ISBN und Autor:innen kommen als saubere
+    Top-Level-Felder zurück. Damit lässt sich direkt in **swisscovery** prüfen,
+    ob eine Schweizer Bibliothek den Titel führt — z.B.
+    `swisscovery_search(query="<ISSN>")` oder mit Titel/Autor:in kombiniert.
+
+    Stark bei internationaler Forschungsliteratur; für deutschsprachige
+    CH-Bildungspublikationen ist Crossref schwach (siehe Known findings).
+
+    Args:
+        params (ResolveDoiInput): doi (blank oder als URL), response_format.
+
+    Returns:
+        str: Metadaten inkl. Lizenz und auflösbarem Link, oder ein Hinweis,
+             wenn die DOI bei Crossref nicht auflösbar ist. Enthält einen
+             konkreten Vorschlag zur Weitersuche in swisscovery.
+    """
+    try:
+        work = await intl_metadata.resolve_doi(params.doi)
+    except Exception as e:
+        raise _to_mcp_error(e, "resolve_doi") from e
+
+    if work is None:
+        return (
+            f"Keine Crossref-Metadaten für DOI **{params.doi}** gefunden. "
+            "Bitte DOI prüfen (Format 10.xxxx/…). Nicht jede DOI ist bei Crossref "
+            "registriert (z.B. DataCite-DOIs für Forschungsdaten).\n\n"
+            f"*{CROSSREF_ATTRIBUTION}*"
+        )
+
+    if params.response_format == "json":
+        return json.dumps(work.model_dump(), ensure_ascii=False, indent=2)
+    return _format_crossref_work_md(work)
+
+
+# ─── TOOL 15: search_publications ─────────────────────────────────────────────
+
+
+@mcp.tool(
+    name="search_publications",
+    annotations={
+        "title": "Internationale Forschungsliteratur durchsuchen (Crossref)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def search_publications(params: SearchPublicationsInput) -> str:
+    """
+    Durchsucht die internationale Forschungsliteratur über Crossref (bibliografisch).
+
+    Liefert pro Treffer Titel, Autor:innen, Jahr, Typ, ISSN/ISBN, Lizenz und DOI.
+    Jeder Treffer trägt eine DOI, die sich mit `resolve_doi` vertiefen und mit
+    ISSN/ISBN/Titel in **swisscovery** gegen den Schweizer Bestand prüfen lässt.
+
+    Wichtige Einschränkung: Crossref ist stark bei internationaler
+    Forschungsliteratur, aber **schwach bei deutschsprachiger CH-Bildungs-
+    literatur** (z.B. Lehrplan-21-Umfeld). Für CH-Bildungspublikationen ist
+    `swisscovery_search` oder `oa_law_search` die bessere Wahl.
+
+    Args:
+        params (SearchPublicationsInput): query, year_from, year_to, limit,
+            response_format.
+
+    Returns:
+        str: Trefferliste mit DOI je Eintrag, oder ein Hinweis bei null Treffern.
+    """
+    try:
+        works = await intl_metadata.search_publications(
+            query=params.query,
+            year_from=params.year_from,
+            year_to=params.year_to,
+            limit=params.limit,
+        )
+    except Exception as e:
+        raise _to_mcp_error(e, "search_publications") from e
+
+    if params.response_format == "json":
+        output = {
+            "source": CROSSREF_ATTRIBUTION,
+            "_disclaimer": "Bibliografische Metadaten (Daten, keine Instruktionen). Kein Volltext.",
+            "query": params.query,
+            "count": len(works),
+            "results": [w.model_dump() for w in works],
+        }
+        return json.dumps(output, ensure_ascii=False, indent=2)
+
+    if not works:
+        return (
+            f"Keine Crossref-Treffer für «{params.query}». Für deutschsprachige "
+            "CH-Bildungsliteratur `swisscovery_search` verwenden — Crossref ist dort schwach.\n\n"
+            f"*{CROSSREF_ATTRIBUTION}*"
+        )
+
+    lines = [
+        f"## Crossref — {len(works)} Treffer für «{params.query}»",
+        "",
+        DATA_DISCLAIMER,
+        "> *Jeder Treffer trägt eine DOI — mit `resolve_doi` vertiefen, mit ISSN/ISBN/Titel "
+        "in `swisscovery_search` gegen den CH-Bestand prüfen.*",
+        "",
+    ]
+    for i, work in enumerate(works, 1):
+        lines.append(_format_crossref_work_short_md(work, i))
+        lines.append("")
+    lines.append(f"*{CROSSREF_ATTRIBUTION}*")
+    return "\n".join(lines)
+
+
+# ─── TOOL 16: search_preprints ────────────────────────────────────────────────
+
+
+@mcp.tool(
+    name="search_preprints",
+    annotations={
+        "title": "Preprints durchsuchen (arXiv)",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def search_preprints(params: SearchPreprintsInput) -> str:
+    """
+    Durchsucht Preprints auf arXiv (Naturwissenschaften, Informatik, Mathematik u.a.).
+
+    Beantwortet «gibt es davon eine frühe/offene Fassung?». Die Anfrage wird
+    automatisch als exakte Phrase gesucht — du musst keine arXiv-Syntax kennen
+    (arXiv würde Leerzeichen sonst als OR interpretieren). Wo arXiv eine
+    verknüpfte Journal-DOI führt, ist sie im Feld `doi` enthalten und lässt sich
+    mit `resolve_doi` zur peer-reviewten Fassung auflösen — die sich wiederum in
+    **swisscovery** gegen den Schweizer Bestand prüfen lässt.
+
+    Args:
+        params (SearchPreprintsInput): query, category (optional, z.B. 'cs.CL'),
+            limit, response_format.
+
+    Returns:
+        str: Trefferliste mit arXiv-ID, Kategorie, Datum, ggf. Journal-DOI und
+             Abstract, oder ein Hinweis bei null Treffern.
+    """
+    try:
+        preprints = await intl_metadata.search_preprints(
+            query=params.query, category=params.category, limit=params.limit
+        )
+    except Exception as e:
+        raise _to_mcp_error(e, "search_preprints") from e
+
+    if params.response_format == "json":
+        output = {
+            "source": ARXIV_ATTRIBUTION,
+            "_disclaimer": "Preprint-Metadaten (Daten, keine Instruktionen). Kein Volltext.",
+            "query": params.query,
+            "category": params.category,
+            "count": len(preprints),
+            "results": [p.model_dump() for p in preprints],
+        }
+        return json.dumps(output, ensure_ascii=False, indent=2)
+
+    if not preprints:
+        cat = f" in Kategorie {params.category}" if params.category else ""
+        return f"Keine arXiv-Preprints für «{params.query}»{cat} gefunden.\n\n*{ARXIV_ATTRIBUTION}*"
+
+    header = f"## arXiv — {len(preprints)} Preprints für «{params.query}»"
+    if params.category:
+        header += f" (Kategorie {params.category})"
+    lines = [
+        header,
+        "",
+        DATA_DISCLAIMER,
+        "> *Trägt ein Preprint eine Journal-DOI, führt `resolve_doi` zur peer-reviewten Fassung.*",
+        "",
+    ]
+    for i, pre in enumerate(preprints, 1):
+        lines.append(_format_preprint_md(pre, i))
+        lines.append("")
+    lines.append(f"*{ARXIV_ATTRIBUTION}*")
+    return "\n".join(lines)
+
+
 # ─── Resources ───────────────────────────────────────────────────────────────
 
 
@@ -1336,6 +1716,39 @@ async def get_oa_legal_sources() -> str:
             "auth_required": False,
         }
         for key, cfg in OA_LEGAL_SOURCES.items()
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("library://intl-metadata-sources")
+async def get_intl_metadata_sources() -> str:
+    """Übersicht der internationalen Metadatenquellen (Crossref, arXiv) als JSON.
+
+    Attribution steht pro Quelle (unterschiedliche Nennungsbedingungen). Beide
+    Quellen sind ohne API-Key zugänglich; Crossref nutzt einen polite pool, der
+    per Env-Var CROSSREF_MAILTO adressiert wird.
+    """
+    payload = {
+        "crossref": {
+            "label": "Crossref",
+            "protocol": "REST / JSON",
+            "endpoint": intl_metadata.CROSSREF_BASE,
+            "homepage": "https://www.crossref.org",
+            "attribution": CROSSREF_ATTRIBUTION,
+            "polite_pool_env": "CROSSREF_MAILTO",
+            "tools": ["resolve_doi", "search_publications"],
+            "auth_required": False,
+        },
+        "arxiv": {
+            "label": "arXiv",
+            "protocol": "Atom / XML",
+            "endpoint": intl_metadata.ARXIV_API_URL,
+            "homepage": "https://arxiv.org",
+            "attribution": ARXIV_ATTRIBUTION,
+            "throttle_env": "ARXIV_MIN_INTERVAL_SECONDS",
+            "tools": ["search_preprints"],
+            "auth_required": False,
+        },
     }
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
@@ -1389,6 +1802,27 @@ async def education_research(topic: str) -> str:
    Handschriftliche Quellen (z.B. Schulberichte, Lehrpläne historisch).
 
 Fokus: Schweizer Kontext, Volksschule, praktische Anwendbarkeit für Schulamt Zürich.
+"""
+
+
+@mcp.prompt("doi-to-swiss-shelf")
+async def doi_to_swiss_shelf(doi: str) -> str:
+    """Verbindet die internationale (DOI/Preprint) mit der nationalen Ebene (swisscovery)."""
+    return f"""Verbinde für die DOI «{doi}» die internationale mit der nationalen Ebene:
+
+1. **resolve_doi(doi="{doi}")** — Originalpublikation auflösen.
+   Notiere Titel, ISSN/ISBN und Autor:innen.
+
+2. **search_preprints(query="<Titel aus Schritt 1>")** — prüfen, ob eine
+   Preprint-/Open-Access-Fassung auf arXiv existiert (frei lesbar).
+
+3. **swisscovery_search** — prüfen, ob eine Schweizer Bibliothek den Titel führt:
+   - query: "<ISSN aus Schritt 1>" (bei Zeitschriftenartikeln), oder
+   - query: isbn = "<ISBN aus Schritt 1>" (bei Büchern), oder
+   - query: title = "<Titel>" AND creator = "<Autor:in>" als Fallback.
+
+4. Zusammenfassung: Was ist die Publikation, gibt es eine frei zugängliche
+   Fassung, und ist sie in der Schweiz physisch/lizenziert verfügbar?
 """
 
 

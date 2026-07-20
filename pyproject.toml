@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "swiss-academic-libraries-mcp"
-version = "1.1.0"
+version = "1.2.0"
 description = "MCP Server für Schweizer Wissenschaftsbibliotheken: swisscovery (SRU), e-rara/e-periodica/e-manuscripta (OAI-PMH) und Open-Access-Rechtsliteratur (sui generis, ex/ante, Repositorium.ch). Kein API-Key erforderlich."
 readme = "README.md"
 license = { file = "LICENSE" }
