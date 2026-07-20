@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Delta-Audit des OA-Rechtsliteratur-Pfads** (mcp-audit-skill, siehe
+  `audits/2026-07-20-oa-legal-delta/`): keine critical/high/medium-Findings,
+  zwei low-Findings direkt remediiert:
+  - **OA-01** (ARCH-005/SEC-013): Repositorium-Anon-Key ist jetzt per Env-Var
+    `OA_LAW_REPOSITORIUM_ANON_KEY` überschreibbar (Default bleibt der öffentliche,
+    read-only Anon-Key). Rotation ohne Code-Änderung möglich.
+  - **OA-02** (SEC-021): explizite Code-Layer-Egress-Allow-List (`ALLOWED_HOSTS`
+    + `_assert_host_allowed`) vor jedem ausgehenden Request — Defense-in-Depth,
+    obwohl keine URL aus User-Input konstruiert wird.
+
 ### Changed
 - **OA-Suche jetzt relevanzbasiert statt striktem UND.** `oa_law_search` sortiert
   Treffer nach Zahl der getroffenen Themenbegriffe: Beiträge, die *alle* Begriffe

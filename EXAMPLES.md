@@ -59,6 +59,24 @@ Warum nützlich: Forscher im Bereich der Digital Humanities können durch die Ko
 → `eperiodica_list_records(from_date="2024-01-01", response_format="json")`
 Warum nützlich: Entwickler können bibliothekarische Metadaten im JSON-Format programmatisch weiterverarbeiten, um Trends in Publikationen zu erkennen oder eigene Suchindexe aufzubauen. (Kein API-Key nötig)
 
+### ⚖️ Recht & Rechtswissenschaft
+Jurist:innen, Rechtsforschende, Verwaltung, Studierende der Rechtswissenschaft
+
+**Frei zugängliche Rechtsliteratur zu einem Thema finden**
+«Welche frei zugänglichen rechtswissenschaftlichen Beiträge gibt es zu Datenschutz im Bildungsbereich? Gib mir Titel, Autorschaft, Jahr, Lizenz und DOI.»
+→ `oa_law_search(query="Datenschutz im Bildungsbereich")`
+Warum nützlich: Liefert Open-Access-Beiträge aus sui generis, ex/ante und Repositorium.ch als Metadaten — nach Relevanz sortiert, mit auflösbarer DOI/URL und ausgewiesener Lizenz. Kein Volltext, keine erfundene Fundstelle. (Kein API-Key nötig)
+
+**Nur peer-reviewte Beiträge, mehrsprachig**
+«Zeige mir peer-reviewte OA-Rechtsbeiträge zur Gesichtserkennung — auch französischsprachige.»
+→ `oa_law_search(query="Gesichtserkennung", peer_reviewed=true)`
+Warum nützlich: Das Sprachfeld wird geführt, aber nicht implizit gefiltert — französisch- und italienischsprachige Beiträge bleiben sichtbar, sofern nicht ausdrücklich per `language` eingeschränkt. (Kein API-Key nötig)
+
+**Einen konkreten Beitrag samt Lizenz auflösen**
+«Gib mir die Details zum Beitrag mit DOI 10.21257/sg.204 inklusive Lizenz.»
+→ `oa_law_get(identifier="10.21257/sg.204")`
+Warum nützlich: Zitierintegrität — jeder Treffer trägt eine überprüfbare Referenz (DOI oder persistente URL); die Lizenz wird, wo ein DOI auflöst, per Crossref angereichert (z.B. CC BY-SA 4.0), sonst `unknown` statt geraten. (Kein API-Key nötig)
+
 ### 🔧 Technische Referenz: Tool-Auswahl nach Anwendungsfall
 
 | Ich möchte… | Tool(s) | Auth nötig? |
@@ -71,3 +89,5 @@ Warum nützlich: Entwickler können bibliothekarische Metadaten im JSON-Format p
 | die Details eines e-periodica Artikels lesen | `eperiodica_get_record` | Nein |
 | historische Handschriften und Briefe recherchieren | `emanuscripta_list_records`, `emanuscripta_list_collections` | Nein |
 | einzelne Archivdokumente aus e-manuscripta abrufen | `emanuscripta_get_record` | Nein |
+| frei zugängliche Schweizer Rechtsliteratur durchsuchen | `oa_law_search` | Nein |
+| einen OA-Rechtsbeitrag via DOI/URL im Detail abrufen | `oa_law_get` | Nein |

@@ -40,7 +40,7 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 - **OA-Rechtsliteratur-Suche** über sui generis, ex/ante und Repositorium.ch mit deklarativer Quellen-Registry (neue Quelle = eine Konfigurationszeile), best-effort Crossref-Lizenzanreicherung und Graceful Degradation pro Quelle
 - **2 eingebaute Prompts**: `research-workflow` und `education-research`
 - **Markdown- und JSON-Ausgabe** für alle Tools
-- **50 Unit-Tests** (kein Netzwerk) + Live-Smoke-Tests
+- **76 Unit-Tests** (kein Netzwerk) + 28 Live-Smoke-Tests
 
 ---
 
@@ -241,12 +241,15 @@ Pagination:    start_record = 11
 
 ## Konfiguration
 
-Keine API-Keys oder Umgebungsvariablen erforderlich.
+Kein API-Key erforderlich. Alle Umgebungsvariablen sind optional.
 
 | Parameter | Standard | Beschreibung |
 |-----------|----------|--------------|
 | `--http` | aus | Streamable HTTP Transport aktivieren |
 | `--port` | 8000 | Port für HTTP-Transport |
+| `MCP_LOG_LEVEL` | `INFO` | Log-Verbosität (`DEBUG`/`INFO`/`WARNING`) |
+| `OA_LAW_CROSSREF_ENRICH` | `1` | OA-Recht: DOI→Lizenz-Anreicherung via Crossref; `0` deaktiviert sie |
+| `OA_LAW_REPOSITORIUM_ANON_KEY` | *(öffentl. Key)* | OA-Recht: Override für den öffentlichen, read-only Supabase-Anon-Key von Repositorium.ch (Rotation ohne Code-Änderung) |
 
 ---
 

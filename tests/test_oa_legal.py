@@ -428,6 +428,26 @@ class TestNormalization:
         assert oa_legal.strip_invalid_xml_chars("normal\ttext\n") == "normal\ttext\n"
 
 
+class TestEgressAllowList:
+    """SEC-021: ausgehende Requests nur an die Registry-/Crossref-Hosts."""
+
+    def test_registry_hosts_are_allowed(self):
+        assert "sui-generis.ch" in oa_legal.ALLOWED_HOSTS
+        assert "ex-ante.ch" in oa_legal.ALLOWED_HOSTS
+        assert "api.repositorium.ch" in oa_legal.ALLOWED_HOSTS
+        assert "api.crossref.org" in oa_legal.ALLOWED_HOSTS
+
+    def test_allowed_host_passes(self):
+        oa_legal._assert_host_allowed("https://sui-generis.ch/oai?verb=Identify")  # no raise
+
+    def test_disallowed_host_raises(self):
+        # z.B. ein Cloud-Metadata-Endpoint oder beliebige fremde Domain.
+        with pytest.raises(ValueError, match="nicht erlaubt"):
+            oa_legal._assert_host_allowed("http://169.254.169.254/latest/meta-data/")
+        with pytest.raises(ValueError, match="nicht erlaubt"):
+            oa_legal._assert_host_allowed("https://evil.example.com/exfil")
+
+
 # ─── Live-Smoke-Tests (nur mit `pytest -m live`, aus CI ausgeschlossen) ───────
 
 

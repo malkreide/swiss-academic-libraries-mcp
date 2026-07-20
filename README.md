@@ -44,7 +44,7 @@ Beyond the catalogue, the server also covers **Swiss open-access legal literatur
 - **OA legal-literature search** across sui generis, ex/ante and Repositorium.ch with a declarative source registry (new sources = one config entry), best-effort Crossref licence enrichment, and graceful per-source degradation
 - **2 built-in prompts**: `research-workflow` and `education-research`
 - **Markdown and JSON output** for all tools
-- **50 unit tests** (no network) + live smoke tests
+- **76 unit tests** (no network) + 28 live smoke tests
 
 ---
 
@@ -243,12 +243,15 @@ Pagination:    start_record = 11
 
 ## Configuration
 
-No API keys or environment variables required.
+No API keys required. All environment variables are optional.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--http` | off | Enable Streamable HTTP transport |
 | `--port` | 8000 | Port for HTTP transport |
+| `MCP_LOG_LEVEL` | `INFO` | Log verbosity (`DEBUG`/`INFO`/`WARNING`) |
+| `OA_LAW_CROSSREF_ENRICH` | `1` | OA legal: DOI→licence enrichment via Crossref; set `0` to disable |
+| `OA_LAW_REPOSITORIUM_ANON_KEY` | *(public key)* | OA legal: override for Repositorium.ch's public read-only Supabase anon key (allows rotation without a code change) |
 
 ---
 

@@ -1,0 +1,53 @@
+{
+  "run_id": "2026-07-20-oa-legal-delta-swiss-academic-libraries-mcp",
+  "audit_date": "2026-07-20",
+  "audit_type": "delta",
+  "scope": "open-access-legal-literature path (v1.1.0)",
+  "previous_audit": "audits/2026-05-21-re-audit/",
+  "skill_source": "https://github.com/malkreide/mcp-audit-skill",
+  "applicable_checks": [
+    "ARCH-001", "ARCH-002", "ARCH-003", "ARCH-005", "ARCH-006", "ARCH-008", "ARCH-009", "ARCH-011",
+    "SDK-001", "SDK-002",
+    "SEC-004", "SEC-013", "SEC-018", "SEC-019", "SEC-020", "SEC-021",
+    "OBS-001", "OBS-002", "OBS-004",
+    "OPS-001", "OPS-002",
+    "CH-004"
+  ],
+  "totals": {
+    "by_status": {
+      "pass": 20,
+      "partial": 0,
+      "fail": 0,
+      "remediated": 2
+    }
+  },
+  "new_findings_count": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 2,
+    "info": 0
+  },
+  "findings": [
+    {
+      "id": "OA-01",
+      "severity": "low",
+      "checks": ["ARCH-005", "SEC-013"],
+      "title": "Repositorium Supabase-Anon-Key hartkodiert ohne Env-Override",
+      "status": "closed",
+      "remediation": "Env-Var OA_LAW_REPOSITORIUM_ANON_KEY als Override ergaenzt; Default bleibt der oeffentliche, read-only Anon-Key aus dem SPA."
+    },
+    {
+      "id": "OA-02",
+      "severity": "low",
+      "checks": ["SEC-021"],
+      "title": "Keine explizite Code-Layer-Egress-Allow-List",
+      "status": "closed",
+      "remediation": "ALLOWED_HOSTS (aus Registry + Crossref abgeleitet) + _assert_host_allowed() vor jedem ausgehenden Request; Network-Layer-Kontrolle bleibt deployment-seitig."
+    }
+  ],
+  "regressions_found": 0,
+  "production_ready": true,
+  "blocking_findings": [],
+  "rationale": "Der neue OA-Pfad fuehrt keine kritischen oder hohen Risiken ein. Kein User-/LLM-Input konstruiert ausgehende URLs (Hosts sind Registry-Konstanten, DOI regex-begrenzt und quotiert), XML-Parsing via defusedxml + Steuerzeichen-Sanitisierung, Pydantic-Input-Validation mit extra=forbid, korrekte Tool-Annotations, McpError-Fehlerpfad, kein Volltext, Lizenz nie leer. Zwei low-Findings (hartkodierter Anon-Key, fehlende Egress-Allow-List) wurden im selben Audit remediiert."
+}

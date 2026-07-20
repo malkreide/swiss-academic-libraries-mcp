@@ -36,7 +36,7 @@ import re
 import time
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from defusedxml.ElementTree import fromstring as _safe_fromstring
 from pydantic import BaseModel, ConfigDict, Field
@@ -57,12 +57,15 @@ logger = logging.getLogger(__name__)
 # Öffentlicher Supabase-Anon-Key des Repositorium.ch-Web-Clients. Der Verein
 # stellt laut Nutzungsbedingungen eine "offene und frei zugängliche API" bereit;
 # dieser Schlüssel ist im ausgelieferten SPA offengelegt und rein lesend (Rolle
-# "anon"). Kein Geheimnis — daher hier dokumentiert statt versteckt.
-REPOSITORIUM_ANON_KEY = (
+# "anon"). Kein Geheimnis — daher hier dokumentiert statt versteckt. Dennoch per
+# Env-Var OA_LAW_REPOSITORIUM_ANON_KEY überschreibbar (ARCH-005: kein hart
+# verdrahteter Key ohne Override-Pfad; erlaubt Rotation ohne Code-Änderung).
+_REPOSITORIUM_ANON_KEY_DEFAULT = (
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
     "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZnFyZ3locnF1endhcmNla3FjIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODUyODA3NDIsImV4cCI6MjAwMDg1Njc0Mn0."
     "fpX6TPr9Q0lQHzqut69dds3DSBwtbz3bFUuLo1zUcRA"
 )
+REPOSITORIUM_ANON_KEY = os.environ.get("OA_LAW_REPOSITORIUM_ANON_KEY", _REPOSITORIUM_ANON_KEY_DEFAULT)
 
 OA_LEGAL_SOURCES: dict[str, dict[str, Any]] = {
     "sui-generis": {
@@ -110,6 +113,37 @@ _CACHE_TTL_SECONDS = 6 * 3600
 _HARVEST_LOCK = asyncio.Lock()
 
 CROSSREF_WORK_URL = "https://api.crossref.org/works/{doi}"
+
+
+# SEC-021 Egress-Allow-List (Code-Layer): ausgehende Requests dürfen NUR diese
+# Hosts erreichen. Alle stammen aus der Registry + Crossref — keine URL wird aus
+# User-/LLM-Input konstruiert. Zweite Verteidigungslinie gegen versehentlichen
+# oder per Prompt-Injection getriggerten Egress (Network-Layer-Kontrolle bleibt
+# deployment-seitig, siehe README «Deployment for Swiss Public Administration»).
+def _registry_hosts() -> frozenset[str]:
+    hosts = {urlparse(cfg["base_url"]).hostname for cfg in OA_LEGAL_SOURCES.values()}
+    hosts.add(urlparse(CROSSREF_WORK_URL).hostname)
+    return frozenset(h for h in hosts if h)
+
+
+ALLOWED_HOSTS = _registry_hosts()
+
+
+def _assert_host_allowed(url: str) -> None:
+    host = urlparse(url).hostname or ""
+    if host not in ALLOWED_HOSTS:
+        raise ValueError(f"Egress-Host nicht erlaubt: {host!r} (Allow-List: {sorted(ALLOWED_HOSTS)})")
+
+
+async def _fetch(
+    url: str,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    max_attempts: int = 4,
+) -> str:
+    """Ausgehender GET mit Egress-Allow-List-Prüfung, dann Retry/Backoff."""
+    _assert_host_allowed(url)
+    return await http_get_with_retry(url, params=params, headers=headers, max_attempts=max_attempts)
 
 
 def _crossref_enabled() -> bool:
@@ -315,7 +349,7 @@ async def _harvest_oai(cfg: dict[str, Any]) -> list[OaLegalPublication]:
     out: list[OaLegalPublication] = []
     seen_tokens: set[str] = set()
     while True:
-        xml_text = await http_get_with_retry(url, params)
+        xml_text = await _fetch(url, params)
         root = _safe_fromstring(strip_invalid_xml_chars(xml_text))
 
         err = root.find(f"{{{NS_OAI}}}error")
@@ -401,7 +435,7 @@ async def _harvest_repositorium(cfg: dict[str, Any]) -> list[OaLegalPublication]
             "limit": str(page_size),
             "offset": str(offset),
         }
-        text = await http_get_with_retry(base, params, headers=headers)
+        text = await _fetch(base, params, headers=headers)
         rows = json.loads(text)
         if not isinstance(rows, list):
             raise ValueError("Repositorium: unerwartetes Antwortformat (keine Liste).")
@@ -473,7 +507,7 @@ async def enrich_license(pub: OaLegalPublication) -> OaLegalPublication:
     try:
         # DOI-Slash NICHT kodieren — Crossref routet works/{doi} über den Pfad.
         # Die /works/{doi}-Route unterstützt KEIN select-Parameter (→ 400).
-        text = await http_get_with_retry(
+        text = await _fetch(
             CROSSREF_WORK_URL.format(doi=quote(pub.doi, safe="/")),
             max_attempts=2,
         )
