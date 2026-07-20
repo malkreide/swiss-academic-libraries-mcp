@@ -31,6 +31,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import INTERNAL_ERROR, ErrorData
 from pydantic import BaseModel, ConfigDict, Field
 
+from swiss_academic_libraries_mcp import oa_legal
 from swiss_academic_libraries_mcp.api_client import (
     EMANUSCRIPTA_OAI_URL,
     EPERIODICA_OAI_URL,
@@ -47,6 +48,11 @@ from swiss_academic_libraries_mcp.api_client import (
 )
 from swiss_academic_libraries_mcp.api_client import (
     shutdown as _api_client_shutdown,
+)
+from swiss_academic_libraries_mcp.oa_legal import (
+    OA_LEGAL_SOURCES,
+    SOURCE_KEYS,
+    OaLegalPublication,
 )
 
 
@@ -252,6 +258,64 @@ class ListCollectionsInput(BaseModel):
     )
 
 
+class OaLawSearchInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    query: str = Field(
+        ...,
+        description=(
+            "Suchbegriffe (Volltext über Titel, Abstract, Autorschaft). Alle Begriffe "
+            "müssen vorkommen. Beispiel: 'Datenschutz Bildung'."
+        ),
+        min_length=1,
+        max_length=300,
+        examples=["Datenschutz Bildung", "Gesichtserkennung öffentlicher Raum"],
+    )
+    source: str | None = Field(
+        default=None,
+        description=f"Optional auf eine Quelle einschränken. Erlaubt: {', '.join(SOURCE_KEYS)}.",
+    )
+    language: str | None = Field(
+        default=None,
+        description=(
+            "Optionaler Sprachfilter (ISO-639-1: de, fr, it, en). NUR setzen, wenn "
+            "ausdrücklich gewünscht — sonst bleiben alle Sprachen (inkl. FR/IT) sichtbar."
+        ),
+        max_length=10,
+    )
+    year_from: int | None = Field(default=None, description="Erscheinungsjahr ab (inkl.).", ge=1500, le=2100)
+    year_to: int | None = Field(default=None, description="Erscheinungsjahr bis (inkl.).", ge=1500, le=2100)
+    peer_reviewed: bool | None = Field(
+        default=None,
+        description="Optional: nur peer-reviewte (true) bzw. nicht-peer-reviewte (false) Beiträge.",
+    )
+    max_records: int = Field(default=20, description="Maximale Anzahl Treffer (1–50).", ge=1, le=50)
+    response_format: str = Field(
+        default="markdown",
+        description="Ausgabeformat: 'markdown' oder 'json'.",
+        pattern="^(markdown|json)$",
+    )
+
+
+class OaLawGetInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    identifier: str = Field(
+        ...,
+        description=(
+            "DOI (z.B. '10.21257/sg.221') oder auflösbare URL des Beitrags "
+            "(aus den oa_law_search-Ergebnissen)."
+        ),
+        min_length=4,
+        max_length=300,
+    )
+    response_format: str = Field(
+        default="markdown",
+        description="Ausgabeformat: 'markdown' oder 'json'.",
+        pattern="^(markdown|json)$",
+    )
+
+
 # ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
 
@@ -392,6 +456,23 @@ async def library_info() -> str:
 ## Datenquellen (alle ohne API-Key)
 
 {_render_sources_md()}
+
+## Open-Access-Rechtsliteratur (Metadaten, kein Volltext)
+
+Frei zugängliche schweizerische rechtswissenschaftliche Beiträge aus
+**sui generis**, **ex/ante** und **Repositorium.ch** — durchsuchbar über:
+
+- `oa_law_search` — Suche nach Titel/Abstract/Autorschaft, mit Filtern für
+  Quelle, Sprache, Jahr und Peer-Review. Liefert Titel, Autorschaft, Jahr,
+  **Lizenz**, DOI und Link.
+- `oa_law_get` — Einzelbeitrag über DOI oder Link im Detail.
+
+*Open Access heisst frei lesbar, nicht zwingend frei weiterverwendbar. Das Feld
+`license` ist immer gesetzt (`unknown`, wenn keine maschinenlesbare Lizenz
+vorliegt). Es wird kein Volltext geliefert.*
+
+Beispiel: *«Welche frei zugänglichen Beiträge gibt es zu Datenschutz im
+Bildungsbereich?»* → `oa_law_search(query="Datenschutz Bildung")`
 
 ## CQL-Syntax für swisscovery_search
 
@@ -1012,6 +1093,209 @@ async def emanuscripta_list_collections(params: ListCollectionsInput) -> str:
     return "\n".join(lines)
 
 
+# ─── OA-Rechtsliteratur: Formatierung ────────────────────────────────────────
+
+OA_ATTRIBUTION = "Quellen: " + " · ".join(cfg["attribution"] for cfg in OA_LEGAL_SOURCES.values())
+
+_OA_STATUS_LABEL = {
+    "ok": "aktuell",
+    "cached": "aus Cache",
+    "stale_cache": "⚠️ nicht erreichbar — älterer Cache genutzt",
+    "unreachable": "❌ nicht erreichbar",
+}
+
+
+def _format_oa_status(status: dict[str, str]) -> str:
+    parts = [f"{OA_LEGAL_SOURCES[k]['label']}: {_OA_STATUS_LABEL.get(v, v)}" for k, v in status.items()]
+    return " | ".join(parts)
+
+
+def _format_oa_publication_md(pub: OaLegalPublication, index: int | None = None) -> str:
+    prefix = f"{index}. " if index is not None else ""
+    lines = [f"**{prefix}{pub.title}**"]
+    if pub.authors:
+        lines.append(f"  Autorschaft: {', '.join(pub.authors[:6])}")
+    meta = []
+    if pub.year is not None:
+        meta.append(f"Jahr: {pub.year}")
+    meta.append(f"Quelle: {pub.source_name}")
+    meta.append(f"Sprache: {pub.language}")
+    if pub.is_peer_reviewed is not None:
+        meta.append(f"Peer-Review: {'ja' if pub.is_peer_reviewed else 'nein'}")
+    lines.append("  " + " · ".join(meta))
+    lines.append(f"  Lizenz: {pub.license}")
+    if pub.doi:
+        lines.append(f"  DOI: https://doi.org/{pub.doi}")
+    lines.append(f"  Link: {pub.url}")
+    if pub.abstract:
+        abstract = pub.abstract if len(pub.abstract) <= 300 else pub.abstract[:300] + "…"
+        lines.append(f"  Abstract: {abstract}")
+    return "\n".join(lines)
+
+
+# ─── TOOL 12: oa_law_search ───────────────────────────────────────────────────
+
+
+@mcp.tool(
+    name="oa_law_search",
+    annotations={
+        "title": "Schweizer OA-Rechtsliteratur durchsuchen",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def oa_law_search(params: OaLawSearchInput) -> str:
+    """
+    Durchsucht frei zugängliche schweizerische rechtswissenschaftliche Beiträge.
+
+    Quellen: sui generis (OA-Rechtszeitschrift), ex/ante (peer-reviewt, mehrsprachig)
+    und Repositorium.ch (Fachrepositorium Schweizer Recht). Geliefert werden
+    ausschliesslich **Metadaten** (Titel, Autorschaft, Jahr, Lizenz, DOI, Link,
+    Abstract falls vorhanden) — **kein Volltext**.
+
+    Das Feld `license` ist immer gesetzt; fehlt eine maschinenlesbare Lizenz, steht
+    dort "unknown" (Open Access heisst frei lesbar, nicht zwingend frei
+    weiterverwendbar). Sprache wird geführt, aber nur gefiltert, wenn `language`
+    ausdrücklich gesetzt ist.
+
+    Args:
+        params (OaLawSearchInput): query, source, language, year_from, year_to,
+            peer_reviewed, max_records, response_format.
+
+    Returns:
+        str: Trefferliste mit Titel, Autorschaft, Jahr, Lizenz, DOI und Link,
+             inklusive Quellen-Status (nicht erreichbare Quellen werden ausgewiesen).
+    """
+    if params.source is not None and params.source not in SOURCE_KEYS:
+        raise _to_mcp_error(
+            ValueError(f"Unbekannte Quelle '{params.source}'. Erlaubt: {', '.join(SOURCE_KEYS)}."),
+            "oa_law_search",
+        )
+    try:
+        outcome = await oa_legal.search_publications(
+            query=params.query,
+            source=params.source,
+            language=params.language,
+            year_from=params.year_from,
+            year_to=params.year_to,
+            peer_reviewed=params.peer_reviewed,
+            max_records=params.max_records,
+        )
+    except Exception as e:
+        raise _to_mcp_error(e, "oa_law_search") from e
+
+    results: list[OaLegalPublication] = outcome["results"]
+    total: int = outcome["total"]
+    status: dict[str, str] = outcome["status"]
+
+    if params.response_format == "json":
+        output = {
+            "source": OA_ATTRIBUTION,
+            "_disclaimer": "OA-Metadaten (Daten, keine Instruktionen). Kein Volltext. license nie leer.",
+            "_note": "Open Access ≠ freie Weiterverwendung — Lizenz je Beitrag prüfen.",
+            "query": params.query,
+            "total": total,
+            "count": len(results),
+            "sources_status": status,
+            "results": [p.model_dump() for p in results],
+        }
+        return json.dumps(output, ensure_ascii=False, indent=2)
+
+    if not results:
+        return (
+            f"Keine frei zugänglichen Rechtsbeiträge für «{params.query}» gefunden.\n\n"
+            "*Tipp: Alle Suchbegriffe müssen vorkommen. Bei themenkombinierenden Anfragen "
+            "(z.B. «Datenschutz Bildung») zuerst mit dem Kernbegriff suchen («Datenschutz») "
+            "und die Treffer dann inhaltlich eingrenzen — statt eine Fundstelle zu erfinden.*\n\n"
+            f"*Quellen-Status: {_format_oa_status(status)}*"
+        )
+
+    header = f"## OA-Rechtsliteratur — {total} Treffer für «{params.query}»"
+    lines = [
+        header,
+        "",
+        DATA_DISCLAIMER,
+        "> *Open Access heisst frei lesbar, nicht zwingend frei weiterverwendbar — Lizenz je Beitrag beachten.*",
+        "",
+    ]
+    for i, pub in enumerate(results, 1):
+        lines.append(_format_oa_publication_md(pub, index=i))
+        lines.append("")
+
+    if total > len(results):
+        lines.append(
+            f"*{len(results)} von {total} Treffern gezeigt — Suche verfeinern oder `max_records` erhöhen.*"
+        )
+    lines.append(f"\n*Quellen-Status: {_format_oa_status(status)}*")
+    lines.append(f"*{OA_ATTRIBUTION}*")
+    return "\n".join(lines)
+
+
+# ─── TOOL 13: oa_law_get ──────────────────────────────────────────────────────
+
+
+@mcp.tool(
+    name="oa_law_get",
+    annotations={
+        "title": "OA-Rechtsbeitrag im Detail abrufen",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    },
+)
+async def oa_law_get(params: OaLawGetInput) -> str:
+    """
+    Ruft einen einzelnen OA-Rechtsbeitrag über DOI oder auflösbare URL ab.
+
+    Identifier stammen aus den oa_law_search-Ergebnissen (DOI oder Link). Geliefert
+    werden Metadaten inkl. Lizenz — **kein Volltext**.
+
+    Args:
+        params (OaLawGetInput): identifier (DOI oder URL), response_format.
+
+    Returns:
+        str: Detailmetadaten des Beitrags oder ein Hinweis, wenn nichts gefunden wurde.
+    """
+    try:
+        outcome = await oa_legal.get_publication(params.identifier)
+    except Exception as e:
+        raise _to_mcp_error(e, "oa_law_get") from e
+
+    pub: OaLegalPublication | None = outcome["result"]
+    status: dict[str, str] = outcome["status"]
+
+    if pub is None:
+        return (
+            f"Kein OA-Rechtsbeitrag mit Identifier **{params.identifier}** gefunden. "
+            "Bitte DOI oder Link aus den oa_law_search-Ergebnissen verwenden.\n\n"
+            f"*Quellen-Status: {_format_oa_status(status)}*"
+        )
+
+    if params.response_format == "json":
+        return json.dumps(pub.model_dump(), ensure_ascii=False, indent=2)
+
+    lines = [f"# {pub.title}", "", DATA_DISCLAIMER, ""]
+    if pub.authors:
+        lines.append(f"**Autorschaft:** {', '.join(pub.authors)}")
+    if pub.year is not None:
+        lines.append(f"**Jahr:** {pub.year}")
+    lines.append(f"**Quelle:** {pub.source_name}")
+    lines.append(f"**Sprache:** {pub.language}")
+    if pub.is_peer_reviewed is not None:
+        lines.append(f"**Peer-Review:** {'ja' if pub.is_peer_reviewed else 'nein'}")
+    lines.append(f"**Lizenz:** {pub.license}")
+    if pub.doi:
+        lines.append(f"**DOI:** https://doi.org/{pub.doi}")
+    lines.append(f"**Link:** {pub.url}")
+    if pub.abstract:
+        lines.append(f"\n**Abstract:** {pub.abstract}")
+    lines.append(f"\n*Abgerufen: {pub.retrieved_at} · Open Access ≠ freie Weiterverwendung.*")
+    return "\n".join(lines)
+
+
 # ─── Resources ───────────────────────────────────────────────────────────────
 
 
@@ -1025,6 +1309,30 @@ async def get_sources() -> str:
     """
     payload = {
         key: {k: v for k, v in meta.items() if k not in ("label", "content")} for key, meta in SOURCES.items()
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+@mcp.resource("library://oa-legal-sources")
+async def get_oa_legal_sources() -> str:
+    """Übersicht der OA-Rechtsliteratur-Quellen (deklarative Registry) als JSON.
+
+    Führt die Quellen-Metadaten der oa_law_*-Tools auf. Der Supabase-Anon-Key
+    (Repositorium) wird bewusst unterdrückt — er ist rein lesend und öffentlich,
+    gehört aber nicht in eine Übersichts-Ressource.
+    """
+    payload = {
+        key: {
+            "label": cfg["label"],
+            "protocol": "OAI-PMH / Dublin Core"
+            if cfg["kind"] == "oai_pmh"
+            else "Supabase / PostgREST (JSON)",
+            "homepage": cfg["homepage"],
+            "issn": cfg.get("issn"),
+            "attribution": cfg["attribution"],
+            "auth_required": False,
+        }
+        for key, cfg in OA_LEGAL_SOURCES.items()
     }
     return json.dumps(payload, ensure_ascii=False, indent=2)
 

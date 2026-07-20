@@ -21,21 +21,26 @@
 
 Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21, OAI-PMH/Dublin Core). Der Server unterstützt lokale Nutzung via Claude Desktop (stdio) und Cloud-Deployment (Streamable HTTP).
 
-**Anker-Demo-Abfrage:** *«Welche Schweizer Hochschul-Dissertationen zur Primarschulpädagogik sind in Schweizer Bibliotheken vorhanden – und sind einige davon in e-rara digitalisiert?»*
+Über den Katalog hinaus erschliesst der Server **frei zugängliche schweizerische Rechtsliteratur** — Beiträge aus [sui generis](https://sui-generis.ch), [ex/ante](https://ex-ante.ch) und [Repositorium.ch](https://www.repositorium.ch) — als **Metadaten** (Titel, Autorschaft, Jahr, Lizenz, DOI, Link), nie als Volltext.
+
+**Anker-Demo-Abfrage (Katalog):** *«Welche Schweizer Hochschul-Dissertationen zur Primarschulpädagogik sind in Schweizer Bibliotheken vorhanden – und sind einige davon in e-rara digitalisiert?»*
+
+**Anker-Demo-Abfrage (OA-Rechtsliteratur):** *«Welche frei zugänglichen rechtswissenschaftlichen Beiträge gibt es zu Datenschutz? Gib mir Titel, Autorschaft, Jahr, Lizenz und DOI.»* → `oa_law_search(query="Datenschutz")`
 
 ---
 
 ## Funktionen
 
-- **11 Tools** für 4 Datenquellen — alle nur lesend, kein API-Key
+- **13 Tools** für 4 Katalogquellen + 3 OA-Rechtsliteratur-Quellen — alle nur lesend, kein API-Key
 - **swisscovery-Suche** mit vollständiger CQL-Syntax: Volltext, Titel, Autor, Schlagwort, ISBN/ISSN
 - **OAI-PMH-Harvesting** mit Datums- und Sammlungsfilter sowie Pagination via Resumption Tokens
 - **MARC21-Parser** mit 20+ Feldern (Titel, Autor, Erscheinungsinfo, Schlagworte, Abstract, URLs)
 - **Dublin-Core-Parser** für alle drei Digitalportale
 - **Dual Transport**: stdio (Claude Desktop) · Streamable HTTP (Cloud/Self-hosted)
+- **OA-Rechtsliteratur-Suche** über sui generis, ex/ante und Repositorium.ch mit deklarativer Quellen-Registry (neue Quelle = eine Konfigurationszeile), best-effort Crossref-Lizenzanreicherung und Graceful Degradation pro Quelle
 - **2 eingebaute Prompts**: `research-workflow` und `education-research`
 - **Markdown- und JSON-Ausgabe** für alle Tools
-- **34 Unit-Tests** (kein Netzwerk) + 6 Live-Smoke-Tests
+- **50 Unit-Tests** (kein Netzwerk) + Live-Smoke-Tests
 
 ---
 
@@ -47,6 +52,14 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 | [e-rara](https://www.e-rara.ch) | OAI-PMH / Dublin Core | Digitalisierte hist. Druckwerke | 250'000+ |
 | [e-periodica](https://www.e-periodica.ch) | OAI-PMH / Dublin Core | Digitalisierte Zeitschriften (1750–heute) | 1 Mio.+ |
 | [e-manuscripta](https://www.e-manuscripta.ch) | OAI-PMH / Dublin Core | Handschriften & Archivalien | 100'000+ |
+
+### Open-Access-Rechtsliteratur (nur Metadaten)
+
+| Quelle | Protokoll | Inhalt | DOI-Abdeckung |
+|--------|-----------|--------|---------------|
+| [sui generis](https://sui-generis.ch) | OAI-PMH / Dublin Core | OA-Rechtszeitschrift & Non-Profit-Verlag | ~100 % (`10.21257/…`) |
+| [ex/ante](https://ex-ante.ch) | OAI-PMH / Dublin Core | Peer-reviewte Zeitschrift für (junge) Rechtswissenschaft, mehrsprachig | keine (persistente URL) |
+| [Repositorium.ch](https://www.repositorium.ch) | Supabase / PostgREST (JSON) | Fachrepositorium zum Schweizer Recht | teilweise |
 
 ---
 
@@ -65,6 +78,8 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 | `emanuscripta_list_records` | e-manuscripta | Handschriften nach Datum/Sammlung |
 | `emanuscripta_get_record` | e-manuscripta | Einzelobjekt via OAI-Identifier |
 | `emanuscripta_list_collections` | e-manuscripta | Alle Archive/Sammlungen |
+| `oa_law_search` | OA-Recht (alle 3) | OA-Rechtsbeiträge durchsuchen (Titel/Abstract/Autor) mit Filtern für Quelle, Sprache, Jahr, Peer-Review |
+| `oa_law_get` | OA-Recht (alle 3) | Einzelbeitrag via DOI oder auflösbare URL |
 
 ### Beispiel-Abfragen
 
@@ -74,6 +89,60 @@ Alle Datenquellen nutzen offene, authentifizierungsfreie Protokolle (SRU/MARC21,
 | *«Zeige historische Druckwerke der ETH-Bibliothek»* | `erara_list_records` |
 | *«Welche Zeitschriften wurden 2023 in e-periodica ergänzt?»* | `eperiodica_list_records` |
 | *«Welche Handschriften-Sammlungen hat e-manuscripta?»* | `emanuscripta_list_collections` |
+| *«Welche OA-Rechtsbeiträge gibt es zu Gesichtserkennung?»* | `oa_law_search` |
+
+---
+
+## Architektur
+
+Zwei unabhängige Pfade teilen sich einen HTTP-Client (Retry mit exponentiellem Backoff, gemeinsamer Connection-Pool, Projekt-`User-Agent`):
+
+```
+                        ┌─────────────────────────────────────────────┐
+                        │        swiss-academic-libraries-mcp          │
+                        │        (FastMCP · stdio / HTTP)              │
+                        └───────────────┬──────────────┬──────────────┘
+                                        │              │
+                ┌───── KATALOG-Pfad ────┘              └── OA-RECHT-Pfad ──────┐
+                │  (api_client.py)                        (oa_legal.py)        │
+                │                                                              │
+      ┌─────────┴─────────┐                        ┌─────────────────────────┴──────────┐
+      │ swisscovery  SRU  │                        │  deklarative Quellen-Registry        │
+      │ e-rara       OAI  │                        │   ├─ sui generis   → OAI-PMH         │
+      │ e-periodica  OAI  │                        │   ├─ ex/ante       → OAI-PMH         │
+      │ e-manuscripta OAI │                        │   └─ Repositorium  → PostgREST/JSON  │
+      └─────────┬─────────┘                        │  Harvest → In-Memory-Cache → Filter │
+                │                                   │  Crossref DOI→Lizenz-Anreicherung ⟳  │
+        MARC21 / Dublin Core                        │  (best-effort, OA_LAW_CROSSREF_ENRICH)│
+        → Katalogeinträge                           └────────────────────┬────────────────┘
+                                                       OaLegalPublication (nur Metadaten,
+                                                       Lizenz nie leer, kein Volltext)
+```
+
+- **Katalog-Pfad** liefert bibliografische Einträge (Bücher, Digitalisate, Zeitschriften, Handschriften).
+- **OA-Recht-Pfad** harvestet die OA-Rechtsliteratur-Metadaten einmalig, hält sie im Speicher (kleiner Bestand) und filtert lokal — denn OAI-PMH kennt keine eigene Volltextsuche. Eine vierte OA-Quelle ist ein einzelner Registry-Eintrag, kein neuer Code.
+
+---
+
+## Lizenzierung & Geltungsbereich
+
+Der Server ist bewusst zurückhaltend bei dem, was er ausgibt — ein Portfolio, das Governance als Merkmal führt, kann sich hier keine Nachlässigkeit leisten.
+
+- **Metadaten, kein Volltext.** Für OA-Rechtsliteratur liefert der Server **Titel, Autorschaft, Jahr, Lizenz, DOI/Link und — sofern die Quelle es als Metadatum ausliefert — den Abstract**. Der Aufsatz selbst wird nie ingestiert, gespeichert oder ausgegeben. Der Volltext-PDF-Pfad von Repositorium.ch wird bewusst in kein Feld übernommen.
+- **`license` ist immer gesetzt.** Open Access heisst *frei lesbar*, **nicht** *frei weiterverwendbar*. Die Bandbreite reicht von CC0 über CC BY bis CC BY-NC-ND, manche Beiträge sind schlicht «kostenlos lesbar» ohne offene Lizenz. Fehlt eine maschinenlesbare Lizenz, steht dort `"unknown"` — nie geraten, nie weggelassen. Die native OAI-Metadatenschicht aller drei Quellen führt nur Copyright-Statements, also ist `"unknown"` der Normalfall; eine best-effort **Crossref**-Abfrage hebt ihn auf die echte CC-Lizenz an, wo ein DOI auflöst (z.B. sui generis → `CC BY-SA 4.0`). Abschaltbar mit `OA_LAW_CROSSREF_ENRICH=0`.
+- **Zitierintegrität.** Jeder Treffer trägt eine auflösbare Referenz — einen DOI wo vorhanden, sonst eine persistente URL. Kein Treffer ohne. Eine erfundene Fundstelle in der Rechtsliteratur ist schädlicher als gar keine — lieber ein Treffer weniger als einer erfunden.
+- **Sprache wird geführt, nie still gefiltert.** ex/ante und Repositorium.ch sind mehrsprachig (DE/FR/IT/EN). Das Feld `language` ist immer gesetzt, gefiltert wird aber nur auf ausdrücklichen Wunsch — sonst verschwände die halbe Romandie aus den Resultaten.
+- **Abgrenzung.** OA-Rechtsliteratur gehört hierhin, weil es dieselbe *Fähigkeit* ist, die dieser Server schon hat — authentifizierungsfreies bibliografisches Metadaten-Harvesting Schweizer Wissenschaftsquellen über Standardprotokolle — mit demselben Output-Vertrag (Metadaten, kein Volltext). Sie ist institutionsunabhängig und fachbezogen und überschneidet daher nicht [`eth-library-mcp`](https://github.com/malkreide/eth-library-mcp) (ETH-Bibliothek Discovery & Persons).
+
+---
+
+## Bekannte Einschränkungen
+
+- **Kleiner, fokussierter Bestand.** Die drei OA-Quellen umfassen zusammen einige hundert Beiträge. Themenkombinierende UND-Abfragen (z.B. *«Datenschutz Bildung»*) können berechtigt **null** Treffer liefern, während breitere Abfragen (*«Datenschutz»*) viele liefern — dieses leere Resultat ist die ehrliche Antwort, kein Fehler. Mit dem Kernbegriff suchen und danach eingrenzen.
+- **Keine Volltextsuche.** Gesucht wird nur über Metadaten (Titel, Abstract, Autorschaft), nie im Aufsatzinhalt.
+- **Ungleiche DOI-Abdeckung.** sui generis ≈ 100 %, Repositorium.ch teilweise, ex/ante hat **keine DOIs** (nur persistente URLs). Aggregatoren (Crossref/OpenAlex) decken daher sui generis gut ab, verfehlen ex/ante ganz und indexieren Repositorium.ch nicht als Quelle — deshalb harvestet der Server jede Quelle nativ statt auf einen Aggregator zu vertrauen.
+- **Lizenzlücken.** Die native Metadatenschicht führt selten eine maschinenlesbare Lizenz; `"unknown"` ist häufig und wird nur dort angehoben, wo ein DOI in Crossref auflöst.
+- **Kein Ersatz für eine kostenpflichtige juristische Datenbank.** Erschlossen wird ausschliesslich *frei zugängliche* Schweizer Rechtsliteratur — dies ist kein Swisslex/Weblaw und deckt kein kommerzielles oder kostenpflichtiges juristisches Publizieren ab.
 
 ---
 
@@ -188,10 +257,13 @@ swiss-academic-libraries-mcp/
 ├── src/
 │   └── swiss_academic_libraries_mcp/
 │       ├── __init__.py       # Package-Init
-│       ├── server.py         # FastMCP-Server, 11 Tools, 2 Prompts, 1 Resource
-│       └── api_client.py     # HTTP-Client, MARC21- + OAI-PMH/DC-Parser
+│       ├── server.py         # FastMCP-Server, 13 Tools, 2 Prompts, 2 Resources
+│       ├── api_client.py     # HTTP-Client (+ Retry), MARC21- + OAI-PMH/DC-Parser
+│       └── oa_legal.py       # OA-Rechtsliteratur: Registry, Adapter, Modell
 ├── tests/
-│   └── test_server.py        # 34 Unit-Tests + 6 Live-Smoke-Tests
+│   ├── test_server.py        # Katalog-Unit-Tests + Live-Smoke-Tests
+│   ├── test_20_scenarios.py  # End-to-End-Katalog-Szenarien
+│   └── test_oa_legal.py      # OA-Rechtsliteratur-Tests (gemockt + live)
 ├── pyproject.toml
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md            # Beitragsleitfaden (Englisch)
@@ -276,7 +348,8 @@ Hayal Oezkan · [github.com/malkreide](https://github.com/malkreide)
 
 ## Credits & Verwandte Projekte
 
-- **Daten:** [swisscovery / SLSP](https://swisscovery.slsp.ch) · [e-rara](https://www.e-rara.ch) · [e-periodica](https://www.e-periodica.ch) · [e-manuscripta](https://www.e-manuscripta.ch)
+- **Daten (Katalog):** [swisscovery / SLSP](https://swisscovery.slsp.ch) · [e-rara](https://www.e-rara.ch) · [e-periodica](https://www.e-periodica.ch) · [e-manuscripta](https://www.e-manuscripta.ch)
+- **Daten (OA-Rechtsliteratur):** [sui generis](https://sui-generis.ch) · [ex/ante](https://ex-ante.ch) · [Repositorium.ch](https://www.repositorium.ch) — Lizenzanreicherung via [Crossref](https://www.crossref.org). Die Metadaten jeder Quelle werden gemäss deren Bedingungen genutzt; Open-Access-Status bedeutet keine offene Weiterverwendungslizenz.
 - **Protokoll:** [Model Context Protocol](https://modelcontextprotocol.io/) — Anthropic / Linux Foundation
 - **Verwandt:** [eth-library-mcp](https://github.com/malkreide/eth-library-mcp) — ETH-Bibliothek Discovery & Persons API
 - **Portfolio:** [Swiss Public Data MCP Portfolio](https://github.com/malkreide)

@@ -174,6 +174,48 @@ async def http_get(url: str, params: dict[str, Any] | None = None) -> str:
     return response.text
 
 
+async def http_get_with_retry(
+    url: str,
+    params: dict[str, Any] | None = None,
+    headers: dict[str, str] | None = None,
+    max_attempts: int = 4,
+) -> str:
+    """GET mit exponentiellem Backoff (2s/4s/8s) für resiliente Upstream-Abfragen.
+
+    Additive Variante von ``http_get`` — das bestehende Katalog-Verhalten bleibt
+    unangetastet. Retried werden 5xx, 429 und Netzwerkfehler; andere 4xx werden
+    sofort weitergereicht (kein Retry bei Client-Fehlern). Nutzt denselben
+    modulweiten Client (Connection-Reuse, UA-Header) und die Semaphore.
+    """
+    last_error: Exception | None = None
+    client = _get_client()
+    for attempt in range(max_attempts):
+        if attempt > 0:
+            await asyncio.sleep(2**attempt)  # 2s, 4s, 8s
+        new_request_id()
+        logger.info("upstream_request url=%s attempt=%d", url, attempt + 1)
+        try:
+            async with _get_semaphore():
+                response = await client.get(url, params=params or {}, headers=headers)
+                response.raise_for_status()
+            logger.info(
+                "upstream_response url=%s status=%d bytes=%d", url, response.status_code, len(response.text)
+            )
+            return response.text
+        except httpx.HTTPStatusError as exc:
+            last_error = exc
+            status = exc.response.status_code
+            if 400 <= status < 500 and status != 429:
+                logger.warning("upstream_http_error url=%s status=%d (no retry)", url, status)
+                raise
+            logger.warning("upstream_http_error url=%s status=%d attempt=%d", url, status, attempt + 1)
+        except httpx.RequestError as exc:
+            last_error = exc
+            logger.warning("upstream_request_error url=%s attempt=%d err=%s", url, attempt + 1, exc)
+    assert last_error is not None
+    raise last_error
+
+
 def handle_api_error(e: Exception, context: str = "") -> str:
     """Einheitliche, aktionsorientierte Fehlermeldung für alle Tools."""
     prefix = f"Fehler bei {context}: " if context else "Fehler: "
