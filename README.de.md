@@ -13,6 +13,10 @@
 
 > MCP-Server für Schweizer Wissenschaftsbibliotheken — swisscovery, e-rara, e-periodica, e-manuscripta. Kein API-Key erforderlich.
 
+### Demo
+
+![Demo: Claude nutzt swisscovery_search und erara_list_records](docs/assets/demo.svg)
+
 ---
 
 ## Übersicht
@@ -325,7 +329,7 @@ PYTHONPATH=src pytest tests/ -m "live"
 
 ---
 
-## Contributing
+## Mitwirken
 
 Beiträge sind willkommen! Lies bitte [CONTRIBUTING.de.md](CONTRIBUTING.de.md) für Hinweise zu:
 
