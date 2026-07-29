@@ -26,9 +26,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from mcp import McpError
-from mcp.server.fastmcp import FastMCP
-from mcp.types import INTERNAL_ERROR, ErrorData
+from mcp import MCPError
+from mcp.server.mcpserver import MCPServer
+from mcp.types import INTERNAL_ERROR
 from pydantic import BaseModel, ConfigDict, Field
 
 from swiss_academic_libraries_mcp import intl_metadata, oa_legal
@@ -62,9 +62,9 @@ from swiss_academic_libraries_mcp.oa_legal import (
 )
 
 
-def _to_mcp_error(exc: Exception, context: str) -> McpError:
-    """Konvertiert Tool-Exceptions in McpError, damit der Host isError=true setzt."""
-    return McpError(ErrorData(code=INTERNAL_ERROR, message=handle_api_error(exc, context)))
+def _to_mcp_error(exc: Exception, context: str) -> MCPError:
+    """Konvertiert Tool-Exceptions in MCPError, damit der Host isError=true setzt."""
+    return MCPError(code=INTERNAL_ERROR, message=handle_api_error(exc, context))
 
 
 # Bibliotheks-Metadaten enthalten frei eingegebene Felder (Titel, Beschreibung).
@@ -132,7 +132,7 @@ logger = logging.getLogger("swiss_academic_libraries_mcp")
 
 
 @asynccontextmanager
-async def _lifespan(_: FastMCP) -> AsyncIterator[None]:
+async def _lifespan(_: MCPServer) -> AsyncIterator[None]:
     """Schliesst den gemeinsamen httpx-Client beim Shutdown sauber."""
     try:
         yield
@@ -140,7 +140,7 @@ async def _lifespan(_: FastMCP) -> AsyncIterator[None]:
         await _api_client_shutdown()
 
 
-mcp = FastMCP(
+mcp = MCPServer(
     "swiss_academic_libraries_mcp",
     instructions=(
         "Schweizer Wissenschaftsbibliotheken: swisscovery (500+ Bibliotheken, SRU), "
@@ -1856,10 +1856,10 @@ def main() -> None:
                 host,
                 port,
             )
-        mcp.settings.host = host
-        mcp.settings.port = port
         logger.info("starting transport=streamable-http host=%s port=%d", host, port)
-        mcp.run(transport="streamable-http")
+        # mcp 2.x: the bind address is a run() kwarg — MCPServer.settings no
+        # longer carries host/port.
+        mcp.run(transport="streamable-http", host=host, port=port)
     else:
         logger.info("starting transport=stdio")
         mcp.run()
