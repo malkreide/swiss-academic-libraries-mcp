@@ -28,7 +28,7 @@ from typing import Any
 
 from mcp import MCPError
 from mcp.server.mcpserver import MCPServer
-from mcp.types import INTERNAL_ERROR, ErrorData
+from mcp.types import INTERNAL_ERROR
 from pydantic import BaseModel, ConfigDict, Field
 
 from swiss_academic_libraries_mcp import intl_metadata, oa_legal
