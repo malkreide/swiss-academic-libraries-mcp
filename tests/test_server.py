@@ -501,19 +501,19 @@ class TestSharedClient:
         assert new_client is not client
 
 
-# ─── McpError conversion (F-07) ───────────────────────────────────────────────
+# ─── MCPError conversion (F-07) ───────────────────────────────────────────────
 
 
 class TestMcpError:
-    """F-07: Tool-Fehler werden als McpError geworfen, nicht als Daten-Strings."""
+    """F-07: Tool-Fehler werden als MCPError geworfen, nicht als Daten-Strings."""
 
     def test_to_mcp_error_wraps_value_error(self) -> None:
-        from mcp import McpError
+        from mcp import MCPError
 
         from swiss_academic_libraries_mcp.server import _to_mcp_error
 
         err = _to_mcp_error(ValueError("boom"), "swisscovery_search")
-        assert isinstance(err, McpError)
+        assert isinstance(err, MCPError)
         assert "swisscovery_search" in err.error.message
         assert "boom" in err.error.message
 
