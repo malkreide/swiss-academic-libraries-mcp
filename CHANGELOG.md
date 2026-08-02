@@ -7,17 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Behoben
+## [1.2.0] - 2026-08-02
 
-- **`mcp` auf `<2` begrenzt.** `mcp` 2.0.0, veröffentlicht am 28.07.2026, hat
-  `mcp.server.fastmcp` entfernt — genau das Modul, das dieser Server importiert.
-  Mit dem bisherigen offenen `>=1.28.1` wählte jede frische Auflösung 2.0.0 und
-  scheiterte beim Import mit `ModuleNotFoundError`, in der CI ebenso wie bei
-  jedem `pip install`. In beide Richtungen verifiziert: 2.0.0 scheitert, `<2`
-  löst auf 1.29.0 auf und importiert sauber. Die Migration auf die 2.x-API
-  (`mcp.server.mcpserver`) bleibt eine eigene, bewusste Aufgabe.
+> Dieser Abschnitt wurde am 20.07.2026 geschrieben, aber nie veröffentlicht:
+> auf PyPI stand weiterhin 1.1.0. Er trägt jetzt das Datum, an dem er
+> tatsächlich ausgeliefert wird, und die seither hinzugekommene
+> SDK-Migration.
 
-## [1.2.0] - 2026-07-20
+**Diese Auslieferung ist überfällig, weil das veröffentlichte `1.1.0` sich
+nicht mehr installieren lässt.** Es deklariert `mcp` ohne Obergrenze, und
+`mcp` 2.0.0 hat `mcp.server.fastmcp` entfernt — `pip install
+swiss-academic-libraries-mcp` löst auf 2.0.0 auf, und das Konsolen-Skript
+stirbt beim Start mit `ImportError: cannot import name 'McpError' from 'mcp'`.
+Gemessen am echten Artefakt in einem leeren Venv, in kaltem wie warmem
+Interpreter.
+
+Behoben war das im Repository seit der 2.x-Migration; veröffentlicht wurde es
+nie.
+
+### Geändert (breaking)
+
+- **Migration auf das `mcp` Python SDK 2.x.** Die Server-API ist von
+  `mcp.server.fastmcp` nach `mcp.server.mcpserver` umgezogen, ohne
+  Kompatibilitätsschicht; die Abhängigkeit lautet jetzt `mcp[cli]>=2.0.0,<3`.
+  Die Tool-Oberfläche bleibt unverändert — was bricht, ist das Einbetten der
+  Python-API und die Abhängigkeitsuntergrenze. Wer auf `mcp` 1.x bleiben muss,
+  bleibt auf 1.1.0 und setzt dort eine eigene Obergrenze, denn das
+  veröffentlichte 1.1.0 hat keine.
 
 Neue **internationale Metadatenebene**: DOI-Auflösung und internationale
 Forschungsliteratur (Crossref) sowie Preprints (arXiv). Damit beantwortet der
