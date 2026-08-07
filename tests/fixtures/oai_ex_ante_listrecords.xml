@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="https://ex-ante.ch/lib/pkp/xml/oai2.xsl" ?>
+<OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/
+		http://www.openarchives.org/OAI/2.0/OAI-PMH.xsd">
+	<responseDate>2026-08-07T20:53:56Z</responseDate>
+	<request verb="ListRecords" metadataPrefix="oai_dc">https://ex-ante.ch/index.php/exante/oai</request>
+	<ListRecords>
+		<record>
+			<header>
+				<identifier>oai:ojs.ex-ante.ch:article/36</identifier>
+				<datestamp>2021-02-27T18:09:38Z</datestamp>
+				<setSpec>exante:ART</setSpec>
+			</header>
+			<metadata>
+<oai_dc:dc
+	xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai_dc/
+	http://www.openarchives.org/OAI/2.0/oai_dc.xsd">
+	<dc:title xml:lang="de">Fermeture des centrales nucléaires suisses : Indemnisation par l’Etat ?</dc:title>
+	<dc:title xml:lang="en">Fermeture des centrales nucléaires suisses : Indemnisation par l’Etat ?</dc:title>
+	<dc:title xml:lang="fr-FR">Fermeture des centrales nucléaires suisses : Indemnisation par l’Etat ?</dc:title>
+	<dc:creator xml:lang="fr-FR">Zuber-Roy, Céline</dc:creator>
+	<dc:description xml:lang="de">Dieser Beitrag analysiert die Risiken für die Schweizerische Eidgenossenschaft, die Betreiberinnen von Atomkraftwerken im Falle eines Entzugs der Betriebsbewilligung entschädigen zu müssen. Die Autorin beachtet dabei sowohl das geltende Recht wie auch etwaige Änderungen, die sich bei Annahme der Atomausstiegsinitiative ergeben könnten.</dc:description>
+	<dc:description xml:lang="en">This article analyses the risks for the Swiss Confederation linked to a compensation to the nuclear operators in the event of a revocation of their license to operate. It considers the situation both under positive law and in the case of modifications of the law, i.e. following the acceptance of popular initiative « Sortir du nucléaire ».</dc:description>
+	<dc:description xml:lang="fr-FR">Cette contribution analyse les risques pour la Confédération de devoir indemniser les exploitants des centrales nucléaires en cas de révocation de leur autorisation d’exploiter, tant à l’aune du droit actuel qu’en cas d’acceptation de l’initiative populaire fédérale « Sortir du nucléaire » ou d’une modification de la législation par l’Assemblée fédérale.</dc:description>
+	<dc:publisher xml:lang="de">Dike Verlag AG</dc:publisher>
+	<dc:date>2018-03-14</dc:date>
+	<dc:type>info:eu-repo/semantics/article</dc:type>
+	<dc:type>info:eu-repo/semantics/publishedVersion</dc:type>
+	<dc:format>application/pdf</dc:format>
+	<dc:identifier>https://ex-ante.ch/index.php/exante/article/view/36</dc:identifier>
+	<dc:source xml:lang="de">ex/ante; Bd. 2016 Nr. 1: Energie; 3-9</dc:source>
+	<dc:source xml:lang="en">ex/ante; Vol. 2016 No. 1: Energy; 3-9</dc:source>
+	<dc:source xml:lang="fr-FR">ex/ante; Vol. 2016 No 1: Energie; 3-9</dc:source>
+	<dc:source>2297-9182</dc:source>
+	<dc:source>2297-9174</dc:source>
+	<dc:language>fra</dc:language>
+	<dc:relation>https://ex-ante.ch/index.php/exante/article/view/36/14</dc:relation>
+	<dc:rights xml:lang="de">Copyright (c) 2016 Céline Zuber-Roy</dc:rights>
+</oai_dc:dc>
+			</metadata>
+		</record>
+<record>
+			<header>
+				<identifier>oai:ojs.ex-ante.ch:article/38</identifier>
+				<datestamp>2021-02-27T18:08:30Z</datestamp>
+				<setSpec>exante:ART</setSpec>
+			</header>
+			<metadata>
+<oai_dc:dc
+	xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai_dc/
+	http://www.openarchives.org/OAI/2.0/oai_dc.xsd">
+	<dc:title xml:lang="de">Rückstellungen in Kernkraftwerken: Eine handelsrechtliche Betrachtung der Rückstellungen für die Stilllegungs- und Entsorgungskosten eines Kernkraftwerks</dc:title>
+	<dc:title xml:lang="en">Rückstellungen in Kernkraftwerken: Eine handelsrechtliche Betrachtung der Rückstellungen für die Stilllegungs- und Entsorgungskosten eines Kernkraftwerks</dc:title>
+	<dc:title xml:lang="fr-FR">Rückstellungen in Kernkraftwerken: Eine handelsrechtliche Betrachtung der Rückstellungen für die Stilllegungs- und Entsorgungskosten eines Kernkraftwerks</dc:title>
+	<dc:creator xml:lang="de">Riederer, Flurin</dc:creator>
+	<dc:description xml:lang="de">Rückstellungen müssen gebildet werden, wenn es wahrscheinlich scheint, dass in der Zukunft Mittel abfliessen werden. Dies gilt auch für Kernkraftwerke. Müssten sie Rückstellungen für ihre Entsorgungs- und Stilllegungskosten im vollen Umfang bilden, wären sie überschuldet. Warum existieren sie aber dennoch?</dc:description>
+	<dc:description xml:lang="en">A provision shall be recognised when an outflow of resources is probable. The same applies to nuclear power plants. If they had to recognise the disposing and the decommissioning liability, they would be overindebted. Why can they exist anyway?
+&amp;nbsp;</dc:description>
+	<dc:description xml:lang="fr-FR">Lorsqu’une entreprise craint de subir des charges à l’avenir, elle doit constituer des provisions. Cela vaut également pour les centrales nucléaires. Cependant, si ces dernières devaient constituer des provisions pour leurs frais d’élimination des déchets et de désaffectation, elles seraient surendettées. Pourquoi existent-elles malgré tout ?</dc:description>
+	<dc:publisher xml:lang="de">Dike Verlag AG</dc:publisher>
+	<dc:date>2018-03-14</dc:date>
+	<dc:type>info:eu-repo/semantics/article</dc:type>
+	<dc:type>info:eu-repo/semantics/publishedVersion</dc:type>
+	<dc:format>application/pdf</dc:format>
+	<dc:identifier>https://ex-ante.ch/index.php/exante/article/view/38</dc:identifier>
+	<dc:source xml:lang="de">ex/ante; Bd. 2016 Nr. 1: Energie; 10-16</dc:source>
+	<dc:source xml:lang="en">ex/ante; Vol. 2016 No. 1: Energy; 10-16</dc:source>
+	<dc:source xml:lang="fr-FR">ex/ante; Vol. 2016 No 1: Energie; 10-16</dc:source>
+	<dc:source>2297-9182</dc:source>
+	<dc:source>2297-9174</dc:source>
+	<dc:language>deu</dc:language>
+	<dc:relation>https://ex-ante.ch/index.php/exante/article/view/38/15</dc:relation>
+	<dc:rights xml:lang="de">Copyright (c) 2016 Flurin Riederer</dc:rights>
+</oai_dc:dc>
+			</metadata>
+		</record>
+<record>
+			<header>
+				<identifier>oai:ojs.ex-ante.ch:article/175</identifier>
+				<datestamp>2022-11-23T08:23:05Z</datestamp>
+				<setSpec>exante:ART</setSpec>
+			</header>
+			<metadata>
+<oai_dc:dc
+	xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai_dc/
+	http://www.openarchives.org/OAI/2.0/oai_dc.xsd">
+	<dc:title xml:lang="de">Immunität und Völkerrechtsverbrechen: Zugleich Besprechung von BGHSt 65, 286</dc:title>
+	<dc:title xml:lang="en">Immunität und Völkerrechtsverbrechen: Zugleich Besprechung von BGHSt 65, 286</dc:title>
+	<dc:title xml:lang="fr-FR">Immunität und Völkerrechtsverbrechen: Zugleich Besprechung von BGHSt 65, 286</dc:title>
+	<dc:creator xml:lang="de">Payer, Andrés</dc:creator>
+	<dc:description xml:lang="de">Völkerrechtsverbrechen werden naturgemäss oft durch Träger staatlicher Funktionen begangen oder ausgelöst. Diese Personen geniessen jedoch grundsätzlich völkerrechtliche Immunität. Aus Anlass und unter Verwertung eines neueren Leiturteils des deutschen Bundesgerichtshofes (BGHSt 65, 286) geht der vorliegende Beitrag der Frage nach, inwieweit die völkerrechtliche Immunität von Funktionsträgern auch für Völkerrechtsverbrechen gilt.</dc:description>
+	<dc:description xml:lang="en">By their very nature, core international crimes are often committed or prompted by state officials. In principle, however, these officials enjoy immunity under international law. On the basis of a recent landmark judgement of the German Federal Court of Justice (BGHSt 65, 286), this article examines to what extent the immunity of state officials under international law also applies to core international crimes.</dc:description>
+	<dc:description xml:lang="fr-FR">De par leur nature, les crimes internationaux les plus graves sont souvent commis ou suscités par des représentants de l’État. Or, ces personnes bénéficient en principe d’une immunité en vertu du droit international public. À l’occasion d’un récent arrêt de principe de la Cour fédérale de justice allemande (BGHSt 65, 286), le présent article aborde la question de savoir dans quelle mesure l’immunité en vertu du droit international des représentants de l’État s’applique également aux crimes internationaux les plus graves.</dc:description>
+	<dc:publisher xml:lang="de">Dike Verlag AG</dc:publisher>
+	<dc:date>2022-11-23</dc:date>
+	<dc:type>info:eu-repo/semantics/article</dc:type>
+	<dc:type>info:eu-repo/semantics/publishedVersion</dc:type>
+	<dc:format>application/pdf</dc:format>
+	<dc:identifier>https://ex-ante.ch/index.php/exante/article/view/175</dc:identifier>
+	<dc:source xml:lang="de">ex/ante; Bd. 2022 Nr. 1: Freiheit; 13-28</dc:source>
+	<dc:source xml:lang="en">ex/ante; Vol. 2022 No. 1: Freedom; 13-28</dc:source>
+	<dc:source xml:lang="fr-FR">ex/ante; Vol. 2022 No 1: Liberté; 13-28</dc:source>
+	<dc:source>2297-9182</dc:source>
+	<dc:source>2297-9174</dc:source>
+	<dc:language>deu</dc:language>
+	<dc:relation>https://ex-ante.ch/index.php/exante/article/view/175/111</dc:relation>
+	<dc:rights xml:lang="de">Copyright (c) 2022 Andrés Payer</dc:rights>
+</oai_dc:dc>
+			</metadata>
+		</record>
+
+		<resumptionToken expirationDate="2026-08-08T20:53:56Z"
+			completeListSize="186"
+			cursor="0">cefe49c0d6412532fe76d6a6f68548bc</resumptionToken>
+	</ListRecords>
+</OAI-PMH>

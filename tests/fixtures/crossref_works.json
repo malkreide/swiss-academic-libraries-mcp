@@ -1,0 +1,190 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "total-results": 19680,
+    "items": [
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2024,
+              9,
+              11
+            ]
+          ],
+          "date-time": "2024-09-11T18:26:02Z",
+          "timestamp": 1726079162659
+        },
+        "reference-count": 0,
+        "publisher": "Human Kinetics",
+        "content-domain": {
+          "domain": [],
+          "crossmark-restriction": false
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2015
+            ]
+          ]
+        },
+        "DOI": "10.5040/9781350960350",
+        "type": "other",
+        "created": {
+          "date-parts": [
+            [
+              2020,
+              4,
+              2
+            ]
+          ],
+          "date-time": "2020-04-02T11:19:29Z",
+          "timestamp": 1585826369000
+        },
+        "source": "Crossref",
+        "is-referenced-by-count": 0,
+        "title": [
+          "Glacier Calving"
+        ],
+        "prefix": "10.5040",
+        "member": "2984",
+        "container-title": [
+          "Glacier Calving"
+        ],
+        "deposited": {
+          "date-parts": [
+            [
+              2024,
+              1,
+              10
+            ]
+          ],
+          "date-time": "2024-01-10T07:56:10Z",
+          "timestamp": 1704873370000
+        },
+        "score": 16.276396,
+        "resource": {
+          "primary": {
+            "URL": "https://www.humankineticslibrary.com/video?docid=HKL_4232001246001&tocid=HKL_file_4232001246001"
+          }
+        },
+        "issued": {
+          "date-parts": [
+            [
+              2015
+            ]
+          ]
+        },
+        "references-count": 0,
+        "URL": "https://doi.org/10.5040/9781350960350",
+        "published": {
+          "date-parts": [
+            [
+              2015
+            ]
+          ]
+        }
+      },
+      {
+        "indexed": {
+          "date-parts": [
+            [
+              2024,
+              4,
+              29
+            ]
+          ],
+          "date-time": "2024-04-29T20:15:16Z",
+          "timestamp": 1714421716370
+        },
+        "reference-count": 0,
+        "publisher": "Geological Society of America",
+        "isbn-type": [
+          {
+            "value": "9780813724621",
+            "type": "print"
+          }
+        ],
+        "content-domain": {
+          "domain": [],
+          "crossmark-restriction": false
+        },
+        "published-print": {
+          "date-parts": [
+            [
+              2010
+            ]
+          ]
+        },
+        "DOI": "10.1130/2010.2462(325)",
+        "type": "book-chapter",
+        "created": {
+          "date-parts": [
+            [
+              2010,
+              9,
+              24
+            ]
+          ],
+          "date-time": "2010-09-24T16:24:28Z",
+          "timestamp": 1285345468000
+        },
+        "source": "Crossref",
+        "is-referenced-by-count": 0,
+        "title": [
+          "New Investigator Activities at Bering Glacier"
+        ],
+        "prefix": "10.1130",
+        "member": "257",
+        "container-title": [
+          "Bering Glacier: Interdisciplinary Studies of Earth's Largest Temperate Surging Glacier"
+        ],
+        "language": "en",
+        "deposited": {
+          "date-parts": [
+            [
+              2019,
+              1,
+              16
+            ]
+          ],
+          "date-time": "2019-01-16T12:32:14Z",
+          "timestamp": 1547641934000
+        },
+        "score": 15.967264,
+        "resource": {
+          "primary": {
+            "URL": "https://pubs.geoscienceworld.org/books/book/619/chapter/3805546"
+          }
+        },
+        "issued": {
+          "date-parts": [
+            [
+              2010
+            ]
+          ]
+        },
+        "ISBN": [
+          "9780813724621"
+        ],
+        "references-count": 0,
+        "URL": "https://doi.org/10.1130/2010.2462(325)",
+        "published": {
+          "date-parts": [
+            [
+              2010
+            ]
+          ]
+        }
+      }
+    ],
+    "items-per-page": 2,
+    "query": {
+      "start-index": 0,
+      "search-terms": "glacier"
+    }
+  }
+}

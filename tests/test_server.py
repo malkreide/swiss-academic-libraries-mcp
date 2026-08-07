@@ -111,6 +111,15 @@ SAMPLE_OAI_ERROR_XML = """<?xml version="1.0" encoding="UTF-8"?>
   <error code="noRecordsMatch">No records match the request</error>
 </OAI-PMH>"""
 
+# Handgeschrieben und **ohne** `resumptionToken` — genau das hat den Fehler in
+# `_oai_list_collections` unsichtbar gehalten: Wo kein Token steht, kann kein
+# Test bemerken, dass niemand ihm folgt. Die echte e-rara-Antwort hat einen; sie
+# liegt aufgezeichnet unter `fixtures/oai_erara_listsets.xml`, und
+# `test_recorded_sources.py` prueft dagegen.
+#
+# Dieses Literal bleibt trotzdem: Es prueft den Parser auf einer Seite ohne
+# Fortsetzung, und den Fall gibt es auch — e-periodica liefert alle 1 157 Sets
+# auf einmal.
 SAMPLE_OAI_SETS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/">
   <responseDate>2024-03-01T10:00:00Z</responseDate>

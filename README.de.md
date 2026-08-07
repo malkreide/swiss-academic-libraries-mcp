@@ -327,6 +327,33 @@ PYTHONPATH=src pytest tests/ -m "not live"
 PYTHONPATH=src pytest tests/ -m "live"
 ```
 
+### Woher die Testdaten stammen
+
+Die Fixtures unter `tests/fixtures/` sind **von den echten Quellen
+aufgezeichnet**, mit denselben Anfrageparametern, die der Produktivcode sendet,
+und datiert. Quelle, Abrufdatum, Auswahlregel und SHA-256 je Datei:
+[`tests/fixtures/PROVENANCE.md`](tests/fixtures/PROVENANCE.md).
+
+```bash
+python scripts/record_fixtures.py   # neu aufzeichnen
+```
+
+Das ist deshalb wichtig, weil ein handgeschriebener Mock die Annahme seines
+Autors kodiert und sie deshalb prinzipiell nicht widerlegen kann — Produktivcode
+und Fixture stammen aus derselben Lektüre der Doku. Die erfundene
+`ListSets`-Antwort trug keinen `resumptionToken`, also konnte kein Test
+bemerken, dass niemand ihm folgt: e-rara liefert 105 Sammlungen in Seiten zu 10,
+und das Werkzeug meldete 10.
+
+Wo eine Fixture gekürzt ist, bleiben die Zählfelder (`numberOfRecords`,
+`completeListSize`, `total-results`) und der `resumptionToken` auf dem echten
+Wert — sie sagen, wie viel **nicht** in der Datei steht.
+
+`tests/fixtures/oai_ex_ante_listrecords.xml` ist bewusst **kein** wohlgeformtes
+XML: ex/ante liefert ein rohes Steuerzeichen mitten in einem `dc:description`,
+und die verbatim aufgezeichnete Antwort ist der Beleg dafür, dass
+`strip_invalid_xml_chars` tragend ist.
+
 ---
 
 ## Mitwirken

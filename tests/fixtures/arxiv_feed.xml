@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/v/bzYu+e+aYwtW3JHN2AoDsY8q0</id>
+  <title>arXiv Query: search_query=all:glacier&amp;id_list=&amp;start=0&amp;max_results=2</title>
+  <updated>2026-08-07T20:39:50Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=all:glacier&amp;start=0&amp;max_results=2&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>2</opensearch:itemsPerPage>
+  <opensearch:totalResults>230</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/1107.0825v1</id>
+    <title>GLACIER and related R&amp;D</title>
+    <updated>2011-07-05T09:17:46Z</updated>
+    <link href="https://arxiv.org/abs/1107.0825v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/1107.0825v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Liquid argon detectors, with mass up to 100 kton, are being actively studied in the context of proton decay searches, neutrino astrophysics and for the next generation of long baseline neutrino oscillation experiments to study the neutrino mass hierarchy and CP violation in the leptonic sector. The proposed Giant Liquid Argon Charge Imaging ExpeRiment (GLACIER) offers a well defined conceptual design for such a detector. In this paper we present the GLACIER design and some of the R&amp;D activities pursued within the GLACIER.</summary>
+    <category term="physics.ins-det" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2011-07-05T09:17:46Z</published>
+    <arxiv:comment>7 pages, 4 figures, to appear in the proceedings of the 5th TPC Symposium, Paris 2010</arxiv:comment>
+    <arxiv:primary_category term="physics.ins-det"/>
+    <arxiv:journal_ref>J.Phys.Conf.Ser.309:012012,2011</arxiv:journal_ref>
+    <author>
+      <name>Alessandro Curioni</name>
+    </author>
+    <arxiv:doi>10.1088/1742-6596/309/1/012012</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1088/1742-6596/309/1/012012" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2409.12034v2</id>
+    <title>Multi-Sensor Deep Learning for Glacier Mapping</title>
+    <updated>2025-01-31T12:31:55Z</updated>
+    <link href="https://arxiv.org/abs/2409.12034v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2409.12034v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The more than 200,000 glaciers outside the ice sheets play a crucial role in our society by influencing sea-level rise, water resource management, natural hazards, biodiversity, and tourism. However, only a fraction of these glaciers benefit from consistent and detailed in-situ observations that allow for assessing their status and changes over time. This limitation can, in part, be overcome by relying on satellite-based Earth Observation techniques. Satellite-based glacier mapping applications have historically mainly relied on manual and semi-automatic detection methods, while recently, a fast and notable transition to deep learning techniques has started.
+  This chapter reviews how combining multi-sensor remote sensing data and deep learning allows us to better delineate (i.e. map) glaciers and detect their temporal changes. We explain how relying on deep learning multi-sensor frameworks to map glaciers benefits from the extensive availability of regional and global glacier inventories. We also analyse the rationale behind glacier mapping, the benefits of deep learning methodologies, and the inherent challenges in integrating multi-sensor earth observation data with deep learning algorithms.
+  While our review aims to provide a broad overview of glacier mapping efforts, we highlight a few setups where deep learning multi-sensor remote sensing applications have a considerable potential added value. This includes applications for debris-covered and rock glaciers that are visually difficult to distinguish from surroundings and for calving glaciers that are in contact with the ocean. These specific cases are illustrated through a series of visual imageries, highlighting some significant advantages and challenges when detecting glacier changes, including dealing with seasonal snow cover, changing debris coverage, and distinguishing glacier fronts from the surrounding sea ice.</summary>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="eess.IV" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-09-18T14:51:36Z</published>
+    <arxiv:comment>This article will be a chapter of the book Deep Learning for Multi-Sensor Earth Observation, to be published by Elsevier</arxiv:comment>
+    <arxiv:primary_category term="cs.CV"/>
+    <author>
+      <name>Codruţ-Andrei Diaconu</name>
+    </author>
+    <author>
+      <name>Konrad Heidler</name>
+    </author>
+    <author>
+      <name>Jonathan L. Bamber</name>
+    </author>
+    <author>
+      <name>Harry Zekollari</name>
+    </author>
+  </entry>
+</feed>

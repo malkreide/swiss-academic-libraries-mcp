@@ -43,7 +43,7 @@ from swiss_academic_libraries_mcp.api_client import (
     handle_api_error,
     http_get,
     parse_oai_response,
-    parse_oai_sets,
+    parse_oai_sets_page,
     parse_sru_response,
 )
 from swiss_academic_libraries_mcp.api_client import (
@@ -446,9 +446,30 @@ async def _oai_get_record(base_url: str, oai_identifier: str) -> dict[str, Any]:
 
 
 async def _oai_list_collections(base_url: str, filter_name: str | None = None) -> list[dict[str, str]]:
-    """Generische OAI-PMH ListSets-Abfrage."""
-    xml_text = await http_get(base_url, {"verb": "ListSets"})
-    sets = parse_oai_sets(xml_text)
+    """Generische OAI-PMH ListSets-Abfrage — über alle Seiten.
+
+    ListSets ist paginiert wie ListRecords. Diese Funktion las früher genau
+    eine Seite, und die Antwort sagte trotzdem «N Sammlungen»: bei e-rara 10
+    von 105, bei e-manuscripta 10 von 49 (gemessen am 7.8.2026). Der Filter
+    lief anschliessend über diese Reste, so dass eine Sammlung, die es gibt,
+    als «keine Sammlungen gefunden» zurückkam — kein Fehler, sondern eine
+    falsche Antwort.
+
+    Der `seen`-Schutz ist derselbe wie im OAI-Harvesting von `oa_legal`: Eine
+    Quelle, die denselben Token zurückgibt, dreht sonst endlos.
+    """
+    params: dict[str, str] = {"verb": "ListSets"}
+    sets: list[dict[str, str]] = []
+    seen_tokens: set[str] = set()
+    while True:
+        page = parse_oai_sets_page(await http_get(base_url, params))
+        sets.extend(page["sets"])
+        token = page["resumption_token"]
+        if not token or token in seen_tokens:
+            break
+        seen_tokens.add(token)
+        params = {"verb": "ListSets", "resumptionToken": token}
+
     if filter_name:
         lower_filter = filter_name.lower()
         sets = [s for s in sets if lower_filter in s["name"].lower() or lower_filter in s["spec"].lower()]
