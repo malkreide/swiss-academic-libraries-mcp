@@ -325,6 +325,31 @@ PYTHONPATH=src pytest tests/ -m "not live"
 PYTHONPATH=src pytest tests/ -m "live"
 ```
 
+### Where the test data comes from
+
+The fixtures under `tests/fixtures/` are **recorded from the live sources**, with
+the same request parameters the production code sends, and dated. Source,
+retrieval date, selection rule and SHA-256 for every file:
+[`tests/fixtures/PROVENANCE.md`](tests/fixtures/PROVENANCE.md).
+
+```bash
+python scripts/record_fixtures.py   # re-record
+```
+
+This matters because a hand-written mock encodes its author's assumption and can
+therefore never refute it — production code and fixture come from the same
+reading of the docs. The invented `ListSets` response carried no
+`resumptionToken`, so no test could notice that nobody followed one: e-rara
+serves 105 collections in pages of 10, and the tool reported 10.
+
+Where a fixture is trimmed, the count fields (`numberOfRecords`,
+`completeListSize`, `total-results`) and the `resumptionToken` keep their real
+values — they say how much is *not* in the file.
+
+`tests/fixtures/oai_ex_ante_listrecords.xml` is deliberately **not** well-formed
+XML: ex/ante emits a raw control character inside a `dc:description`, and
+recording it verbatim is what proves `strip_invalid_xml_chars` is load-bearing.
+
 ---
 
 ## Safety & Limits

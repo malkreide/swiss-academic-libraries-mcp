@@ -646,8 +646,18 @@ def parse_oai_response(xml_text: str) -> dict[str, Any]:
     }
 
 
-def parse_oai_sets(xml_text: str) -> list[dict[str, str]]:
-    """Parst OAI-PMH ListSets-Response."""
+def parse_oai_sets_page(xml_text: str) -> dict[str, Any]:
+    """Parst EINE Seite einer OAI-PMH ListSets-Response.
+
+    Liefert {'sets': [...], 'resumption_token': str|None}.
+
+    Der Token ist der Punkt. ListSets ist genauso paginiert wie ListRecords:
+    e-rara liefert 10 Sets pro Seite bei 105 insgesamt, e-manuscripta 10 bei 49
+    (gemessen am 7.8.2026). Wer nur die erste Seite liest, meldet «10
+    Sammlungen» und filtert danach in einer Liste, in der 90 % fehlen. Das
+    Ergebnis ist dann nicht «Fehler», sondern «nicht gefunden» — ein Ausfall,
+    der wie eine Antwort aussieht.
+    """
     root = _safe_fromstring(xml_text)
     sets = []
     for set_el in root.findall(f".//{{{NS_OAI}}}set"):
@@ -660,7 +670,18 @@ def parse_oai_sets(xml_text: str) -> list[dict[str, str]]:
                     "name": name.text.strip() if name is not None and name.text else "",
                 }
             )
-    return sets
+    rt_el = root.find(f".//{{{NS_OAI}}}resumptionToken")
+    token = rt_el.text.strip() if rt_el is not None and rt_el.text and rt_el.text.strip() else None
+    return {"sets": sets, "resumption_token": token}
+
+
+def parse_oai_sets(xml_text: str) -> list[dict[str, str]]:
+    """Die Sets EINER ListSets-Seite.
+
+    Wer alle Sammlungen braucht, nimmt `parse_oai_sets_page` und folgt dem
+    `resumption_token` — siehe dort, warum das kein Detail ist.
+    """
+    return parse_oai_sets_page(xml_text)["sets"]
 
 
 # ─── Formatierungshilfen ─────────────────────────────────────────────────────

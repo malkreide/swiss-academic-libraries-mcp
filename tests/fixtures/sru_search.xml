@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
+  <version>1.2</version>
+  <numberOfRecords>9899</numberOfRecords>
+  <records>
+    <record>
+      <recordSchema>marcxml</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <record xmlns="http://www.loc.gov/MARC21/slim">
+          <leader>00739nam a2200217 c 4500</leader>
+          <controlfield tag="001">991047009599705501</controlfield>
+          <controlfield tag="005">20201126044319.0</controlfield>
+          <controlfield tag="008">150430s2010    sz            00| | zxx^^</controlfield>
+          <datafield ind1=" " ind2=" " tag="020">
+            <subfield code="a">9783952109533</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(swissbib)200704982-41slsp_network</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">200704982</subfield>
+            <subfield code="9">ExL</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(NEBIS)010430026EBI01</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="040">
+            <subfield code="a">SzZuIDS NEBIS ZBZ</subfield>
+            <subfield code="d">CH-ZuSLS</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="0" tag="245">
+            <subfield code="a">... ! - Pestalozzi Bibliothek Zürich PBZ</subfield>
+            <subfield code="c">[Idee und Illustration: Elena Madrid]</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="1" tag="264">
+            <subfield code="a">Zürich</subfield>
+            <subfield code="b">PBZ</subfield>
+            <subfield code="c">2010</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="300">
+            <subfield code="a">1 Heft</subfield>
+            <subfield code="b">nur Ill.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="500">
+            <subfield code="a">Daumenkino</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="700">
+            <subfield code="a">Madrid, Elena</subfield>
+          </datafield>
+          <datafield ind1="2" ind2=" " tag="710">
+            <subfield code="a">Pestalozzi-Bibliothek Zürich</subfield>
+            <subfield code="0">(DE-588)2163791-X</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="1" tag="852">
+            <subfield code="a">41SLSP_UZB</subfield>
+            <subfield code="6">990104300260205508</subfield>
+            <subfield code="9">P</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="900">
+            <subfield code="a">IDSZ1ZH</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="900">
+            <subfield code="a">IDSZ2zbzmon201504e</subfield>
+            <subfield code="c">IDSZ2knec</subfield>
+            <subfield code="d">IDSZ2zbzswk201506k</subfield>
+            <subfield code="e">IDSZ2wart</subfield>
+          </datafield>
+        </record>
+      </recordData>
+      <recordIdentifier>991047009599705501</recordIdentifier>
+      <recordPosition>1</recordPosition>
+    </record>
+    <record>
+      <recordSchema>marcxml</recordSchema>
+      <recordPacking>xml</recordPacking>
+      <recordData>
+        <record xmlns="http://www.loc.gov/MARC21/slim">
+          <leader>00850nam a2200217 c 4500</leader>
+          <controlfield tag="001">991071601659705501</controlfield>
+          <controlfield tag="005">20201229193303.0</controlfield>
+          <controlfield tag="008">070402s1994    gw            00| | ger^^</controlfield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(swissbib)19260399X-41slsp_network</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">19260399X</subfield>
+            <subfield code="9">ExL</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="035">
+            <subfield code="a">(NEBIS)009250550EBI01</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="040">
+            <subfield code="a">SzZuIDS NEBIS UZH</subfield>
+            <subfield code="d">CH-ZuSLS</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="100">
+            <subfield code="a">Thorun, Walter</subfield>
+          </datafield>
+          <datafield ind1="1" ind2="0" tag="245">
+            <subfield code="a">... geht kein Weg zurück</subfield>
+            <subfield code="b">Luise Besser - aus ihren Briefen und Bekenntnissen- ein Zeitdokument</subfield>
+            <subfield code="c">bearb. und überliefert von Walter Thorun</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="1" tag="264">
+            <subfield code="a">Hamburg</subfield>
+            <subfield code="b">Pestalozzi-Fröberl-Verband e.V.</subfield>
+            <subfield code="c">1994</subfield>
+          </datafield>
+          <datafield ind1=" " ind2=" " tag="300">
+            <subfield code="a">119 S.</subfield>
+            <subfield code="b">Ill.</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="7" tag="650">
+            <subfield code="a">Weimarer Republik</subfield>
+            <subfield code="0">(DE-588)4065109-5</subfield>
+            <subfield code="2">gnd</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="7" tag="650">
+            <subfield code="a">Frauenschule</subfield>
+            <subfield code="0">(DE-588)4326731-2</subfield>
+            <subfield code="2">gnd</subfield>
+          </datafield>
+          <datafield ind1=" " ind2="7" tag="650">
+            <subfield code="a">Frauenbewegung</subfield>
+            <subfield code="0">(DE-588)4071428-7</subfield>
+            <subfield code="2">gnd</subfield>
+          </datafield>
+          <datafield ind1="1" ind2=" " tag="700">
+            <subfield code="a">Besser, Luise</subfield>
+          </datafield>
+          <datafield ind1="2" ind2=" " tag="710">
+            <subfield code="a">Pestalozzi-Fröbel-Verband</subfield>
+            <subfield code="0">(DE-588)38350-8</subfield>
+          </datafield>
+          <datafield ind1="0" ind2="1" tag="852">
+            <subfield code="a">41SLSP_UZB</subfield>
+            <subfield code="6">990092505500205508</subfield>
+            <subfield code="9">P</subfield>
+          </datafield>
+        </record>
+      </recordData>
+      <recordIdentifier>991071601659705501</recordIdentifier>
+      <recordPosition>2</recordPosition>
+    </record>
+  </records>
+  <nextRecordPosition>3</nextRecordPosition>
+  <extraResponseData xmlns:xb="http://www.exlibris.com/repository/search/xmlbeans/">
+    <xb:exact>true</xb:exact>
+    <xb:responseDate>2026-08-07T22:53:32+0200</xb:responseDate>
+  </extraResponseData>
+</searchRetrieveResponse>

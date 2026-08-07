@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Die Sammlungs-Übersicht meldete ein Zehntel des Bestands als Gesamtzahl.**
+  `_oai_list_collections` las genau eine `ListSets`-Seite. OAI-PMH paginiert
+  ListSets genauso wie ListRecords, und die Antwort sagte trotzdem
+  «N Sammlungen»: bei **e-rara 10 von 105**, bei **e-manuscripta 10 von 49**
+  (gemessen am 2026-08-07; e-periodica liefert seine 1 157 Sets auf einmal und
+  war deshalb zufällig korrekt).
+
+  Schlimmer als die falsche Zahl ist der Filter, der danach über diese Reste
+  lief: Eine Sammlung, die es gibt, kam als «Keine Sammlungen gefunden» zurück.
+  Kein Fehler, keine Ausnahme, kein Log — eine falsche Antwort, die wie eine
+  richtige aussieht.
+
+  `_oai_list_collections` folgt jetzt dem `resumptionToken` über alle Seiten,
+  mit demselben `seen`-Schutz gegen einen sich wiederholenden Token, den das
+  OAI-Harvesting in `oa_legal` schon hatte. Neu ist `parse_oai_sets_page`, das
+  den Token mitliefert; `parse_oai_sets` bleibt als Ein-Seiten-Parser bestehen.
+
+  **Warum das niemand gemerkt hat:** Die handgeschriebene `ListSets`-Fixture
+  hatte keinen `resumptionToken`. Wo kein Token steht, kann kein Test bemerken,
+  dass niemand ihm folgt — Produktivcode und Fixture stammten aus derselben
+  Lektüre der Doku, und beide irrten gleich.
+
 - **The retry had six defects, all inherited from the shared template.** This
   server copied its retry from `reference/retry_backoff.py` in
   [mcp-data-source-probe-skill](https://github.com/malkreide/mcp-data-source-probe-skill),
@@ -47,6 +69,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   New `tests/test_retry_policy.py`: `Retry-After` in both forms plus the
   refusal cases, the jitter spread, that the cap binds after jittering, and the
   one-sided `Retry-After` jitter.
+
+### Added
+
+- **Aufgezeichnete Fixture-Herkunft.** `scripts/record_fixtures.py` holt zehn
+  Antworten von den echten Quellen — swisscovery SRU, die drei OAI-Portale
+  (e-rara, e-periodica, e-manuscripta), e-raras ListSets, sui generis, ex/ante,
+  Repositorium.ch, Crossref und arXiv — **mit denselben Parametern, die der
+  Produktivcode sendet**, und schreibt `tests/fixtures/PROVENANCE.md` mit
+  Quelle, Datum, Auswahlregel und SHA-256 je Datei.
+
+  Wo gekürzt wird, bleiben die Zählfelder (`numberOfRecords`,
+  `completeListSize`, `total-results`) und die `resumptionToken` auf dem echten
+  Wert: Sie sagen, wie viel **nicht** in der Datei steht.
+
+  Zwei Auswahlregeln sind ausdrücklich mehr als «die ersten N», beide aus
+  demselben Grund — ein Zuschnitt, der die auffällige Zeile wegschneidet, macht
+  aus einer belegten Eigenschaft eine behauptete:
+
+  - **ex/ante liefert kein wohlgeformtes XML.** Mitten in einem
+    `dc:description` steht ein rohes Steuerzeichen (`0x17`). Die Fixture ist
+    deshalb *verbatim* aufgezeichnet und trägt ausdrücklich den Datensatz mit
+    dem Zeichen — das ist der Beleg dafür, dass `strip_invalid_xml_chars`
+    tragend ist und nicht vorsorglich.
+  - **sui generis führt seine ersten Datensätze als `status="deleted"`.** Eine
+    Fixture nur aus Grabsteinen liesse den Parser korrekt null Publikationen
+    liefern und prüfte damit nichts; sie trägt deshalb auch den ersten nicht
+    gelöschten Datensatz.
+
+  Das Skript bricht laut ab, wenn eine dieser Regeln ins Leere greift, wenn
+  `maximumRecords` nicht mehr wirkt oder wenn eine erste OAI-Seite ohne Token
+  zurückkommt. Eine Regel, die nichts mehr trifft, ist selbst der Befund.
+
+  `tests/test_recorded_sources.py` hält die Parser dagegen;
+  `tests/fixture_data.py` lädt und behandelt einen fehlenden Namen als Fehler
+  statt als leere Struktur.
 
 ## [1.2.0] - 2026-08-02
 
