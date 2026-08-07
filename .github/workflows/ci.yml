@@ -61,7 +61,12 @@ jobs:
 
       - run: ruff check src/ tests/
 
-      - run: ruff format --check src/
+      # Scope identisch mit `ruff check` eine Zeile hoeher. Vorher lief das
+      # Format-Gate nur ueber `src/`, waehrend der Linter auch `tests/` sah —
+      # Testcode wurde also nie auf Format geprueft, und weil `ruff format`
+      # niemand automatisch darueber laufen liess, driftete er ungehindert.
+      # Zwei Gates mit zwei Reichweiten sehen aus wie ein Gate.
+      - run: ruff format --check src/ tests/
 
   security:
     name: Dependency security scan
