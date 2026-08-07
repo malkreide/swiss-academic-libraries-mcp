@@ -13,9 +13,14 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import logging
+import random
+import time
 import uuid
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
+from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
 
 import httpx
@@ -60,6 +65,100 @@ EPERIODICA_OAI_URL = "https://www.e-periodica.ch/oai/dataprovider"
 EMANUSCRIPTA_OAI_URL = "https://www.e-manuscripta.ch/oai"
 
 REQUEST_TIMEOUT = 30.0
+# --- Retry policy ------------------------------------------------------------
+# Adopted from the mcp-data-source-probe reference template (repaired
+# 2026-08-07). Three questions: *what* is retried, *how fast*, and *how long*.
+# The first is settled in the retry loop (4xx except 429 fails fast); these
+# settle the other two.
+
+RETRY_BASE_DELAY = 2.0  # ladder before jitter: 2, 4, 8
+
+# Ceiling on the WHOLE call — every attempt and every wait together. An attempt
+# count is not a bound: four attempts against an upstream that takes 30s to time
+# out is two minutes inside one tool call, and the number never says so. The
+# anchor is measured, not guessed: the Python MCP SDK ships
+# MCP_DEFAULT_TIMEOUT = 30.0, so 25s leaves headroom for framing and parsing.
+RETRY_TOTAL_BUDGET = 25.0
+
+# Ceiling for a single wait. Bounds the exponential ladder, and bounds a
+# `Retry-After` the source may send but we are not obliged to sit through.
+RETRY_MAX_DELAY = 20.0
+
+# Jitter spread. Without it every client that hit the same outage retries in
+# lockstep, and the load returns as a wave exactly when the source recovers —
+# the retry storm extends the outage it was meant to bridge.
+RETRY_JITTER_SPREAD = 0.5  # exponential delays land in [0.5x, 1.5x]
+
+# On a `Retry-After`, deliberately one-sided: the source said when to come back,
+# so coming back later is fine and coming back earlier is not.
+RETRY_AFTER_JITTER = 0.25  # lands in [1.0x, 1.25x]
+
+# Statuses that carry a meaningful `Retry-After` (RFC 9110 section 10.2.3).
+RETRY_AFTER_STATUSES = frozenset({429, 503})
+
+
+class UpstreamUnavailableError(Exception):
+    """No request was attempted — the budget was gone before the first try.
+
+    A named type rather than ``RuntimeError``: a caller can branch on this, and
+    cannot tell a bare ``RuntimeError`` apart from a bug in this server's own
+    code. Raised only when there is no upstream exception to re-raise.
+    """
+
+
+def parse_retry_after(resp: httpx.Response | None) -> float | None:
+    """Seconds to wait per the response's ``Retry-After``, or ``None``.
+
+    RFC 9110 section 10.2.3 allows two forms — delta-seconds (``120``) and an
+    HTTP-date (``Wed, 21 Oct 2026 07:28:00 GMT``). Both appear in the wild, so
+    both are read. Anything unparseable yields ``None`` and the caller falls
+    back to its own curve: a malformed header must not become a crash on the
+    error path, which is the one path already going badly.
+    """
+    if resp is None or resp.status_code not in RETRY_AFTER_STATUSES:
+        return None
+    raw = (resp.headers.get("retry-after") or "").strip()
+    if not raw:
+        return None
+    if raw.isdigit():
+        return float(raw)
+    try:
+        when = parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
+        return None
+    if when is None:
+        return None
+    if when.tzinfo is None:  # RFC 9110 dates are GMT; a naive one means UTC
+        when = when.replace(tzinfo=UTC)
+    return max(0.0, (when - datetime.now(UTC)).total_seconds())
+
+
+def compute_delay(attempt: int, last_error: Exception | None) -> float:
+    """Seconds to wait before ``attempt`` (1-based for the first retry).
+
+    The source's own answer beats our guess: a ``Retry-After`` on a 429 or 503
+    wins over the exponential curve. Everything is spread, then capped.
+
+    The cap wraps the jitter and not the other way round. ``min(cap, base) *
+    jitter`` and ``min(cap, base * jitter)`` both contain a cap and a jitter;
+    only the second is bounded — a value capped at 20s and then multiplied by
+    up to 1.5 lands at 30s, and the constant would claim a ceiling it does not
+    hold.
+    """
+    hinted = parse_retry_after(getattr(last_error, "response", None))
+    if hinted is not None:
+        return min(
+            hinted * (1.0 + random.random() * RETRY_AFTER_JITTER),
+            RETRY_MAX_DELAY,
+        )
+    return min(
+        RETRY_BASE_DELAY
+        * 2 ** (attempt - 1)
+        * (1.0 - RETRY_JITTER_SPREAD + random.random() * 2 * RETRY_JITTER_SPREAD),
+        RETRY_MAX_DELAY,
+    )
+
+
 MAX_CONCURRENT_REQUESTS = 5
 MAX_CONNECTIONS = 10
 MAX_KEEPALIVE_CONNECTIONS = 5
@@ -189,19 +288,41 @@ async def http_get_with_retry(
     """
     last_error: Exception | None = None
     client = _get_client()
+    deadline = time.monotonic() + RETRY_TOTAL_BUDGET
+    attempts = 0
+
     for attempt in range(max_attempts):
         if attempt > 0:
-            await asyncio.sleep(2**attempt)  # 2s, 4s, 8s
+            delay = compute_delay(attempt, last_error)
+            # Eine Wartezeit, die das Budget überdauert, wartet für niemanden:
+            # Der Aufrufende hat aufgegeben, bevor sie endet. Dann lieber Schluss.
+            if delay >= deadline - time.monotonic():
+                break
+            await asyncio.sleep(delay)
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempts += 1
         new_request_id()
         logger.info("upstream_request url=%s attempt=%d", url, attempt + 1)
         try:
             async with _get_semaphore():
-                response = await client.get(url, params=params or {}, headers=headers)
-                response.raise_for_status()
+                # httpx begrenzt pro Operation, und sein Read-Timeout beginnt
+                # mit jedem Chunk von vorn — eine tröpfelnde Antwort überdauert
+                # jede Einzelschranke, ohne dass ein Read abläuft.
+                # `asyncio.timeout` ist die Wanduhr, die das Budget zusagt.
+                async with asyncio.timeout(remaining):
+                    response = await client.get(url, params=params or {}, headers=headers)
+                    response.raise_for_status()
             logger.info(
                 "upstream_response url=%s status=%d bytes=%d", url, response.status_code, len(response.text)
             )
             return response.text
+        except TimeoutError as exc:  # Budget weg, nicht bloss dieser Versuch
+            last_error = exc
+            logger.warning("upstream_budget_spent url=%s attempt=%d", url, attempt + 1)
+            break
         except httpx.HTTPStatusError as exc:
             last_error = exc
             status = exc.response.status_code
@@ -211,8 +332,31 @@ async def http_get_with_retry(
             logger.warning("upstream_http_error url=%s status=%d attempt=%d", url, status, attempt + 1)
         except httpx.RequestError as exc:
             last_error = exc
-            logger.warning("upstream_request_error url=%s attempt=%d err=%s", url, attempt + 1, exc)
-    assert last_error is not None
+            # Der TYP, nicht nur `err=%s`: httpx.ConnectTimeout, ReadTimeout und
+            # ConnectError tragen ein LEERES str() und sind genau die Fehler,
+            # die ein echter Ausfall produziert — `err=` endete dann in nichts.
+            logger.warning(
+                "upstream_request_error url=%s attempt=%d err=%s: %s",
+                url,
+                attempt + 1,
+                type(exc).__name__,
+                str(exc) or "keine weitere Angabe",
+            )
+
+    if last_error is None:
+        raise UpstreamUnavailableError(
+            f"Kein Versuch unternommen: Das Budget von {RETRY_TOTAL_BUDGET:g}s "
+            f"war schon aufgebraucht (host={urlsplit(url).hostname})."
+        )
+    # Durchgereicht, nicht verpackt — das war hier schon richtig. Der Aufrufende
+    # behält Typ und ``.response``; ein Wrapper nähme beides weg.
+    logger.warning(
+        "upstream_unreachable url=%s attempts=%d limit=%s err=%s",
+        url,
+        attempts,
+        "attempts" if attempts >= max_attempts else "time_budget",
+        type(last_error).__name__,
+    )
     raise last_error
 
 
