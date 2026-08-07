@@ -28,7 +28,7 @@ jobs:
         run: uv pip install -e "." --system
 
       - name: Test-Abhängigkeiten installieren
-        run: uv pip install pytest pytest-asyncio respx ruff --system
+        run: uv pip install pytest pytest-asyncio respx "ruff==0.16.1" --system
 
       - name: Linting mit ruff
         run: ruff check src/ tests/
@@ -57,7 +57,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install ruff
+      - run: pip install "ruff==0.16.1"
 
       - run: ruff check src/ tests/
 
