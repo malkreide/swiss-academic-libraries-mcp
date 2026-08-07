@@ -584,9 +584,7 @@ class TestHttpGetMocked:
 
         await api_client.shutdown()  # frischer Client
         async with respx.mock(assert_all_called=True) as mock:
-            route = mock.get("https://example.test/probe").mock(
-                return_value=Response(200, text="<ok/>")
-            )
+            route = mock.get("https://example.test/probe").mock(return_value=Response(200, text="<ok/>"))
             body = await api_client.http_get("https://example.test/probe")
             assert body == "<ok/>"
             sent_request = route.calls.last.request
