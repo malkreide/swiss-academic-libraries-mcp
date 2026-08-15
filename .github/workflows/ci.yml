@@ -74,6 +74,17 @@ jobs:
       # dem die Aussagekraft des geprueften Codes haengt, gehoert selbst geprueft.
       - run: ruff format --check src/ tests/ scripts/
 
+      # Der Pin steht an vier Stellen, der Scope an neun. Dass sie
+      # uebereinstimmen, stand bis hierher nur in CLAUDE.md — und eine
+      # Zusicherung, die niemand prueft, haelt genau so lange, bis jemand es
+      # eilig hat. Beide Abweichungen sind unauffaellig: Ein abweichender Pin
+      # meldet Befunde, die niemand verursacht hat, ein abweichender Scope
+      # laesst durch, was das breitere Gate ablehnt.
+      #
+      # Das Skript meldet auch, wenn es seine Stellen NICHT mehr findet. Ohne
+      # das waere ein Umbau dieser Datei die stillste Art, den Gate abzuschalten.
+      - run: python scripts/check_gate_consistency.py
+
   security:
     name: Dependency security scan
     runs-on: ubuntu-latest
