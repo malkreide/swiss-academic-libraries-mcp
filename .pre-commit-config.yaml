@@ -19,15 +19,15 @@ repos:
     rev: v0.16.1
     hooks:
       # `files` haelt den Scope deckungsgleich mit der CI, die beide Gates auf
-      # `src/ tests/` fahrt. Ohne die Einschraenkung liefe der Hook zusaetzlich
-      # ueber `scripts/`, das die CI nicht prueft — ein lokales Gate, das strenger
-      # ist als das echte, blockiert Commits wegen Befunden, die keine Pipeline
-      # je melden wuerde.
+      # `src/ tests/ scripts/` fahrt. Weicht der Hook davon ab, ist er in der
+      # einen Richtung nutzlos (er laesst durch, was die CI ablehnt) und in der
+      # anderen laestig (er blockiert Commits wegen Befunden, die keine Pipeline
+      # je meldet). Wer den CI-Scope aendert, aendert diese Regex mit.
       - id: ruff-check
-        files: ^(src|tests)/
+        files: ^(src|tests|scripts)/
 
       # Die CI fahrt hier `ruff format --check`, dieser Hook formatiert direkt.
       # Das Ergebnis ist dasselbe — der Commit bricht in beiden Faellen ab —,
       # nur raeumt die lokale Variante gleich auf, statt es zu verlangen.
       - id: ruff-format
-        files: ^(src|tests)/
+        files: ^(src|tests|scripts)/
