@@ -1,0 +1,33 @@
+# Lokales Gegenstueck zu den ruff-Gates aus .github/workflows/ci.yml.
+#
+# `rev` ist der Pin: Das Tag v0.16.1 dieses Hook-Repos installiert `ruff==0.16.1`
+# — dieselbe Version wie CI-Job `test`, CI-Job `lint` und `[tool.hatch.envs.default]`
+# in pyproject.toml. Vier Stellen, ein Pin. Wer eine davon hochzieht, zieht alle
+# vier hoch: Eine andere ruff-Version meldet Abweichungen, die niemand verursacht
+# hat, und kostet die Suche danach.
+#
+# Der Pin wirkt erst nach der Installation im Klon — pre-commit richtet sich
+# nicht von selbst ein:
+#
+#   pip install pre-commit && pre-commit install
+#
+# Ohne diesen Schritt liegt die Datei nur herum und die CI bleibt das einzige
+# Gate. `pre-commit run --all-files` faehrt beide Hooks einmal ueber alles.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
+    hooks:
+      # `files` haelt den Scope deckungsgleich mit der CI, die beide Gates auf
+      # `src/ tests/` fahrt. Ohne die Einschraenkung liefe der Hook zusaetzlich
+      # ueber `scripts/`, das die CI nicht prueft — ein lokales Gate, das strenger
+      # ist als das echte, blockiert Commits wegen Befunden, die keine Pipeline
+      # je melden wuerde.
+      - id: ruff-check
+        files: ^(src|tests)/
+
+      # Die CI fahrt hier `ruff format --check`, dieser Hook formatiert direkt.
+      # Das Ergebnis ist dasselbe — der Commit bricht in beiden Faellen ab —,
+      # nur raeumt die lokale Variante gleich auf, statt es zu verlangen.
+      - id: ruff-format
+        files: ^(src|tests)/
