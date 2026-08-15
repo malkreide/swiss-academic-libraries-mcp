@@ -61,15 +61,44 @@ MIN_DOC_GATES = 6
 # eine dieser Marken in einem CI-Kommando, das kein Setup ist, muss der Block
 # in CLAUDE.md sie ebenfalls nennen — sonst faehrt die CI ein Gate, von dem
 # die Doku nichts weiss, und wer nur die Doku liest, prueft weniger als die CI.
+#
+# Die Liste bleibt eine Liste: Sie kann nur melden, was auf ihr steht. Die
+# Eintraege unter "faehrt dieses Repo" sind belegt, die uebrigen sind vorab
+# scharf gestellt — sie kosten nichts, solange das Werkzeug nicht auftaucht,
+# und melden ab dem Tag, an dem es undokumentiert auftaucht.
 GATE_MARKERS = (
+    # faehrt dieses Repo, in ci.yml
     "ruff check",
     "ruff format",
     "py_compile",
     "pytest",
     "pip-audit",
     "Import OK",
-    "check_gate_consistency.py",
+    # faehrt dieses Repo, in den uebrigen Workflows — waeren Gates, sobald sie
+    # nach ci.yml wandern
+    "python -m build",
+    # verbreitete Gate-Werkzeuge, hier noch nicht im Einsatz
+    "mypy",
+    "pyright",
+    "bandit",
+    "semgrep",
+    "deptry",
+    "vulture",
+    "black",
+    "isort",
+    "flake8",
+    "pylint",
+    "coverage",
+    "twine",
+    "pre-commit run",
+    "hatch run",
 )
+
+# Was sich nicht aufzaehlen laesst, weil es mit dem Repo waechst: die eigenen
+# Skripte. Jedes `scripts/*.py`, das die CI faehrt, muss im Block stehen — auch
+# eines, das es beim Schreiben dieser Zeile noch nicht gab. Das ist der einzige
+# Teil der Erkennung, der sich selbst mitzieht.
+GATE_PATTERNS = (re.compile(r"\bscripts/[A-Za-z0-9_]+\.py\b"),)
 
 # `pip install pytest ...` traegt die Marke `pytest`, ist aber kein Gate.
 #
@@ -431,6 +460,10 @@ def compare_gate_block(ci_text: str, md_text: str) -> list[str]:
         for marker in GATE_MARKERS:
             if marker in site.value and marker not in zitiert:
                 fehlend.setdefault(marker, site.origin)
+        for pattern in GATE_PATTERNS:
+            for treffer in pattern.findall(site.value):
+                if treffer not in zitiert:
+                    fehlend.setdefault(treffer, site.origin)
 
     for marker, origin in fehlend.items():
         problems.append(

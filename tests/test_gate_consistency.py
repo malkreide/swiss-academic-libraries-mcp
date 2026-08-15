@@ -119,6 +119,13 @@ CLAUDE_TEMPLATE = """\
 """
 
 
+EXTRA_JOB = """\
+  zusatz:
+    steps:
+      - run: {command}
+"""
+
+
 def baue_ci(
     *,
     pin: str = PIN,
@@ -126,8 +133,10 @@ def baue_ci(
     modul: str = "api_client",
     env_block: str = ENV_BLOCK,
     audit_block: str = AUDIT_BLOCK,
+    extra: str = "",
 ) -> str:
-    return CI_TEMPLATE.format(pin=pin, scope=scope, modul=modul, env_block=env_block, audit_block=audit_block)
+    ci = CI_TEMPLATE.format(pin=pin, scope=scope, modul=modul, env_block=env_block, audit_block=audit_block)
+    return ci + (EXTRA_JOB.format(command=extra) if extra else "")
 
 
 def schreibe_repo(
@@ -286,6 +295,37 @@ class GateKonsistenzTest(unittest.TestCase):
             if "pip-audit" not in zeile
         )
         self.assertEqual(self.pruefe(ci_text=baue_ci(audit_block=""), md_block=block), [])
+
+    # --- die Marken-Liste, Eintrag fuer Eintrag --------------------------
+
+    def test_jede_marke_der_liste_wird_wirklich_eingefordert(self):
+        """Fuer JEDEN Eintrag in GATE_MARKERS: taucht er in der CI auf, muss die Doku ihn nennen.
+
+        Der Test laeuft ueber die Liste selbst, nicht ueber eine Kopie davon.
+        Wer eine Marke ergaenzt, bekommt die Pruefung dafuer ohne Zutun — und
+        wer eine ergaenzt, die nirgends ausgewertet wird, faellt hier auf.
+        """
+        block = DOC_BLOCK.format(scope=SCOPE, modul="api_client")
+        ungenannt = [marker for marker in cgc.GATE_MARKERS if marker not in block]
+        self.assertGreater(len(ungenannt), 5, "Die Liste sollte mehr als eine Handvoll fuehren")
+
+        for marker in ungenannt:
+            with self.subTest(marker=marker):
+                problems = self.pruefe(ci_text=baue_ci(extra=f"{marker} src/"))
+                self.assertTrue(any(marker in p for p in problems), (marker, problems))
+
+    def test_neues_skript_der_ci_muss_in_die_doku(self):
+        """Das Muster zieht sich mit: auch ein Skript, das es hier noch nicht gibt."""
+        problems = self.pruefe(ci_text=baue_ci(extra="python scripts/frisch_erfunden.py --strict"))
+        self.assertTrue(any("scripts/frisch_erfunden.py" in p for p in problems), problems)
+
+    def test_bekanntes_skript_im_block_verlangt_nichts(self):
+        """Gegenstueck: Was im Block steht, loest keinen Befund aus."""
+        self.assertEqual(self.pruefe(ci_text=baue_ci(extra="python scripts/check_gate_consistency.py")), [])
+
+    def test_werkzeugname_im_setup_ist_kein_gate(self):
+        """`pip install mypy` traegt die Marke, prueft aber nichts."""
+        self.assertEqual(self.pruefe(ci_text=baue_ci(extra="pip install mypy bandit")), [])
 
     def test_leerer_gate_block_ist_ein_befund(self):
         problems = self.pruefe(md_block="")
