@@ -42,10 +42,12 @@ Ein Codex-Review auf einem PR wird beantwortet oder behoben, nie ignoriert.
 ## Dieses Repo
 
 **ruff ist auf `0.16.1` gepinnt** — in `.github/workflows/ci.yml` (Jobs `test`
-und `lint`) und in `[tool.hatch.envs.default]` von `pyproject.toml`. Die drei
-Stellen stimmen überein. Eine `.pre-commit-config.yaml` gibt es nicht: der Pin
-wird erst in der CI durchgesetzt, lokal von nichts. Wer eine anlegt, pinnt
-`0.16.1` und hält alle vier Stellen zusammen.
+und `lint`), in `[tool.hatch.envs.default]` von `pyproject.toml` und als
+`rev: v0.16.1` in `.pre-commit-config.yaml`. Alle vier Stellen stimmen überein
+und werden zusammen hochgezogen. Der Hook greift erst nach `pre-commit install`
+im Klon; ohne diesen Schritt bleibt die CI das einzige Gate. Sein Scope ist per
+`files: ^(src|tests)/` deckungsgleich mit der CI — `scripts/` prüft keins von
+beidem.
 
 **Gates, wörtlich aus `ci.yml`** (`ruff check` und `ruff format --check` haben
 absichtlich denselben Scope — zwei Gates mit zwei Reichweiten sehen aus wie eins):
