@@ -65,6 +65,10 @@ python scripts/check_gate_consistency.py
 pip-audit --strict -r <runtime-deps> --ignore-vuln PYSEC-2025-183
 ```
 
+„Wörtlich" ist hier eine Zusicherung, keine Absicht: `check_gate_consistency.py`
+hält jede Zeile dieses Blocks gegen `ci.yml` und meldet beide Richtungen — eine
+Zeile, die so nicht läuft, und ein Gate der CI, das hier fehlt.
+
 Die Matrix fährt Python 3.11, 3.12 und 3.13.
 
 **Live-Tests sind geplant, nicht nur ausgeschlossen.** `.github/workflows/live-tests.yml`

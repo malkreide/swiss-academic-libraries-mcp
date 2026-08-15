@@ -54,6 +54,30 @@ CLAUDE_MD = "CLAUDE.md"
 # unabhaengig davon, ob das Gefundene untereinander stimmt.
 MIN_PINS = {CI: 2, PYPROJECT: 1, PRE_COMMIT: 1}
 MIN_SCOPES = {CI: 3, PYPROJECT: 2, PRE_COMMIT: 2, CLAUDE_MD: 2}
+MIN_CI_COMMANDS = 10
+MIN_DOC_GATES = 6
+
+# Woran ein Gate in `ci.yml` erkennbar ist, ohne die Shell zu parsen. Steht
+# eine dieser Marken in einem CI-Kommando, das kein Setup ist, muss der Block
+# in CLAUDE.md sie ebenfalls nennen — sonst faehrt die CI ein Gate, von dem
+# die Doku nichts weiss, und wer nur die Doku liest, prueft weniger als die CI.
+GATE_MARKERS = (
+    "ruff check",
+    "ruff format",
+    "py_compile",
+    "pytest",
+    "pip-audit",
+    "Import OK",
+    "check_gate_consistency.py",
+)
+
+# `pip install pytest ...` traegt die Marke `pytest`, ist aber kein Gate.
+#
+# Der Programmname endet hier auf Leerraum, nicht auf `\b`: `^pip\b` passt auch
+# auf `pip-audit`, weil der Bindestrich eine Wortgrenze ist. Damit galt der
+# CVE-Scan als Setup und wurde nie eingefordert — ein Gate, das sich selbst
+# aus der Bewachung nimmt.
+SETUP_RE = re.compile(r"^(?:pip|uv|apt|apt-get|sudo)\s|\binstall\b")
 
 PIN_RE = re.compile(r"ruff==(\d+\.\d+\.\d+)")
 REV_RE = re.compile(r"^\s*rev:\s*v?(\d+\.\d+\.\d+)\s*$")
@@ -202,6 +226,222 @@ def collect_claude_md(text: str) -> tuple[list[Site], list[Site]]:
     return pins, scopes
 
 
+STEP_RE = re.compile(r"^(?P<indent>\s*)-\s")
+RUN_RE = re.compile(r"^\s*(?:-\s+)?run:\s*(?P<value>.*)$")
+ENV_RE = re.compile(r"^\s*env:\s*$")
+ENV_PAIR_RE = re.compile(r"^\s*(?P<key>[A-Za-z_][A-Za-z0-9_]*):\s*(?P<value>.+)$")
+BLOCK_SCALARS = {"|", ">", "|-", ">-", "|+", ">+"}
+SHELL_FENCES = {"```bash", "```sh", "```shell"}
+
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def _join_continuations(block: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """Mit `\\` umgebrochene Zeilen zu einem Kommando zusammenziehen.
+
+    Der pip-audit-Aufruf steht ueber vier Zeilen. Ungejoint waere `--ignore-vuln
+    PYSEC-2025-183` ein eigenes "Kommando" und der Rest ein anderes — und die
+    Zeile aus CLAUDE.md passte auf keines von beiden.
+    """
+    joined, buffer, first = [], "", None
+    for number, text in block:
+        if not text:
+            continue
+        if first is None:
+            first = number
+        if text.endswith("\\"):
+            buffer += text[:-1] + " "
+            continue
+        joined.append((first, buffer + text))
+        buffer, first = "", None
+    if buffer:
+        joined.append((first or 0, buffer.strip()))
+    return joined
+
+
+def _step_lines(lines: list[str]) -> list[tuple[int, list[str]]]:
+    """`ci.yml` in Steps zerlegen — jeder `- ` unterhalb eines `steps:`."""
+    steps: list[tuple[int, list[str]]] = []
+    current: tuple[int, list[str]] | None = None
+    in_steps, steps_indent, step_indent = False, 0, None
+
+    for number, line in enumerate(lines, start=1):
+        if not line.strip():
+            if current:
+                current[1].append(line)
+            continue
+
+        indent = _indent(line)
+        if line.strip() == "steps:":
+            in_steps, steps_indent, step_indent = True, indent, None
+            if current:
+                steps.append(current)
+                current = None
+            continue
+
+        if in_steps and indent <= steps_indent and not STEP_RE.match(line):
+            in_steps, step_indent = False, None
+            if current:
+                steps.append(current)
+                current = None
+            continue
+
+        if in_steps and STEP_RE.match(line) and step_indent in (None, indent):
+            step_indent = indent
+            if current:
+                steps.append(current)
+            current = (number, [line])
+            continue
+
+        if current:
+            current[1].append(line)
+
+    if current:
+        steps.append(current)
+    return steps
+
+
+def ci_commands(text: str) -> list[Site]:
+    """Jedes Kommando aus den `run:`-Bloecken, mit den `env:`-Variablen seines Steps.
+
+    Die Variablen gehoeren dazu, weil CLAUDE.md sie voranstellt: Dort steht
+    `PYTHONPATH=src pytest ...`, in der CI stehen Kommando und `env:` in zwei
+    Bloecken. Ohne das Zusammenfuehren waere die zitierte Zeile unbelegbar.
+    """
+    lines = [_strip_comment(raw).rstrip() for raw in text.splitlines()]
+    commands: list[Site] = []
+
+    for start, step in _step_lines(lines):
+        env: list[str] = []
+        found: list[tuple[int, str]] = []
+        index = 0
+
+        while index < len(step):
+            line = step[index]
+            indent = _indent(line)
+
+            if match := RUN_RE.match(line):
+                value = match.group("value").strip()
+                if value in BLOCK_SCALARS:
+                    index += 1
+                    block: list[tuple[int, str]] = []
+                    while index < len(step):
+                        nxt = step[index]
+                        if nxt.strip() and _indent(nxt) <= indent:
+                            break
+                        block.append((start + index, nxt.strip()))
+                        index += 1
+                    found.extend(_join_continuations(block))
+                    continue
+                found.append((start + index, value))
+                index += 1
+                continue
+
+            if ENV_RE.match(line):
+                index += 1
+                while index < len(step):
+                    nxt = step[index]
+                    if nxt.strip() and _indent(nxt) <= indent:
+                        break
+                    if pair := ENV_PAIR_RE.match(nxt):
+                        env.append(f"{pair.group('key')}={pair.group('value').strip()}")
+                    index += 1
+                continue
+
+            index += 1
+
+        prefix = " ".join(env)
+        for number, command in found:
+            commands.append(Site(f"{CI}:{number}", f"{prefix} {command}".strip()))
+
+    return commands
+
+
+def doc_gates(text: str) -> list[Site]:
+    """Die Zeilen des zitierten Gate-Blocks aus CLAUDE.md."""
+    gates: list[Site] = []
+    in_block = False
+    for number, line in enumerate(text.splitlines(), start=1):
+        if line.startswith("```"):
+            in_block = line.strip() in SHELL_FENCES
+            continue
+        if in_block and line.strip() and not line.strip().startswith("#"):
+            gates.append(Site(f"{CLAUDE_MD}:{number}", line.strip()))
+    return gates
+
+
+def _tokens(command: str) -> list[str]:
+    return [token for token in command.split() if token != "\\"]
+
+
+def _covers(doc: list[str], command: list[str]) -> bool:
+    """Sind die Doc-Tokens eine Teilfolge des CI-Kommandos?
+
+    Teilfolge und nicht Gleichheit, weil der Block eine Zusammenfassung ist: Er
+    darf `--progress-spinner off` weglassen. Was er NICHT darf, ist etwas
+    nennen, das so nicht laeuft — ein Pfad oder eine Marke, die in der CI anders
+    steht, findet keine Entsprechung mehr. `<platzhalter>` passt auf ein Token,
+    damit `<runtime-deps>` die erzeugte Datei vertreten kann.
+    """
+    position = 0
+    for token in command:
+        if position == len(doc):
+            break
+        want = doc[position]
+        if want == token or (want.startswith("<") and want.endswith(">")):
+            position += 1
+    return position == len(doc)
+
+
+def compare_gate_block(ci_text: str, md_text: str) -> list[str]:
+    """Deckt sich der Block in CLAUDE.md mit dem, was `ci.yml` wirklich faehrt?"""
+    commands = ci_commands(ci_text)
+    gates = doc_gates(md_text)
+    problems: list[str] = []
+
+    if len(commands) < MIN_CI_COMMANDS:
+        problems.append(
+            f"{CI}: nur {len(commands)} von mindestens {MIN_CI_COMMANDS} erwarteten Kommandos "
+            f"gelesen. Entweder ist die Datei geschrumpft, oder ihre Struktur hat sich so "
+            f"geaendert, dass dieser Vergleich sie nicht mehr sieht."
+        )
+    if len(gates) < MIN_DOC_GATES:
+        problems.append(
+            f"{CLAUDE_MD}: nur {len(gates)} von mindestens {MIN_DOC_GATES} erwarteten Gate-Zeilen "
+            f"im zitierten Block gefunden. Ein Block, der leerlaeuft, behauptet nichts mehr — "
+            f"und faellt genau deshalb sonst nicht auf."
+        )
+
+    for gate in gates:
+        wanted = _tokens(gate.value)
+        if not any(_covers(wanted, _tokens(site.value)) for site in commands):
+            problems.append(
+                f"{gate.origin}: `{gate.value}` steht im Gate-Block, aber kein Kommando in "
+                f"{CI} deckt sich damit. Entweder faehrt die CI es anders, oder gar nicht — "
+                f"wer sich auf den Block verlaesst, prueft dann etwas anderes als die CI."
+            )
+
+    zitiert = "\n".join(gate.value for gate in gates)
+    fehlend: dict[str, str] = {}
+    for site in commands:
+        if SETUP_RE.search(site.value):
+            continue
+        for marker in GATE_MARKERS:
+            if marker in site.value and marker not in zitiert:
+                fehlend.setdefault(marker, site.origin)
+
+    for marker, origin in fehlend.items():
+        problems.append(
+            f"{origin}: Die CI faehrt ein Gate mit `{marker}`, der Block in {CLAUDE_MD} nennt "
+            f"es nicht. Wer nur die Doku faehrt, prueft weniger als die CI und faellt erst "
+            f"im Pull Request darueber."
+        )
+
+    return problems
+
+
 def _disagreements(kind: str, sites: list[Site]) -> list[str]:
     values = {site.value for site in sites}
     if len(values) <= 1:
@@ -228,10 +468,14 @@ def _too_few(kind: str, sites: list[Site], minimum: dict[str, int]) -> list[str]
 
 def check(root: Path) -> list[str]:
     """Alle Fundstellen einsammeln und vergleichen. Rueckgabe: Liste der Befunde."""
-    ci_pins, ci_scopes = collect_ci(_read(root, CI))
+    ci_text = _read(root, CI)
+    md_text = _read(root, CLAUDE_MD)
+
+    ci_pins, ci_scopes = collect_ci(ci_text)
     py_pins, py_scopes = collect_pyproject(_read(root, PYPROJECT))
     pc_pins, pc_scopes, problems = collect_pre_commit(_read(root, PRE_COMMIT))
-    md_pins, md_scopes = collect_claude_md(_read(root, CLAUDE_MD))
+    md_pins, md_scopes = collect_claude_md(md_text)
+    problems += compare_gate_block(ci_text, md_text)
 
     pins = ci_pins + py_pins + pc_pins + md_pins
     scopes = ci_scopes + py_scopes + pc_scopes + md_scopes
@@ -260,12 +504,15 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if problems:
-        print("Pin oder Scope sind auseinandergelaufen:\n", file=sys.stderr)
+        print("Pin, Scope oder Gate-Block sind auseinandergelaufen:\n", file=sys.stderr)
         for problem in problems:
             print(f"  - {problem}\n", file=sys.stderr)
         return 1
 
-    print("ruff-Pin und Gate-Scope stimmen an allen geprueften Stellen ueberein.")
+    print(
+        "ruff-Pin und Gate-Scope stimmen an allen geprueften Stellen ueberein, "
+        "und der Gate-Block in CLAUDE.md deckt sich mit ci.yml."
+    )
     return 0
 
 
