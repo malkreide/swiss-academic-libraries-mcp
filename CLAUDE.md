@@ -47,7 +47,9 @@ und `lint`), in `[tool.hatch.envs.default]` von `pyproject.toml` und als
 und werden zusammen hochgezogen. Der Hook greift erst nach `pre-commit install`
 im Klon; ohne diesen Schritt bleibt die CI das einzige Gate. Sein Scope ist per
 `files: ^(src|tests|scripts)/` deckungsgleich mit der CI und mit den
-hatch-Skripten `lint`/`fmt` — wer den einen Scope ändert, ändert alle.
+hatch-Skripten `lint`/`fmt`. Wer einen Scope ändert, ändert alle — das prüft
+`scripts/check_gate_consistency.py` in der CI und meldet auch, wenn es seine
+Stellen nicht mehr findet. Dieser Absatz wird mitgeprüft, er ist eine davon.
 
 **Gates, wörtlich aus `ci.yml`** (`ruff check` und `ruff format --check` haben
 absichtlich denselben Scope — zwei Gates mit zwei Reichweiten sehen aus wie eins):
@@ -59,6 +61,7 @@ python -m py_compile src/swiss_academic_libraries_mcp/server.py
 python -m py_compile src/swiss_academic_libraries_mcp/api_client.py
 python -c "from swiss_academic_libraries_mcp.server import mcp; print('Import OK')"
 PYTHONPATH=src pytest tests/ -v -m "not live"
+python scripts/check_gate_consistency.py
 pip-audit --strict -r <runtime-deps> --ignore-vuln PYSEC-2025-183
 ```
 
