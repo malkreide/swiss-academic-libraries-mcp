@@ -31,7 +31,7 @@ jobs:
         run: uv pip install pytest pytest-asyncio respx "ruff==0.16.1" --system
 
       - name: Linting mit ruff
-        run: ruff check src/ tests/
+        run: ruff check src/ tests/ scripts/
 
       - name: Syntax-Prüfung
         run: |
@@ -59,14 +59,20 @@ jobs:
 
       - run: pip install "ruff==0.16.1"
 
-      - run: ruff check src/ tests/
+      - run: ruff check src/ tests/ scripts/
 
       # Scope identisch mit `ruff check` eine Zeile hoeher. Vorher lief das
       # Format-Gate nur ueber `src/`, waehrend der Linter auch `tests/` sah —
       # Testcode wurde also nie auf Format geprueft, und weil `ruff format`
       # niemand automatisch darueber laufen liess, driftete er ungehindert.
       # Zwei Gates mit zwei Reichweiten sehen aus wie ein Gate.
-      - run: ruff format --check src/ tests/
+      #
+      # `scripts/` kam zuletzt dazu, weil es ausserhalb BEIDER Gates lag.
+      # Dort steht kein Beiwerk: `record_fixtures.py` erzeugt die Fixtures,
+      # gegen die die Unit-Tests laufen, und `classify_live_run.py` entscheidet,
+      # ob ein Live-Lauf `clear`, `finding` oder `unknown` heisst. Werkzeug, an
+      # dem die Aussagekraft des geprueften Codes haengt, gehoert selbst geprueft.
+      - run: ruff format --check src/ tests/ scripts/
 
   security:
     name: Dependency security scan

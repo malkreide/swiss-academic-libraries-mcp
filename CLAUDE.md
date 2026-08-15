@@ -46,15 +46,15 @@ und `lint`), in `[tool.hatch.envs.default]` von `pyproject.toml` und als
 `rev: v0.16.1` in `.pre-commit-config.yaml`. Alle vier Stellen stimmen überein
 und werden zusammen hochgezogen. Der Hook greift erst nach `pre-commit install`
 im Klon; ohne diesen Schritt bleibt die CI das einzige Gate. Sein Scope ist per
-`files: ^(src|tests)/` deckungsgleich mit der CI — `scripts/` prüft keins von
-beidem.
+`files: ^(src|tests|scripts)/` deckungsgleich mit der CI und mit den
+hatch-Skripten `lint`/`fmt` — wer den einen Scope ändert, ändert alle.
 
 **Gates, wörtlich aus `ci.yml`** (`ruff check` und `ruff format --check` haben
 absichtlich denselben Scope — zwei Gates mit zwei Reichweiten sehen aus wie eins):
 
 ```bash
-ruff check src/ tests/
-ruff format --check src/ tests/
+ruff check src/ tests/ scripts/
+ruff format --check src/ tests/ scripts/
 python -m py_compile src/swiss_academic_libraries_mcp/server.py
 python -m py_compile src/swiss_academic_libraries_mcp/api_client.py
 python -c "from swiss_academic_libraries_mcp.server import mcp; print('Import OK')"
