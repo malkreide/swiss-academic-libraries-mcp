@@ -104,10 +104,14 @@ hält jede Zeile dieses Blocks gegen `ci.yml` und meldet beide Richtungen — ei
 Zeile, die so nicht läuft, und ein Gate der CI, das hier fehlt.
 
 Die Matrix fährt Python 3.11, 3.12 und 3.13 — aber nicht alle Gates liegen im
-`test`-Job. `ruff format --check`, `check_gate_consistency.py` und `pip-audit`
-stehen im Job `lint`, und der hat keine Matrix: er läuft auf 3.11. Ein grünes
-3.12/3.13 sagt über diese drei nichts aus. Ein `fail-fast: false` steht nicht
-da.
+`test`-Job. `ruff format --check` und `check_gate_consistency.py` stehen im Job
+`lint`, `pip-audit` in einem **dritten** Job namens `security`; keiner der
+beiden hat eine Matrix, beide laufen auf 3.11. Ein grünes 3.12/3.13 sagt über
+diese drei nichts aus. Ein `fail-fast: false` steht nicht da.
+
+Die Jobzuordnung prüft `check_gate_consistency.py` **nicht** — es hält nur, dass
+jede Zeile des Blocks irgendwo in `ci.yml` läuft. Genau deshalb stand hier
+zwischenzeitlich `pip-audit` im falschen Job, und kein Gate wurde davon rot.
 
 **Zwei Guards, zwei Gegenstände — nicht verwechseln.**
 `check_gate_consistency.py` hält ruff-Pin, Gate-Scope und diesen Block gegen
