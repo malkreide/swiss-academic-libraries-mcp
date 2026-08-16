@@ -52,7 +52,14 @@ CLAUDE_MD = "CLAUDE.md"
 
 # Unterschreitet eine Datei ihre Zahl, ist die Bewachung loechrig geworden —
 # unabhaengig davon, ob das Gefundene untereinander stimmt.
-MIN_PINS = {CI: 2, PYPROJECT: 1, PRE_COMMIT: 1}
+#
+# `ci.yml` steht bewusst NICHT auf dieser Liste: Der Workflow soll gar keinen
+# eigenen ruff-Pin mehr tragen. Ein solcher Schritt laeuft nach dem Install des
+# dev-Extras und ueberschreibt ihn — eine Abweichung dort faellt dann in der CI
+# nicht auf, sondern nur lokal, und der Gleichstands-Vergleich unten bliebe
+# gruen, weil der CI-Pin ja mit den uebrigen uebereinstimmt. Sein Fehlen wird
+# deshalb eigens geprueft (`_verbotene_pins`), nicht seine Version.
+MIN_PINS = {PYPROJECT: 1, PRE_COMMIT: 1}
 MIN_SCOPES = {CI: 3, PYPROJECT: 2, PRE_COMMIT: 2, CLAUDE_MD: 2}
 MIN_CI_COMMANDS = 10
 MIN_DOC_GATES = 6
@@ -187,7 +194,18 @@ def collect_pyproject(text: str) -> tuple[list[Site], list[Site]]:
     data = tomllib.loads(text)
     env = data.get("tool", {}).get("hatch", {}).get("envs", {}).get("default", {})
 
+    # Der Pin steht im dev-Extra. `[tool.hatch.envs.default]` wird weiter
+    # gelesen, aber nicht mehr erwartet: Die Hatch-Umgebung zieht das Extra
+    # jetzt ueber `features`, statt ihre Abhaengigkeiten selbst aufzuzaehlen.
+    # Traegt sie doch wieder eine eigene Liste mit ruff, faellt das hier als
+    # zweite Stelle auf und muss mit der ersten uebereinstimmen.
+    extra = data.get("project", {}).get("optional-dependencies", {}).get("dev", [])
     pins = [
+        Site(f"{PYPROJECT} [project.optional-dependencies].dev", match.group(1))
+        for dep in extra
+        if (match := PIN_RE.search(dep))
+    ]
+    pins += [
         Site(f"{PYPROJECT} [tool.hatch.envs.default]", match.group(1))
         for dep in env.get("dependencies", [])
         if (match := PIN_RE.search(dep))
@@ -499,6 +517,25 @@ def _too_few(kind: str, sites: list[Site], minimum: dict[str, int]) -> list[str]
     return problems
 
 
+def _verbotene_pins(sites: list[Site]) -> list[str]:
+    """Ein eigener ruff-Pin in `ci.yml` ist ein Befund, unabhaengig vom Wert.
+
+    Gegenstueck zu `_too_few`: Dort ist zu wenig das Problem, hier ist es
+    ueberhaupt etwas. Beides braucht es, weil ein zurueckgekehrter CI-Pin von
+    keiner der anderen Pruefungen gesehen wuerde — er stimmt mit ihnen ueberein
+    und haelt sie trotzdem aus.
+    """
+    if not sites:
+        return []
+    orte = ", ".join(f"{site.origin} = {site.value}" for site in sites)
+    return [
+        f"{CI}: installiert ruff selbst ({orte}). Der Schritt laeuft nach dem "
+        f"Install des dev-Extras und ueberschreibt es; eine Abweichung im "
+        f"deklarierten Pin faellt damit in der CI gar nicht auf. Den Schritt "
+        f"entfernen — ruff kommt aus `pyproject.toml`."
+    ]
+
+
 def check(root: Path) -> list[str]:
     """Alle Fundstellen einsammeln und vergleichen. Rueckgabe: Liste der Befunde."""
     ci_text = _read(root, CI)
@@ -510,9 +547,10 @@ def check(root: Path) -> list[str]:
     md_pins, md_scopes = collect_claude_md(md_text)
     problems += compare_gate_block(ci_text, md_text)
 
-    pins = ci_pins + py_pins + pc_pins + md_pins
+    pins = py_pins + pc_pins + md_pins
     scopes = ci_scopes + py_scopes + pc_scopes + md_scopes
 
+    problems += _verbotene_pins(ci_pins)
     problems += _too_few("Pin", pins, MIN_PINS)
     problems += _too_few("Scope", scopes, MIN_SCOPES)
     problems += _disagreements("ruff-Pin", pins)

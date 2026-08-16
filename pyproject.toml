@@ -49,6 +49,20 @@ dependencies = [
     "defusedxml>=0.7.1",
 ]
 
+[project.optional-dependencies]
+# Die einzige Stelle mit dem ruff-Pin im Python-Paket. Vorher stand er in
+# `[tool.hatch.envs.default]`, in der `uv pip install`-Zeile der CI und im
+# lint-Job — drei Stellen, von denen keine gemerkt haette, wenn eine abweicht.
+# `.pre-commit-config.yaml` traegt dieselbe Zahl noch einmal, weil pre-commit
+# pyproject.toml nicht lesen kann; `scripts/check_gate_consistency.py` haelt
+# die beiden zusammen und meldet einen zurueckgekehrten CI-Pin.
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "respx>=0.21.0",
+    "ruff==0.16.1",
+]
+
 [project.scripts]
 swiss-academic-libraries-mcp = "swiss_academic_libraries_mcp.server:main"
 
@@ -61,11 +75,9 @@ Issues = "https://github.com/malkreide/swiss-academic-libraries-mcp/issues"
 packages = ["src/swiss_academic_libraries_mcp"]
 
 [tool.hatch.envs.default]
-dependencies = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "ruff==0.16.1",
-]
+# Zieht dieselben Abhaengigkeiten wie CI und lokal — inklusive des einen
+# ruff-Pins. Eine eigene Liste hier waere eine zweite Wahrheit.
+features = ["dev"]
 
 [tool.hatch.envs.default.scripts]
 test = "PYTHONPATH=src pytest tests/ -v"
