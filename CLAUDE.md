@@ -4,7 +4,24 @@ Teil 1 gilt portfolioweit, Teil 2 nur für dieses Repo.
 
 ## Vor der Arbeit
 
-Klon-Aktualität prüfen: git fetch origin main && git rev-list --count HEAD..origin/main
+Klon-Aktualität prüfen — Standard-Branch ermitteln, nicht `main` annehmen.
+Bewusst ohne `bash`-Fence: `scripts/check_gate_consistency.py` verlangt, dass
+jede Zeile in einer Shell-Fence einem Kommando aus `ci.yml` entspricht. Das
+hier ist kein CI-Gate, sondern ein Handgriff davor.
+
+```
+B=$(git ls-remote --symref origin HEAD | sed -n 's|^ref: refs/heads/\([^[:space:]]*\).*|\1|p')
+git fetch origin "${B:?Standard-Branch nicht ermittelbar}" &&
+  git rev-list --count HEAD..FETCH_HEAD
+```
+
+Drei Server im Portfolio heissen ihren Standard-Branch `master`
+(`openlex-mcp`, `swiss-courts-mcp`, `swisstopo-mcp`); dort scheitert ein fest
+verdrahtetes `origin/main` mit «couldn't find remote ref main». Wer das für ein
+Netzproblem hält, arbeitet weiter auf genau dem veralteten Klon, vor dem dieser
+Absatz warnt. Den `:?`-Schutz nicht weglassen: Bei leerem `B` fetcht git still
+den Remote-HEAD und endet mit 0.
+
 Ein veralteter Klon erzeugt eine rote CI, deren Ursache nicht im Diff steht.
 Am 3.8.2026 zweimal passiert — beide Male fehlten genau die Commits, die
 das Gate einführten, an dem der Branch scheiterte.
