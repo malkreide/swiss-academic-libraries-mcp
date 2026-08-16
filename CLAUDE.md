@@ -94,6 +94,7 @@ python -m py_compile src/swiss_academic_libraries_mcp/server.py
 python -m py_compile src/swiss_academic_libraries_mcp/api_client.py
 python -c "from swiss_academic_libraries_mcp.server import mcp; print('Import OK')"
 PYTHONPATH=src pytest tests/ -v -m "not live"
+python scripts/check_version_sync.py
 python scripts/check_gate_consistency.py
 pip-audit --strict -r <runtime-deps> --ignore-vuln PYSEC-2025-183
 ```
@@ -108,16 +109,16 @@ stehen im Job `lint`, und der hat keine Matrix: er läuft auf 3.11. Ein grünes
 3.12/3.13 sagt über diese drei nichts aus. Ein `fail-fast: false` steht nicht
 da.
 
-**Was `check_gate_consistency.py` nicht abdeckt: den Versionsabgleich.** Es
-hält ruff-Pin, Gate-Scope und diesen Block gegen `ci.yml` — aber
-`pyproject.toml` und `server.json` prüft es nicht gegeneinander. Beide stehen
-heute auf `1.2.0`, gehalten wird das von nichts; die meisten Schwester-Server
-fahren dafür `scripts/check_version_sync.py`, das es hier nicht gibt. Beim
-Anheben also beide Stellen von Hand.
+**Zwei Guards, zwei Gegenstände — nicht verwechseln.**
+`check_gate_consistency.py` hält ruff-Pin, Gate-Scope und diesen Block gegen
+`ci.yml`. Den Versionsabgleich deckt es **nicht** ab; dafür läuft seit diesem
+Commit `check_version_sync.py` daneben und hält `pyproject.toml` gegen
+`server.json` und die README-Badges.
 
-Gerade hier ist diese Lücke leicht zu übersehen, weil dieses Repo mehr Guards
-hat als jedes andere im Portfolio. Dass etwas geprüft *aussieht*, heisst nicht,
-dass diese eine Sache geprüft wird.
+Die zwei greifen ineinander: Wer einen Gate-Schritt in `ci.yml` ergänzt und
+den Block oben nicht nachzieht, macht `check_gate_consistency.py` rot — beim
+Einbau des Versions-Gates ist genau das passiert, und der Guard hat es
+gemeldet, bevor die CI es tat.
 
 **Live-Tests sind geplant, nicht nur ausgeschlossen.** `.github/workflows/live-tests.yml`
 läuft wöchentlich per cron (`43 4 * * 1`) plus `workflow_dispatch` gegen die
