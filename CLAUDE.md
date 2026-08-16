@@ -41,10 +41,23 @@ Ein Codex-Review auf einem PR wird beantwortet oder behoben, nie ignoriert.
 
 ## Dieses Repo
 
-**ruff ist auf `0.16.1` gepinnt** — in `.github/workflows/ci.yml` (Jobs `test`
-und `lint`), in `[tool.hatch.envs.default]` von `pyproject.toml` und als
-`rev: v0.16.1` in `.pre-commit-config.yaml`. Alle vier Stellen stimmen überein
-und werden zusammen hochgezogen. Der Hook greift erst nach `pre-commit install`
+**ruff ist auf `0.16.1` gepinnt** — im `dev`-Extra von `pyproject.toml` und,
+weil pre-commit `pyproject.toml` nicht lesen kann, ein zweites Mal als
+`rev: v0.16.1` in `.pre-commit-config.yaml`. Beide werden zusammen hochgezogen.
+
+`.github/workflows/ci.yml` pinnt **nicht** mehr selbst. Vorher tat es das an
+zwei Stellen, und `[tool.hatch.envs.default]` zählte seine Abhängigkeiten
+ebenfalls eigenständig auf — vier Stellen, die zwar übereinstimmten, deren
+Gleichstand aber nichts erzwang: Der CI-Schritt lief nach dem Install und
+überschrieb ihn, eine Abweichung im Extra wäre also nur lokal aufgefallen. Die
+Hatch-Umgebung zieht das Extra jetzt über `features = ["dev"]`, und im
+`lint`-Job steht `pip install -e ".[dev]"` an der Stelle des früheren Pins —
+dort war er die einzige Installation, der Schritt ist also nicht redundant.
+
+`check_gate_consistency.py` prüft deshalb zweierlei: dass die zwei
+verbleibenden Stellen übereinstimmen, **und** dass `ci.yml` keinen eigenen Pin
+zurückbekommt. Nur das Erste wäre zu schwach — ein zurückgekehrter CI-Pin
+stimmt ja mit den anderen überein und hebelt sie trotzdem aus. Der Hook greift erst nach `pre-commit install`
 im Klon; ohne diesen Schritt bleibt die CI das einzige Gate. Sein Scope ist per
 `files: ^(src|tests|scripts)/` deckungsgleich mit der CI und mit den
 hatch-Skripten `lint`/`fmt`. Wer einen Scope ändert, ändert alle — das prüft

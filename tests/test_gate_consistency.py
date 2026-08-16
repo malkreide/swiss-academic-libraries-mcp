@@ -36,8 +36,7 @@ jobs:
   test:
     steps:
       - run: pip install uv
-      - run: uv pip install -e "." --system
-      - run: uv pip install pytest pytest-asyncio respx "ruff=={pin}" --system
+      - run: uv pip install -e ".[dev]" --system
       - name: Linting mit ruff
         run: ruff check {scope}
       - name: Syntax-Pruefung
@@ -51,7 +50,7 @@ jobs:
 {env_block}
   lint:
     steps:
-      - run: pip install "ruff=={pin}"
+      - run: pip install -e ".[dev]"
       - run: ruff check {scope}
       # Prosa-Kommentar: hier steht `ruff check src/` und `ruff format --check src/`,
       # und beides darf NICHT als Fundstelle zaehlen.
@@ -90,8 +89,11 @@ PYPROJECT_TEMPLATE = """\
 [project]
 name = "beispiel"
 
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0", "ruff=={pin}"]
+
 [tool.hatch.envs.default]
-dependencies = ["pytest>=8.0.0", "ruff=={pin}"]
+features = ["dev"]
 
 [tool.hatch.envs.default.scripts]
 lint = "ruff check {scope}"
@@ -128,21 +130,25 @@ EXTRA_JOB = """\
 
 def baue_ci(
     *,
-    pin: str = PIN,
+    pin: str | None = None,
     scope: str = SCOPE,
     modul: str = "api_client",
     env_block: str = ENV_BLOCK,
     audit_block: str = AUDIT_BLOCK,
     extra: str = "",
 ) -> str:
-    ci = CI_TEMPLATE.format(pin=pin, scope=scope, modul=modul, env_block=env_block, audit_block=audit_block)
+    ci = CI_TEMPLATE.format(scope=scope, modul=modul, env_block=env_block, audit_block=audit_block)
+    if pin is not None:
+        # Ein eigener ruff-Install im Workflow — soll es nicht mehr geben,
+        # laesst sich fuer die Gegenprobe aber gezielt einschleusen.
+        ci += EXTRA_JOB.format(command=f'pip install "ruff=={pin}"')
     return ci + (EXTRA_JOB.format(command=extra) if extra else "")
 
 
 def schreibe_repo(
     root: Path,
     *,
-    ci_pin: str = PIN,
+    ci_pin: str | None = None,
     ci_scope: str = SCOPE,
     py_pin: str = PIN,
     py_scope: str = SCOPE,
@@ -184,10 +190,27 @@ class GateKonsistenzTest(unittest.TestCase):
 
     # --- Pin einzeln neutralisieren, Datei fuer Datei ---------------------
 
-    def test_pin_weicht_in_ci_ab(self):
+    def test_abweichender_pin_in_der_ci_ist_ein_befund(self):
         problems = self.pruefe(ci_pin="0.16.0")
-        self.assertTrue(any("ruff-Pin weicht ab" in p for p in problems), problems)
+        self.assertTrue(any("installiert ruff selbst" in p for p in problems), problems)
         self.assertTrue(any("0.16.0" in p for p in problems), problems)
+
+    def test_uebereinstimmender_pin_in_der_ci_ist_auch_ein_befund(self):
+        """Die Gegenprobe, ohne die die neue Zusicherung nicht widerlegbar waere.
+
+        Frueher war ein CI-Pin eine von drei Stellen, und gemeldet wurde nur,
+        wenn er abwich. Ein Pin, der mit den uebrigen uebereinstimmt, ist aber
+        genau der gefaehrliche Fall: Er faellt keinem Gleichstands-Vergleich
+        auf und ueberschreibt das dev-Extra trotzdem — eine Anhebung dort
+        bliebe in der CI wirkungslos, und niemand saehe warum.
+        """
+        problems = self.pruefe(ci_pin=PIN)
+        self.assertTrue(any("installiert ruff selbst" in p for p in problems), problems)
+
+    def test_ohne_ci_pin_meldet_der_gate_nichts_dazu(self):
+        """Damit der Befund oben nicht bloss immer anschlaegt."""
+        problems = self.pruefe()
+        self.assertFalse(any("installiert ruff selbst" in p for p in problems), problems)
 
     def test_pin_weicht_in_pyproject_ab(self):
         self.assertTrue(any("ruff-Pin weicht ab" in p for p in self.pruefe(py_pin="0.15.8")))

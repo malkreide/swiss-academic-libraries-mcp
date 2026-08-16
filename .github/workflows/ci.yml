@@ -24,11 +24,11 @@ jobs:
       - name: uv installieren
         run: pip install uv
 
+      # Ein Install statt zwei: ruff und die Test-Abhaengigkeiten kommen aus
+      # dem dev-Extra in pyproject.toml. Die zweite Zeile zaehlte sie hier noch
+      # einmal auf — eine zweite Wahrheit, die niemand mit der ersten vergleicht.
       - name: Abhängigkeiten installieren
-        run: uv pip install -e "." --system
-
-      - name: Test-Abhängigkeiten installieren
-        run: uv pip install pytest pytest-asyncio respx "ruff==0.16.1" --system
+        run: uv pip install -e ".[dev]" --system
 
       - name: Linting mit ruff
         run: ruff check src/ tests/ scripts/
@@ -57,7 +57,9 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install "ruff==0.16.1"
+      # Kein eigener ruff-Pin: Der Schritt ist die einzige Installation dieses
+      # Jobs, deshalb steht hier das dev-Extra und nicht bloss ruff.
+      - run: pip install -e ".[dev]"
 
       - run: ruff check src/ tests/ scripts/
 
