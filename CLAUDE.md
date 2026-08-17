@@ -88,6 +88,7 @@ schlägt den Pin, ohne dass der Install etwas meldet.
 absichtlich denselben Scope — zwei Gates mit zwei Reichweiten sehen aus wie eins):
 
 ```bash
+python scripts/check_ruff_pin.py
 ruff check src/ tests/ scripts/
 ruff format --check src/ tests/ scripts/
 python -m py_compile src/swiss_academic_libraries_mcp/server.py
