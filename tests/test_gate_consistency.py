@@ -102,6 +102,7 @@ fmt = "ruff format {scope}"
 
 PRE_COMMIT_TEMPLATE = """\
 repos:
+{fremd}\
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v{pin}
     hooks:
@@ -109,6 +110,16 @@ repos:
         files: {files}
       - id: ruff-format
         files: {files}
+"""
+
+# Ein voellig gewoehnlicher zweiter Hook — eigene `rev`, eigener Dateifilter,
+# und mit ruff hat er nichts zu tun.
+FREMDER_HOOK = """\
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v9.9.9
+    hooks:
+      - id: end-of-file-fixer
+        files: ^(docs)/
 """
 
 CLAUDE_TEMPLATE = """\
@@ -154,6 +165,7 @@ def schreibe_repo(
     py_scope: str = SCOPE,
     pc_pin: str = PIN,
     pc_files: str = "^(src|tests|scripts)/",
+    pc_fremder_hook: bool = False,
     md_pin: str = PIN,
     md_scope: str = SCOPE,
     md_block: str | None = None,
@@ -166,8 +178,9 @@ def schreibe_repo(
     (root / "pyproject.toml").write_text(
         PYPROJECT_TEMPLATE.format(pin=py_pin, scope=py_scope), encoding="utf-8"
     )
+    fremd = FREMDER_HOOK if pc_fremder_hook else ""
     (root / ".pre-commit-config.yaml").write_text(
-        PRE_COMMIT_TEMPLATE.format(pin=pc_pin, files=pc_files), encoding="utf-8"
+        PRE_COMMIT_TEMPLATE.format(pin=pc_pin, files=pc_files, fremd=fremd), encoding="utf-8"
     )
     block = md_block if md_block is not None else DOC_BLOCK.format(scope=md_scope, modul="api_client")
     (root / "CLAUDE.md").write_text(CLAUDE_TEMPLATE.format(pin=md_pin, block=block), encoding="utf-8")
@@ -214,6 +227,29 @@ class GateKonsistenzTest(unittest.TestCase):
 
     def test_pin_weicht_in_pyproject_ab(self):
         self.assertTrue(any("ruff-Pin weicht ab" in p for p in self.pruefe(py_pin="0.15.8")))
+
+    def test_fremder_hook_bringt_weder_pin_noch_scope_ein(self):
+        """Ein zweiter Hook ist kein ruff-Befund.
+
+        `rev:` und `files:` wurden zeilenweise eingesammelt, ohne zu fragen, zu
+        welchem `repo:` sie gehoeren. Ein `end-of-file-fixer` mit eigener `rev`
+        — der gewoehnlichste Zusatz ueberhaupt — faerbte den Gate damit rot
+        mit «ruff-Pin weicht ab: 9.9.9», obwohl am ruff-Block niemand etwas
+        geaendert hat. Sein `files:` haette denselben Effekt auf den Scope.
+        """
+        self.assertEqual(self.pruefe(pc_fremder_hook=True), [])
+
+    def test_der_ruff_block_wird_trotz_fremdem_hook_weiter_gelesen(self):
+        """Die Gegenprobe zum Test darueber.
+
+        Ein Filter, der den fremden Hook uebergeht, koennte genauso gut den
+        ganzen Rest uebergehen — dann waere oben gruen, weil gar nichts mehr
+        geprueft wird. Hier steht der fremde Hook davor UND der ruff-Pin ist
+        verstellt: Gemeldet werden muss er trotzdem.
+        """
+        problems = self.pruefe(pc_fremder_hook=True, pc_pin="0.16.0")
+        self.assertTrue(problems, "verstellter ruff-Pin blieb hinter dem fremden Hook unsichtbar")
+        self.assertIn("0.16.0", " ".join(problems))
 
     def test_pin_weicht_in_pre_commit_ab(self):
         self.assertTrue(any("ruff-Pin weicht ab" in p for p in self.pruefe(pc_pin="0.17.0")))

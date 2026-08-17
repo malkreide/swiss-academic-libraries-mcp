@@ -117,6 +117,13 @@ SETUP_RE = re.compile(r"^(?:pip|uv|apt|apt-get|sudo)\s|\binstall\b")
 
 PIN_RE = re.compile(r"ruff==(\d+\.\d+\.\d+)")
 REV_RE = re.compile(r"^\s*rev:\s*v?(\d+\.\d+\.\d+)\s*$")
+# Der Kopf eines pre-commit-Eintrags. `rev:` und `files:` gehoeren immer dem
+# zuletzt genannten `repo:` — ohne diese Zuordnung zaehlte jedes `rev:` der
+# Datei als ruff-Pin, und ein zweiter, voellig gewoehnlicher Hook
+# (`end-of-file-fixer` und Kollegen) faerbte den Gate rot mit «ruff-Pin weicht
+# ab», obwohl am ruff-Block niemand etwas geaendert hat.
+REPO_RE = re.compile(r"^\s*-\s*repo:\s*(?P<url>\S+)\s*$")
+RUFF_HOOK_REPO = "ruff-pre-commit"
 FILES_RE = re.compile(r"^\s*files:\s*(?P<regex>\S+)\s*$")
 FILES_SHAPE_RE = re.compile(r"^\^\((?P<dirs>[A-Za-z0-9_|-]+)\)/$")
 RUFF_CMD_RE = re.compile(r"\bruff\s+(?:check|format)\b(?P<rest>[^\n]*)")
@@ -220,8 +227,18 @@ def collect_pyproject(text: str) -> tuple[list[Site], list[Site]]:
 
 def collect_pre_commit(text: str) -> tuple[list[Site], list[Site], list[str]]:
     pins, scopes, problems = [], [], []
+    im_ruff_block = False
     for number, raw in enumerate(text.splitlines(), start=1):
         line = _strip_comment(raw)
+
+        if match := REPO_RE.match(line):
+            im_ruff_block = RUFF_HOOK_REPO in match.group("url")
+            continue
+
+        # Alles unterhalb eines fremden `repo:` gehoert nicht zum ruff-Gate —
+        # weder seine Version noch sein Dateifilter.
+        if not im_ruff_block:
+            continue
 
         if match := REV_RE.match(line):
             pins.append(Site(f"{PRE_COMMIT}:{number} rev", match.group(1)))
