@@ -39,6 +39,7 @@ dem Problem, gegen das dieses Skript steht.
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import sys
 import tomllib
@@ -566,17 +567,14 @@ def collect_source_hosts(root: Path) -> list[Site]:
 
 
 def collect_live_comment_hosts(text: str) -> set[str]:
-    """Die Hosts, die der Kopfkommentar von `live-tests.yml` aufzaehlt."""
-    hosts = set()
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line.startswith("#"):
-            continue
-        for match in re.finditer(r"\b[a-z0-9][a-z0-9.-]*\.[a-z]{2,}\b", line):
-            wort = match.group(0)
-            # `.py`, `.yml`, `.md` sind Dateinamen, keine Quellen.
-            if wort.rsplit(".", 1)[-1] not in {"py", "yml", "yaml", "md", "toml", "txt"}:
-                hosts.add(wort)
+    """Die Hosts, die die Quellen-Tabelle aufzaehlt — nur die.
+
+    Frueher las das jede Kommentarzeile. Damit zaehlte auch der historische
+    Hinweis «hiess bis zum 19.8.2026 gegen api.crossref.org» als Aufzaehlung:
+    Eine Quelle waere als «genannt» durchgegangen, weil sie zufaellig in der
+    Prosa steht. Die Tabelle ist die Liste; der Fliesstext ist es nicht.
+    """
+    _zahlen, hosts, _probleme = lies_quellen_tabelle(text)
     return hosts
 
 
@@ -647,6 +645,218 @@ def live_name_nennt_quelle(live_text: str, quellen: list[Site]) -> list[str]:
                     f"erste Zeile Log gelesen hat."
                 )
     return problems
+
+
+# --- Die Zahlen in der Quellen-Tabelle ---------------------------------------
+#
+# Zaehlung per AST, nicht per `pytest --collect-only`: Dieses Skript kommt mit
+# der Standardbibliothek aus und laeuft im `lint`-Job, in dem pytest nichts zu
+# suchen hat. Beide `live`-Schreibweisen des Repos werden gelesen — modulweites
+# `pytestmark` und `@pytest.mark.live` an Klasse oder Funktion.
+
+TESTS = "tests"
+
+# Von welcher Quelle handelt ein Test? Die Zuordnung ist eine Heuristik ueber
+# Datei- und Testnamen — und darf genau deshalb nichts still verschlucken: Ein
+# Live-Test, der auf keine Regel passt, ist ein Befund (`_UNZUGEORDNET`). Sonst
+# senkte ein neu benannter Test die Zahl, ohne dass jemand es merkte, und die
+# Tabelle bliebe gruen, weil beide Seiten gemeinsam falsch waeren.
+TEST_ZU_GRUPPE: tuple[tuple[str, str, frozenset[str]], ...] = (
+    # (Erkennungsmerkmal, Beschriftung der Gruppe, Hosts der Gruppe)
+    (
+        "datei:test_oa_legal.py",
+        "oa_legal",
+        frozenset({"sui-generis.ch", "ex-ante.ch", "api.repositorium.ch"}),
+    ),
+    ("datei:test_intl_metadata.py", "intl_metadata", frozenset({"api.crossref.org", "export.arxiv.org"})),
+    ("name:swisscovery", "swisscovery", frozenset({"swisscovery.slsp.ch"})),
+    ("name:erara", "e-rara", frozenset({"www.e-rara.ch"})),
+    ("name:eperiodica", "e-periodica", frozenset({"www.e-periodica.ch"})),
+    ("name:emanuscripta", "e-manuscripta", frozenset({"www.e-manuscripta.ch"})),
+    ("name:cross_source", "quellenuebergreifend", frozenset()),
+    ("name:library_info", "library_info", frozenset()),
+)
+_UNZUGEORDNET = "(nicht zugeordnet)"
+
+TABELLE_START = "# QUELLEN-TABELLE ANFANG"
+TABELLE_ENDE = "# QUELLEN-TABELLE ENDE"
+ZAHL_RE = re.compile(r"\b(\d+)\b")
+
+
+def _ist_live_dekoriert(knoten: ast.AST) -> bool:
+    """Traegt der Knoten `@pytest.mark.live`?"""
+    for deko in getattr(knoten, "decorator_list", []):
+        if isinstance(deko, ast.Attribute) and deko.attr == "live":
+            wert = deko.value
+            if isinstance(wert, ast.Attribute) and wert.attr == "mark":
+                return True
+    return False
+
+
+def _modul_ist_live(baum: ast.Module) -> bool:
+    """Steht `pytestmark = pytest.mark.live` auf Modulebene?"""
+    for knoten in baum.body:
+        if not isinstance(knoten, ast.Assign):
+            continue
+        if not any(isinstance(z, ast.Name) and z.id == "pytestmark" for z in knoten.targets):
+            continue
+        werte = knoten.value.elts if isinstance(knoten.value, ast.List) else [knoten.value]
+        for wert in werte:
+            if isinstance(wert, ast.Attribute) and wert.attr == "live":
+                return True
+    return False
+
+
+def collect_live_tests(root: Path) -> list[Site]:
+    """Alle `-m live`-Tests, aus `tests/` gelesen."""
+    tests = root / TESTS
+    if not tests.is_dir():
+        raise GateError(f"{TESTS}/: nicht gefunden")
+    gefunden: list[Site] = []
+    for datei in sorted(tests.glob("test_*.py")):
+        try:
+            quelle = datei.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise GateError(f"{datei}: nicht lesbar ({exc})") from exc
+        try:
+            baum = ast.parse(quelle)
+        except SyntaxError as exc:
+            raise GateError(f"{datei}: nicht parsebar ({exc})") from exc
+        modul_live = _modul_ist_live(baum)
+        for knoten in baum.body:
+            if isinstance(knoten, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if knoten.name.startswith("test_") and (modul_live or _ist_live_dekoriert(knoten)):
+                    gefunden.append(Site(f"{datei.name}:{knoten.lineno}", knoten.name))
+            elif isinstance(knoten, ast.ClassDef):
+                klasse_live = modul_live or _ist_live_dekoriert(knoten)
+                for kind in knoten.body:
+                    if not isinstance(kind, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        continue
+                    if kind.name.startswith("test_") and (klasse_live or _ist_live_dekoriert(kind)):
+                        gefunden.append(Site(f"{datei.name}:{kind.lineno}", f"{knoten.name}.{kind.name}"))
+    return gefunden
+
+
+def _gruppe_von(site: Site) -> str:
+    datei = site.origin.split(":", 1)[0]
+    name = site.value.lower()
+    for merkmal, beschriftung, _hosts in TEST_ZU_GRUPPE:
+        art, wert = merkmal.split(":", 1)
+        if art == "datei" and datei == wert:
+            return beschriftung
+        if art == "name" and wert in name:
+            return beschriftung
+    return _UNZUGEORDNET
+
+
+def zaehle_live_tests(root: Path) -> tuple[dict[str, int], list[Site]]:
+    """Live-Tests je Gruppe — und die, die auf keine Regel passten."""
+    zaehler: dict[str, int] = {}
+    unzugeordnet: list[Site] = []
+    for site in collect_live_tests(root):
+        gruppe = _gruppe_von(site)
+        if gruppe == _UNZUGEORDNET:
+            unzugeordnet.append(site)
+        else:
+            zaehler[gruppe] = zaehler.get(gruppe, 0) + 1
+    return zaehler, unzugeordnet
+
+
+def lies_quellen_tabelle(live_text: str) -> tuple[dict[str, int], set[str], list[str]]:
+    """Die Tabelle im Kopfkommentar: Zahl je Gruppe, alle Hosts, plus Befunde."""
+    zeilen = live_text.splitlines()
+    try:
+        start = next(i for i, z in enumerate(zeilen) if z.strip() == TABELLE_START)
+        ende = next(i for i, z in enumerate(zeilen) if z.strip() == TABELLE_ENDE)
+    except StopIteration:
+        return (
+            {},
+            set(),
+            [
+                f"{LIVE_TESTS}: die Marker «{TABELLE_START}» / «{TABELLE_ENDE}» fehlen. "
+                f"Ohne sie weiss dieser Gate nicht, welche Zeilen die Quellen-Tabelle "
+                f"sind — und pruefte sie ab hier gar nicht mehr."
+            ],
+        )
+
+    beschriftung_zu_hosts = {b: h for _m, b, h in TEST_ZU_GRUPPE}
+    zahlen: dict[str, int] = {}
+    hosts: set[str] = set()
+    probleme: list[str] = []
+
+    for zeile in zeilen[start + 1 : ende]:
+        text = zeile.lstrip("#").strip()
+        if not text:
+            continue
+        zeilen_hosts = {
+            m.group(0)
+            for m in re.finditer(r"\b[a-z0-9][a-z0-9.-]*\.[a-z]{2,}\b", text)
+            if m.group(0).rsplit(".", 1)[-1] not in {"py", "yml", "yaml", "md", "toml", "txt"}
+        }
+        hosts |= zeilen_hosts
+        treffer = ZAHL_RE.findall(text)
+        if len(treffer) != 1:
+            probleme.append(
+                f"{LIVE_TESTS}: die Tabellenzeile «{text}» enthaelt "
+                f"{len(treffer)} Zahlen statt genau einer. Jede Zeile nennt eine "
+                f"Gruppe und ihre Testzahl; alles andere kann dieser Gate nicht "
+                f"gegen `tests/` halten."
+            )
+            continue
+        gruppe = next(
+            (b for b, h in beschriftung_zu_hosts.items() if h and h == zeilen_hosts),
+            None,
+        )
+        if gruppe is None:
+            gruppe = next((b for b in beschriftung_zu_hosts if b in text.lower()), None)
+        if gruppe is None:
+            probleme.append(
+                f"{LIVE_TESTS}: die Tabellenzeile «{text}» laesst sich keiner "
+                f"Gruppe zuordnen. Bekannt sind: "
+                f"{', '.join(sorted(beschriftung_zu_hosts))}."
+            )
+            continue
+        zahlen[gruppe] = int(treffer[0])
+    return zahlen, hosts, probleme
+
+
+def compare_live_counts(live_text: str, root: Path) -> list[str]:
+    """Stimmen die Zahlen in der Tabelle mit den `-m live`-Tests ueberein?
+
+    Die Tabelle traegt das Argument, warum der Workflow keine Quelle im Namen
+    fuehrt: crossref sind 2 von 30. Stimmt die Verteilung nicht mehr, ist das
+    Argument nicht mehr belegt — und ein Beleg, den niemand prueft, ist eine
+    Behauptung.
+    """
+    zahlen, _hosts, probleme = lies_quellen_tabelle(live_text)
+    if probleme:
+        return probleme
+    gezaehlt, unzugeordnet = zaehle_live_tests(root)
+
+    if unzugeordnet:
+        orte = "\n".join(f"    {s.value:<44} {s.origin}" for s in unzugeordnet)
+        probleme.append(
+            f"{TESTS}/: {len(unzugeordnet)} Live-Test(s) passen auf keine Regel in "
+            f"TEST_ZU_GRUPPE:\n{orte}\n"
+            f"    Entweder heisst der Test nicht nach seiner Quelle, oder es gibt "
+            f"eine neue — beides gehoert eingetragen. Still mitzaehlen wuerde die "
+            f"Tabelle unbemerkt falsch machen."
+        )
+
+    for gruppe in sorted(set(zahlen) | set(gezaehlt)):
+        steht, ist = zahlen.get(gruppe), gezaehlt.get(gruppe, 0)
+        if steht is None:
+            probleme.append(
+                f"{LIVE_TESTS}: die Tabelle fuehrt die Gruppe «{gruppe}» nicht, "
+                f"`tests/` hat aber {ist} Live-Test(s) dafuer."
+            )
+        elif steht != ist:
+            probleme.append(
+                f"{LIVE_TESTS}: die Tabelle nennt fuer «{gruppe}» {steht} Test(s), "
+                f"gezaehlt sind {ist}. Die Zahl belegt, wie stark eine Quelle "
+                f"vertreten ist; stimmt sie nicht, belegt sie nichts."
+            )
+    return probleme
 
 
 def _disagreements(kind: str, sites: list[Site]) -> list[str]:
@@ -725,6 +935,7 @@ def check(root: Path) -> list[str]:
     else:
         problems += compare_live_hosts(live_text, quellen)
         problems += live_name_nennt_quelle(live_text, quellen)
+    problems += compare_live_counts(live_text, root)
     return problems
 
 
@@ -753,7 +964,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         "ruff-Pin und Gate-Scope stimmen an allen geprueften Stellen ueberein, "
         "der Gate-Block in CLAUDE.md deckt sich mit ci.yml, und die "
-        "Quellen-Aufzaehlung in live-tests.yml deckt sich mit src/."
+        "Quellen-Tabelle in live-tests.yml deckt sich mit src/ (Hosts) "
+        "und tests/ (Zahlen)."
     )
     return 0
 
