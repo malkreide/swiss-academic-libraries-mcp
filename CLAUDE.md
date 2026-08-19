@@ -150,7 +150,16 @@ Ebene gewinnt). Fehlt die Marke oder nennt sie einen Wert, der nicht in
 Quelle stattdessen aus Datei- und Testnamen; ein Test, der falsch nach einer
 Quelle hiess, wanderte still in die falsche Gruppe, und gemeldet wurde dann
 die Tabelle — also die Stelle, die stimmte. Ein Name kann jetzt nichts mehr
-verschieben. Die Marke ist in `pyproject.toml` registriert. Die Tabelle
+verschieben. Die Marke ist in `pyproject.toml` registriert.
+
+Seit diesem Commit hält der Guard zusätzlich die Werteliste in **beiden**
+CONTRIBUTING-Dateien gegen `GRUPPEN` — beide Richtungen, damit weder eine neue
+Gruppe unerwähnt bleibt noch ein Wert dokumentiert ist, den es nicht gibt. Die
+Liste ist von `<!-- GRUPPEN-LISTE ANFANG/ENDE -->` eingefasst (HTML-Kommentare:
+im gerenderten Markdown unsichtbar, für den Guard sichtbar); ohne die Marker
+meldet er das, statt sich abzuschalten. Beide Sprachen, weil eine zweisprachige
+Doku, die nur einsprachig gepflegt wird, schlimmer ist als eine einsprachige:
+Sie sieht vollständig aus. Die Tabelle
 ist von `# QUELLEN-TABELLE ANFANG/ENDE` eingefasst; fehlen die Marker, meldet
 der Guard das, statt sich still abzuschalten. Der Fliesstext drumherum zählt
 nicht als Aufzählung — sonst ginge eine Quelle als «genannt» durch, weil sie

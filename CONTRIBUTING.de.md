@@ -67,10 +67,13 @@ Zulässige Werte stehen in `GRUPPEN` in
 zugleich die Zeilen der Quellen-Tabelle im Kopf von
 [`.github/workflows/live-tests.yml`](.github/workflows/live-tests.yml):
 
+<!-- GRUPPEN-LISTE ANFANG (geprüft von scripts/check_gate_consistency.py) -->
 `swisscovery`, `e-rara`, `e-periodica`, `e-manuscripta`, `oa_legal`,
-`intl_metadata` — dazu `quellenuebergreifend` für den einen Test, der mehrere
-Quellen zugleich anfasst, und `library_info` für den, der gar keine externe
-Quelle abfragt.
+`intl_metadata`, `quellenuebergreifend`, `library_info`
+<!-- GRUPPEN-LISTE ENDE -->
+
+`quellenuebergreifend` ist für den einen Test, der mehrere Quellen zugleich
+anfasst; `library_info` für den, der gar keine externe Quelle abfragt.
 
 **Ohne Marke wird die CI rot**, ebenso bei einem Wert, den `GRUPPEN` nicht kennt.
 Das ist Absicht: `check_gate_consistency.py` zählt die Live-Tests je Quelle und

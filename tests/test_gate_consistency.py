@@ -161,6 +161,19 @@ jobs:
             const PREFIX = '{prefix}';
 """
 
+CONTRIB = """\
+## Tests
+
+### Jeder Live-Test nennt seine Quelle
+
+Zulaessige Werte stehen in `GRUPPEN` in `scripts/check_gate_consistency.py`:
+
+<!-- GRUPPEN-LISTE ANFANG -->
+`swisscovery`, `e-rara`, `e-periodica`, `e-manuscripta`, `oa_legal`,
+`intl_metadata`, `quellenuebergreifend`, `library_info`
+<!-- GRUPPEN-LISTE ENDE -->
+"""
+
 LIVE_JOB_NAME = "Live-Suite gegen die echten Quellen"
 LIVE_PREFIX = "Live-Tests gegen die echten Quellen rot"
 
@@ -311,6 +324,7 @@ def schreibe_repo(
     tests_szenarien: str = TESTS_SZENARIEN,
     tests_oa_legal: str = TESTS_OA_LEGAL,
     tests_intl: str = TESTS_INTL,
+    contrib: str = CONTRIB,
 ) -> Path:
     """Ein in sich stimmiges Mini-Repo, an dem sich einzelne Stellen verstellen lassen."""
     (root / ".github" / "workflows").mkdir(parents=True, exist_ok=True)
@@ -332,6 +346,8 @@ def schreibe_repo(
         LIVE_TEMPLATE.format(tabelle=live_tabelle, job_name=live_job_name, prefix=live_prefix),
         encoding="utf-8",
     )
+    for name in ("CONTRIBUTING.de.md", "CONTRIBUTING.md"):
+        (root / name).write_text(contrib, encoding="utf-8")
     testdir = root / "tests"
     testdir.mkdir(parents=True, exist_ok=True)
     (testdir / "test_20_scenarios.py").write_text(tests_szenarien, encoding="utf-8")
@@ -764,6 +780,65 @@ class GateKonsistenzTest(unittest.TestCase):
             )
         )
         self.assertTrue(any("Zahlen statt genau einer" in p for p in problems), problems)
+
+    # --- die Gruppen-Liste in beiden CONTRIBUTING-Dateien ------------------
+    #
+    # Die `quelle`-Marke ist Pflicht, und wer von aussen beitraegt, erfaehrt die
+    # zulaessigen Werte aus CONTRIBUTING. Eine neunte Gruppe, die in Skript und
+    # Workflow landet, aber nicht in der Doku, schickt den naechsten Beitrag in
+    # eine rote CI mit Werten, welche die Anleitung nicht kennt.
+
+    def contributing(self, de: str | None = None, en: str | None = None) -> list[str]:
+        """Nur den CONTRIBUTING-Abgleich fahren, mit verstellbaren Dateien."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = schreibe_repo(Path(tmp))
+            (root / "CONTRIBUTING.de.md").write_text(de if de is not None else CONTRIB, encoding="utf-8")
+            (root / "CONTRIBUTING.md").write_text(en if en is not None else CONTRIB, encoding="utf-8")
+            return cgc.compare_contributing_gruppen(root)
+
+    def test_vollstaendige_liste_ist_still(self):
+        self.assertEqual(self.contributing(), [])
+
+    def test_fehlende_gruppe_in_der_doku_ist_ein_befund(self):
+        problems = self.contributing(de=CONTRIB.replace(", `library_info`", ""))
+        self.assertTrue(any("library_info" in p and "CONTRIBUTING.de.md" in p for p in problems), problems)
+
+    def test_nur_eine_sprache_gepflegt_ist_ein_befund(self):
+        """Eine zweisprachige Doku, die nur einsprachig gepflegt wird, ist
+        schlimmer als eine einsprachige: Sie sieht vollstaendig aus."""
+        problems = self.contributing(en=CONTRIB.replace(", `library_info`", ""))
+        self.assertTrue(any("CONTRIBUTING.md" in p for p in problems), problems)
+        self.assertFalse(any("CONTRIBUTING.de.md" in p for p in problems), problems)
+
+    def test_erfundener_wert_in_der_doku_ist_ein_befund(self):
+        problems = self.contributing(de=CONTRIB.replace("`library_info`", "`library_info`, `erfunden`"))
+        self.assertTrue(any("erfunden" in p and "nicht kennt" in p for p in problems), problems)
+
+    def test_fehlende_marker_sind_ein_befund(self):
+        problems = self.contributing(de=CONTRIB.replace("<!-- GRUPPEN-LISTE ANFANG -->\n", ""))
+        self.assertTrue(any("Marker" in p for p in problems), problems)
+
+    def test_contributing_abgleich_haengt_wirklich_in_check(self):
+        """Die Verdrahtung, nicht nur die Funktion.
+
+        Die Tests darueber rufen `compare_contributing_gruppen` direkt auf. Sie
+        blieben alle gruen, als der Aufruf versuchsweise aus `check()` entfernt
+        wurde — die Funktion war korrekt, lief in der CI aber nicht mehr. Ein
+        Gate, das niemand aufruft, ist kein Gate.
+        """
+        problems = self.pruefe(contrib=CONTRIB.replace(", `library_info`", ""))
+        self.assertTrue(any("library_info" in p for p in problems), problems)
+
+    def test_backticks_ausserhalb_der_marker_zaehlen_nicht(self):
+        """Die Gegenprobe gegen zu breite Extraktion.
+
+        Der Abschnitt drumherum nennt `GRUPPEN`, Dateinamen und Beispielwerte
+        ebenfalls in Backticks. Zaehlten die mit, meldete der Gate lauter
+        erfundene Werte — und ein Gate, das Unsinn meldet, wird abgeschaltet.
+        """
+        laerm = CONTRIB + "\n\nSiehe `GRUPPEN` in `scripts/check_gate_consistency.py`, "
+        laerm += "etwa `swisscoverry` als Vertipper-Beispiel.\n"
+        self.assertEqual(self.contributing(de=laerm, en=laerm), [])
 
 
 if __name__ == "__main__":
