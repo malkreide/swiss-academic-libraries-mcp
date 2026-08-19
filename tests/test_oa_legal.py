@@ -452,6 +452,7 @@ class TestEgressAllowList:
 
 
 @pytest.mark.live
+@pytest.mark.quelle("oa_legal")
 class TestLiveOaSources:
     async def test_search_datenschutz_live(self):
         out = await oa_legal.search_publications(query="Datenschutz", max_records=10)

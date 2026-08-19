@@ -42,6 +42,47 @@ PYTHONPATH=src pytest tests/ -m "live"
 
 New tools must be covered by at least one unit test and one live smoke test. **Never** commit personal data or credentials.
 
+### Every live test names its source
+
+Every test marked `@pytest.mark.live` also carries `@pytest.mark.quelle("…")` —
+on the function or on its class. The finer level wins, so an outlier inside an
+otherwise uniform class can be attributed on its own.
+
+```python
+# In `test_20_scenarios.py` the `live` mark comes from the module-level
+# `pytestmark = pytest.mark.live` at the top of the file; only the source here.
+@pytest.mark.quelle("e-rara")
+async def test_09_erara_list_collections():
+    ...
+
+
+@pytest.mark.live
+@pytest.mark.quelle("swisscovery")
+class TestSwisscoveryLive:
+    async def test_basic_search(self): ...
+```
+
+The permitted values live in `GRUPPEN` in
+[`scripts/check_gate_consistency.py`](scripts/check_gate_consistency.py) and are
+at the same time the rows of the source table in the header of
+[`.github/workflows/live-tests.yml`](.github/workflows/live-tests.yml):
+
+`swisscovery`, `e-rara`, `e-periodica`, `e-manuscripta`, `oa_legal`,
+`intl_metadata` — plus `quellenuebergreifend` for the one test that touches
+several sources at once, and `library_info` for the one that queries no external
+source at all.
+
+**A missing marker turns CI red**, as does a value `GRUPPEN` does not know. That
+is deliberate: `check_gate_consistency.py` counts the live tests per source and
+holds them against that table. A test without a marker would be counted nowhere,
+and the table would stay green while understating its coverage.
+
+Until 19 Aug 2026 the guard guessed the source from file and test names instead.
+A test that was named after the wrong source moved silently into the wrong
+group — and what got reported was the table, i.e. the place that was correct.
+Anyone following that report would have "fixed" a right number. A name can no
+longer move anything; the marker is registered in `pyproject.toml`.
+
 ## Security
 
 Please report security issues responsibly — see [SECURITY.md](SECURITY.md).
@@ -59,12 +100,19 @@ fell) and `unknown` (did not run — install failed, nothing collected,
 everything skipped). An `unknown` never closes an issue: closing would claim a
 comparison that never happened.
 
-**A red live run does not necessarily mean *our* bug.** It means the contract
-with the source has changed, or the source is down. Both belong seen; only the
-first belongs fixed. Please read the run before disabling the job — that is how
-this check dies, and it is the only one in the repository that can contradict a
-wrong assumption about api.crossref.org. Every other test asserts against a fixture, and
-the fixture was written from the same assumption as the code.
+**A red live run means one of three things**, and none of them can be read off
+the error message: the contract with the source has changed; the source is down;
+or the bug is ours and the source is innocent. Query the source first, classify
+second.
+
+The third is not hypothetical: on 17 Aug 2026, 13 of 30 live tests were red, all
+with `RuntimeError: Event loop is closed`, while every source answered perfectly.
+The bug was in our own httpx client.
+
+Please read the run before disabling the job — that is how this check dies, and
+it is the only one in the repository that can contradict a wrong assumption
+about any of the connected sources. Every other test asserts against a fixture,
+and the fixture was written from the same assumption as the code.
 
 ## License
 
