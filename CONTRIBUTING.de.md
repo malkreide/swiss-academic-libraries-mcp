@@ -42,6 +42,47 @@ PYTHONPATH=src pytest tests/ -m "live"
 
 Neue Tools müssen mit mindestens einem Unit-Test und einem Live-Smoke-Test abgedeckt sein. Committen Sie **niemals** persönliche Daten oder Zugangsdaten.
 
+### Jeder Live-Test nennt seine Quelle
+
+Jeder Test mit `@pytest.mark.live` trägt zusätzlich `@pytest.mark.quelle("…")` —
+an der Funktion oder an ihrer Klasse. Die feinere Ebene gewinnt, ein Ausreisser
+in einer sonst einheitlichen Klasse lässt sich also einzeln zuordnen.
+
+```python
+# In `test_20_scenarios.py` kommt die `live`-Marke aus dem modulweiten
+# `pytestmark = pytest.mark.live` am Dateikopf; hier steht nur die Quelle.
+@pytest.mark.quelle("e-rara")
+async def test_09_erara_list_collections():
+    ...
+
+
+@pytest.mark.live
+@pytest.mark.quelle("swisscovery")
+class TestSwisscoveryLive:
+    async def test_basic_search(self): ...
+```
+
+Zulässige Werte stehen in `GRUPPEN` in
+[`scripts/check_gate_consistency.py`](scripts/check_gate_consistency.py) und sind
+zugleich die Zeilen der Quellen-Tabelle im Kopf von
+[`.github/workflows/live-tests.yml`](.github/workflows/live-tests.yml):
+
+`swisscovery`, `e-rara`, `e-periodica`, `e-manuscripta`, `oa_legal`,
+`intl_metadata` — dazu `quellenuebergreifend` für den einen Test, der mehrere
+Quellen zugleich anfasst, und `library_info` für den, der gar keine externe
+Quelle abfragt.
+
+**Ohne Marke wird die CI rot**, ebenso bei einem Wert, den `GRUPPEN` nicht kennt.
+Das ist Absicht: `check_gate_consistency.py` zählt die Live-Tests je Quelle und
+hält sie gegen jene Tabelle. Ein Test ohne Marke wäre nirgends mitgezählt, und
+die Tabelle bliebe grün, obwohl sie zu wenig ausweist.
+
+Bis zum 19.8.2026 riet der Guard die Quelle stattdessen aus Datei- und
+Testnamen. Ein Test, der falsch nach einer Quelle hiess, wanderte still in die
+falsche Gruppe — gemeldet wurde dann die Tabelle, also die Stelle, die stimmte.
+Wer dem folgte, korrigierte eine richtige Zahl. Ein Name kann jetzt nichts mehr
+verschieben; die Marke ist in `pyproject.toml` registriert.
+
 ## Sicherheit
 
 Bitte melden Sie Sicherheitsprobleme verantwortungsvoll — siehe [SECURITY.md](SECURITY.md).
@@ -59,13 +100,19 @@ etwas gefallen) und `unknown` (nicht gelaufen — Installation gescheitert, null
 Tests eingesammelt, alle übersprungen). Ein `unknown` schliesst nie ein Issue:
 Zuzumachen hiesse zu behaupten, der Vergleich sei gelaufen.
 
-**Ein roter Live-Lauf heisst nicht zwingend «unser Fehler».** Er heisst: Der
-Vertrag mit der Quelle hat sich geändert, oder die Quelle ist gerade aus. Beides
-gehört gesehen, nur das Erste gehört gefixt. Bitte den Lauf lesen, bevor der Job
-deaktiviert wird — so stirbt dieser Check, und er ist der einzige im Repo, der
-einer falschen Grundannahme über api.crossref.org widersprechen kann. Jeder andere Test
-prüft gegen eine Fixture, und die Fixture ist aus derselben Annahme geschrieben
-wie der Code.
+**Ein roter Live-Lauf heisst dreierlei**, und keines davon ist aus der
+Fehlermeldung abzulesen: Der Vertrag mit der Quelle hat sich geändert; die
+Quelle ist gerade aus; oder der Fehler steht bei uns und die Quelle ist
+unschuldig. Erst die Quelle abfragen, dann einordnen.
+
+Das Dritte ist keine Theorie: Am 17.8.2026 waren 13 von 30 Live-Tests rot, alle
+mit `RuntimeError: Event loop is closed`, während alle Quellen einwandfrei
+antworteten. Der Fehler lag in unserem httpx-Client.
+
+Bitte den Lauf lesen, bevor der Job deaktiviert wird — so stirbt dieser Check,
+und er ist der einzige im Repo, der einer falschen Grundannahme über eine der
+angebundenen Quellen widersprechen kann. Jeder andere Test prüft gegen eine
+Fixture, und die Fixture ist aus derselben Annahme geschrieben wie der Code.
 
 ## Lizenz
 
