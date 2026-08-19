@@ -77,6 +77,7 @@ def record_result(name: str, passed: bool, detail: str = "", duration: float = 0
 # ─── Szenario 1: library_info Grundfunktion ────────────────────────────────
 
 
+@pytest.mark.quelle("library_info")
 async def test_01_library_info_overview():
     """Szenario 1: Einstiegspunkt liefert vollständige Übersicht aller Quellen."""
     t = time.time()
@@ -102,6 +103,7 @@ async def test_01_library_info_overview():
 # ─── Szenario 2: swisscovery Volltextsuche ─────────────────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_02_swisscovery_fulltext():
     """Szenario 2: Einfache Volltextsuche in swisscovery."""
     t = time.time()
@@ -128,6 +130,7 @@ async def test_02_swisscovery_fulltext():
 # ─── Szenario 3: swisscovery CQL Feldsuche ─────────────────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_03_swisscovery_cql_field_search():
     """Szenario 3: CQL-Feldsuche nach Autor."""
     t = time.time()
@@ -153,6 +156,7 @@ async def test_03_swisscovery_cql_field_search():
 # ─── Szenario 4: swisscovery JSON-Ausgabe ──────────────────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_04_swisscovery_json_format():
     """Szenario 4: Maschinenlesbares JSON-Format."""
     t = time.time()
@@ -185,6 +189,7 @@ async def test_04_swisscovery_json_format():
 # ─── Szenario 5: swisscovery Pagination ────────────────────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_05_swisscovery_pagination():
     """Szenario 5: Pagination über start_record."""
     t = time.time()
@@ -223,6 +228,7 @@ async def test_05_swisscovery_pagination():
 # ─── Szenario 6: swisscovery Einzeltitel ───────────────────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_06_swisscovery_get_record():
     """Szenario 6: Einzeltitel via MMS-ID abrufen (zuerst suchen, dann abrufen)."""
     t = time.time()
@@ -266,6 +272,7 @@ async def test_06_swisscovery_get_record():
 # ─── Szenario 7: swisscovery ungültige MMS-ID ─────────────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_07_swisscovery_invalid_mms_id():
     """Szenario 7: Fehlerbehandlung bei ungültiger MMS-ID."""
     t = time.time()
@@ -288,6 +295,7 @@ async def test_07_swisscovery_invalid_mms_id():
 # ─── Szenario 8: swisscovery ISBN-Suche ────────────────────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_08_swisscovery_isbn_search():
     """Szenario 8: Suche nach ISBN."""
     t = time.time()
@@ -314,6 +322,7 @@ async def test_08_swisscovery_isbn_search():
 # ─── Szenario 9: e-rara Sammlungen auflisten ──────────────────────────────
 
 
+@pytest.mark.quelle("e-rara")
 async def test_09_erara_list_collections():
     """Szenario 9: Alle e-rara Sammlungen/Bibliotheken auflisten."""
     t = time.time()
@@ -334,6 +343,7 @@ async def test_09_erara_list_collections():
 # ─── Szenario 10: e-rara Sammlungen filtern ───────────────────────────────
 
 
+@pytest.mark.quelle("e-rara")
 async def test_10_erara_filter_collections():
     """Szenario 10: e-rara Sammlungen nach Name filtern."""
     t = time.time()
@@ -353,6 +363,7 @@ async def test_10_erara_filter_collections():
 # ─── Szenario 11: e-rara Einträge nach Datum ──────────────────────────────
 
 
+@pytest.mark.quelle("e-rara")
 async def test_11_erara_list_by_date():
     """Szenario 11: e-rara Einträge eines bestimmten Zeitraums (ETH-Sammlung)."""
     t = time.time()
@@ -379,6 +390,7 @@ async def test_11_erara_list_by_date():
 # ─── Szenario 12: e-rara JSON-Format ──────────────────────────────────────
 
 
+@pytest.mark.quelle("e-rara")
 async def test_12_erara_json_format():
     """Szenario 12: e-rara Einträge im JSON-Format."""
     t = time.time()
@@ -410,6 +422,7 @@ async def test_12_erara_json_format():
 # ─── Szenario 13: e-rara Einzelwerk abrufen ────────────────────────────────
 
 
+@pytest.mark.quelle("e-rara")
 async def test_13_erara_get_record():
     """Szenario 13: e-rara Einzelwerk via OAI-Identifier (zuerst suchen)."""
     t = time.time()
@@ -449,6 +462,7 @@ async def test_13_erara_get_record():
 # ─── Szenario 14: e-periodica Zeitschriftenartikel ────────────────────────
 
 
+@pytest.mark.quelle("e-periodica")
 async def test_14_eperiodica_list_records():
     """Szenario 14: e-periodica aktuelle Zeitschriftenartikel (kürzerer Zeitraum wegen Timeout-Risiko)."""
     t = time.time()
@@ -475,6 +489,7 @@ async def test_14_eperiodica_list_records():
 # ─── Szenario 15: e-periodica Einzelartikel ───────────────────────────────
 
 
+@pytest.mark.quelle("e-periodica")
 async def test_15_eperiodica_get_record():
     """Szenario 15: e-periodica Einzelartikel via bekanntem OAI-Identifier."""
     t = time.time()
@@ -508,6 +523,7 @@ async def test_15_eperiodica_get_record():
 # ─── Szenario 16: e-manuscripta Sammlungen ────────────────────────────────
 
 
+@pytest.mark.quelle("e-manuscripta")
 async def test_16_emanuscripta_list_collections():
     """Szenario 16: e-manuscripta Sammlungen auflisten."""
     t = time.time()
@@ -528,6 +544,7 @@ async def test_16_emanuscripta_list_collections():
 # ─── Szenario 17: e-manuscripta Handschriften ─────────────────────────────
 
 
+@pytest.mark.quelle("e-manuscripta")
 async def test_17_emanuscripta_list_records():
     """Szenario 17: e-manuscripta Handschriften eines Zeitraums."""
     t = time.time()
@@ -553,6 +570,7 @@ async def test_17_emanuscripta_list_records():
 # ─── Szenario 18: e-manuscripta Einzelobjekt ──────────────────────────────
 
 
+@pytest.mark.quelle("e-manuscripta")
 async def test_18_emanuscripta_get_record():
     """Szenario 18: e-manuscripta Einzelobjekt abrufen."""
     t = time.time()
@@ -591,6 +609,7 @@ async def test_18_emanuscripta_get_record():
 # ─── Szenario 19: swisscovery kombinierte CQL-Suche ───────────────────────
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_19_swisscovery_combined_cql():
     """Szenario 19: Komplexe CQL-Suche mit AND-Verknüpfung."""
     t = time.time()
@@ -616,6 +635,7 @@ async def test_19_swisscovery_combined_cql():
 # ─── Szenario 20: Cross-Source Workflow ────────────────────────────────────
 
 
+@pytest.mark.quelle("quellenuebergreifend")
 async def test_20_cross_source_research():
     """Szenario 20: Quellenübergreifende Recherche – 3 Quellen (ohne e-periodica wegen Timeout)."""
     t = time.time()

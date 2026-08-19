@@ -141,9 +141,16 @@ Seit diesem Commit hält es auch die **Zahlen** der Tabelle — die Testzahl je
 Quelle — gegen die tatsächlichen `-m live`-Tests, gezählt per AST (das Skript
 bleibt stdlib-only und läuft im `lint`-Job, wo pytest nichts zu suchen hat).
 Beide `live`-Schreibweisen des Repos werden gelesen: modulweites `pytestmark`
-und `@pytest.mark.live` an Klasse oder Funktion. Die Zuordnung Test → Quelle
-ist eine Heuristik über Datei- und Testnamen und verschluckt deshalb nichts
-still: Ein Live-Test, der auf keine Regel passt, ist ein Befund. Die Tabelle
+und `@pytest.mark.live` an Klasse oder Funktion.
+
+Die Zuordnung Test → Quelle steht **am Test**: Jeder `live`-Test trägt
+`@pytest.mark.quelle("…")`, an der Funktion oder an ihrer Klasse (die feinere
+Ebene gewinnt). Fehlt die Marke oder nennt sie einen Wert, der nicht in
+`GRUPPEN` steht, ist das ein Befund. Bis zum 19.8.2026 riet der Guard die
+Quelle stattdessen aus Datei- und Testnamen; ein Test, der falsch nach einer
+Quelle hiess, wanderte still in die falsche Gruppe, und gemeldet wurde dann
+die Tabelle — also die Stelle, die stimmte. Ein Name kann jetzt nichts mehr
+verschieben. Die Marke ist in `pyproject.toml` registriert. Die Tabelle
 ist von `# QUELLEN-TABELLE ANFANG/ENDE` eingefasst; fehlen die Marker, meldet
 der Guard das, statt sich still abzuschalten. Der Fliesstext drumherum zählt
 nicht als Aufzählung — sonst ginge eine Quelle als «genannt» durch, weil sie

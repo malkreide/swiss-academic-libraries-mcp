@@ -624,6 +624,7 @@ class TestHttpGetMocked:
 
 
 @pytest.mark.live
+@pytest.mark.quelle("swisscovery")
 class TestSwisscoveryLive:
     async def test_basic_search(self) -> None:
         from swiss_academic_libraries_mcp.api_client import SWISSCOVERY_SRU_URL, http_get, parse_sru_response
@@ -665,6 +666,7 @@ class TestSwisscoveryLive:
 
 
 @pytest.mark.live
+@pytest.mark.quelle("e-rara")
 class TestEraraLive:
     async def test_list_records(self) -> None:
         from swiss_academic_libraries_mcp.api_client import ERARA_OAI_URL, http_get, parse_oai_response
@@ -712,6 +714,7 @@ class TestEraraLive:
 
 
 @pytest.mark.live
+@pytest.mark.quelle("e-periodica")
 class TestEperiodicaLive:
     async def test_list_records(self) -> None:
         from swiss_academic_libraries_mcp.api_client import EPERIODICA_OAI_URL, http_get, parse_oai_response
@@ -733,6 +736,7 @@ class TestEperiodicaLive:
 
 
 @pytest.mark.live
+@pytest.mark.quelle("e-manuscripta")
 class TestEmanuscriptaLive:
     async def test_list_records(self) -> None:
         from swiss_academic_libraries_mcp.api_client import EMANUSCRIPTA_OAI_URL, http_get, parse_oai_response

@@ -59,30 +59,37 @@ import pytest
 pytestmark = pytest.mark.live
 
 
+@pytest.mark.quelle("library_info")
 async def test_01_library_info_overview():
     pass
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_02_swisscovery_fulltext():
     pass
 
 
+@pytest.mark.quelle("swisscovery")
 async def test_03_swisscovery_pagination():
     pass
 
 
+@pytest.mark.quelle("e-rara")
 async def test_04_erara_list_collections():
     pass
 
 
+@pytest.mark.quelle("e-periodica")
 async def test_05_eperiodica_list_records():
     pass
 
 
+@pytest.mark.quelle("e-manuscripta")
 async def test_06_emanuscripta_list_records():
     pass
 
 
+@pytest.mark.quelle("quellenuebergreifend")
 async def test_07_cross_source_research():
     pass
 """
@@ -100,6 +107,7 @@ async def test_ohne_marke_zaehlt_nicht():
 
 
 @pytest.mark.live
+@pytest.mark.quelle("oa_legal")
 class TestLiveOaSources:
     async def test_search_datenschutz_live(self):
         pass
@@ -110,6 +118,7 @@ import pytest
 
 
 @pytest.mark.live
+@pytest.mark.quelle("intl_metadata")
 class TestLiveIntlSources:
     async def test_resolve_doi_live(self):
         pass
@@ -647,30 +656,72 @@ class GateKonsistenzTest(unittest.TestCase):
 
     def test_neuer_live_test_ohne_nachgezogene_zahl_ist_ein_befund(self):
         problems = self.pruefe(
-            tests_szenarien=TESTS_SZENARIEN + "\n\nasync def test_08_swisscovery_noch_eine():\n    pass\n"
+            tests_szenarien=TESTS_SZENARIEN
+            + '\n\n@pytest.mark.quelle("swisscovery")\nasync def test_08_noch_eine():\n    pass\n'
         )
         self.assertTrue(any("swisscovery" in p and "gezaehlt sind 3" in p for p in problems), problems)
 
-    def test_live_test_ohne_zuordnung_ist_ein_befund(self):
-        """Die Zuordnung ist eine Heuristik ueber Namen — und darf deshalb
-        nichts still verschlucken. Ein Test, der auf keine Regel passt, senkte
-        sonst eine Zahl, ohne dass jemand es merkt."""
+    def test_live_test_ohne_marke_ist_ein_befund(self):
+        """Die Marke ist Pflicht, nicht Kuer.
+
+        Ohne sie liesse sich der Test keiner Zeile der Tabelle zurechnen — er
+        waere still nirgends mitgezaehlt, und die Tabelle bliebe gruen, obwohl
+        sie zu wenig ausweist.
+        """
         problems = self.pruefe(
-            tests_szenarien=TESTS_SZENARIEN + "\n\nasync def test_08_zentralgut_liefert():\n    pass\n"
+            tests_szenarien=TESTS_SZENARIEN + "\n\nasync def test_08_ohne_marke():\n    pass\n"
         )
-        self.assertTrue(any("keine Regel" in p and "zentralgut" in p for p in problems), problems)
+        self.assertTrue(any("ohne `@pytest.mark.quelle" in p for p in problems), problems)
+        self.assertTrue(any("test_08_ohne_marke" in p for p in problems), problems)
 
-    def test_klassen_marke_zaehlt_wie_modul_marke(self):
-        """Beide `live`-Schreibweisen des Repos muessen gezaehlt werden.
+    def test_unbekannter_quellen_name_ist_ein_befund(self):
+        """Ein Vertipper darf nicht als neue Gruppe durchgehen."""
+        problems = self.pruefe(
+            tests_szenarien=TESTS_SZENARIEN
+            + '\n\n@pytest.mark.quelle("swisscoverry")\nasync def test_08_vertippt():\n    pass\n'
+        )
+        self.assertTrue(any("unbekanntem Quellen-Namen" in p for p in problems), problems)
+        self.assertTrue(any("swisscoverry" in p for p in problems), problems)
 
-        Ein Checker, der nur `pytestmark` liest, saehe die vier Live-Klassen in
+    def test_klassen_marke_gilt_fuer_ihre_methoden(self):
+        """Beide `live`-Schreibweisen und beide Marken-Ebenen muessen zaehlen.
+
+        Ein Checker, der nur Funktionen liest, saehe die Live-Klassen in
         `test_server.py` nicht — und meldete zu wenig, ohne rot zu werden.
         """
         problems = self.pruefe(
-            tests_intl=TESTS_INTL + "\n\n@pytest.mark.live\nclass TestNochEine:\n"
-            "    async def test_resolve_doi_zweitens(self):\n        pass\n"
+            tests_intl=TESTS_INTL + '\n\n@pytest.mark.live\n@pytest.mark.quelle("intl_metadata")\n'
+            "class TestNochEine:\n    async def test_zweitens(self):\n        pass\n"
         )
         self.assertTrue(any("intl_metadata" in p and "gezaehlt sind 2" in p for p in problems), problems)
+
+    def test_marke_an_der_funktion_schlaegt_die_der_klasse(self):
+        """Die feinere Ebene gewinnt — sonst liesse sich ein Ausreisser in einer
+        sonst homogenen Klasse nicht richtig zurechnen."""
+        problems = self.pruefe(
+            tests_intl=TESTS_INTL + '\n\n@pytest.mark.live\n@pytest.mark.quelle("intl_metadata")\n'
+            "class TestGemischt:\n"
+            '    @pytest.mark.quelle("swisscovery")\n'
+            "    async def test_doch_swisscovery(self):\n        pass\n"
+        )
+        self.assertTrue(any("swisscovery" in p and "gezaehlt sind 3" in p for p in problems), problems)
+        self.assertFalse(any("intl_metadata" in p for p in problems), problems)
+
+    def test_irrefuehrender_name_mit_richtiger_marke_ist_kein_befund(self):
+        """Der Grund, warum die Marke die Namensheuristik abgeloest hat.
+
+        Vorher wurde die Quelle aus Datei- und Testnamen geraten. Ein Test, der
+        falsch nach einer Quelle hiess, wanderte still in die falsche Gruppe;
+        gemeldet wurde dann die Tabelle — also die Stelle, die stimmte. Mit der
+        Marke kann ein Name gar nichts mehr verschieben.
+        """
+        problems = self.pruefe(
+            tests_szenarien=TESTS_SZENARIEN.replace(
+                "async def test_04_erara_list_collections():",
+                "async def test_04_swisscovery_klingt_so_ist_aber_erara():",
+            )
+        )
+        self.assertEqual(problems, [])
 
     def test_test_ohne_live_marke_zaehlt_nicht(self):
         """Gegenrichtung: Nicht jeder Test ist ein Live-Test.

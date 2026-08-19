@@ -90,6 +90,13 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "live: marks tests as requiring live network access (deselect with '-m not live')",
+    # Welche Quelle prueft dieser Live-Test? Jeder `live`-Test traegt genau eine
+    # `quelle`-Marke, an der Funktion oder an ihrer Klasse. Bis zum 19.8.2026 riet
+    # `scripts/check_gate_consistency.py` das aus Datei- und Testnamen; ein Test,
+    # der falsch nach einer Quelle hiess, wurde still der falschen zugerechnet.
+    # Zulaessige Werte stehen in GRUPPEN in jenem Skript und sind die Zeilen der
+    # Quellen-Tabelle in `.github/workflows/live-tests.yml`.
+    "quelle(name): welche Quelle ein Live-Test prueft (z. B. swisscovery, e-rara)",
 ]
 
 [tool.ruff]

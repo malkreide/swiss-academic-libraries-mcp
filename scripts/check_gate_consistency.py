@@ -656,27 +656,24 @@ def live_name_nennt_quelle(live_text: str, quellen: list[Site]) -> list[str]:
 
 TESTS = "tests"
 
-# Von welcher Quelle handelt ein Test? Die Zuordnung ist eine Heuristik ueber
-# Datei- und Testnamen — und darf genau deshalb nichts still verschlucken: Ein
-# Live-Test, der auf keine Regel passt, ist ein Befund (`_UNZUGEORDNET`). Sonst
-# senkte ein neu benannter Test die Zahl, ohne dass jemand es merkte, und die
-# Tabelle bliebe gruen, weil beide Seiten gemeinsam falsch waeren.
-TEST_ZU_GRUPPE: tuple[tuple[str, str, frozenset[str]], ...] = (
-    # (Erkennungsmerkmal, Beschriftung der Gruppe, Hosts der Gruppe)
-    (
-        "datei:test_oa_legal.py",
-        "oa_legal",
-        frozenset({"sui-generis.ch", "ex-ante.ch", "api.repositorium.ch"}),
-    ),
-    ("datei:test_intl_metadata.py", "intl_metadata", frozenset({"api.crossref.org", "export.arxiv.org"})),
-    ("name:swisscovery", "swisscovery", frozenset({"swisscovery.slsp.ch"})),
-    ("name:erara", "e-rara", frozenset({"www.e-rara.ch"})),
-    ("name:eperiodica", "e-periodica", frozenset({"www.e-periodica.ch"})),
-    ("name:emanuscripta", "e-manuscripta", frozenset({"www.e-manuscripta.ch"})),
-    ("name:cross_source", "quellenuebergreifend", frozenset()),
-    ("name:library_info", "library_info", frozenset()),
-)
-_UNZUGEORDNET = "(nicht zugeordnet)"
+# Welche Gruppen es gibt, und welche Hosts dazugehoeren. Die Beschriftungen sind
+# zugleich die zulaessigen Werte der `quelle`-Marke und die Zeilen der
+# Quellen-Tabelle in `live-tests.yml` — drei Stellen, eine Liste.
+#
+# Zwei Beschriftungen tragen keine Hosts und sind trotzdem Gruppen:
+# `quellenuebergreifend` fuer den Test, der drei Quellen zugleich anfasst, und
+# `library_info` fuer den, der ueberhaupt keine externe Quelle abfragt. Sie in
+# eine Quelle zu pressen waere eine Zahl, die etwas anderes behauptet als sie ist.
+GRUPPEN: dict[str, frozenset[str]] = {
+    "swisscovery": frozenset({"swisscovery.slsp.ch"}),
+    "e-rara": frozenset({"www.e-rara.ch"}),
+    "e-periodica": frozenset({"www.e-periodica.ch"}),
+    "e-manuscripta": frozenset({"www.e-manuscripta.ch"}),
+    "oa_legal": frozenset({"sui-generis.ch", "ex-ante.ch", "api.repositorium.ch"}),
+    "intl_metadata": frozenset({"api.crossref.org", "export.arxiv.org"}),
+    "quellenuebergreifend": frozenset(),
+    "library_info": frozenset(),
+}
 
 TABELLE_START = "# QUELLEN-TABELLE ANFANG"
 TABELLE_ENDE = "# QUELLEN-TABELLE ENDE"
@@ -707,59 +704,125 @@ def _modul_ist_live(baum: ast.Module) -> bool:
     return False
 
 
-def collect_live_tests(root: Path) -> list[Site]:
-    """Alle `-m live`-Tests, aus `tests/` gelesen."""
+def _quelle_marke(knoten: ast.AST) -> str | None:
+    """Der Wert von `@pytest.mark.quelle("...")`, falls der Knoten sie traegt."""
+    for deko in getattr(knoten, "decorator_list", []):
+        if not isinstance(deko, ast.Call):
+            continue
+        ziel = deko.func
+        if not (isinstance(ziel, ast.Attribute) and ziel.attr == "quelle"):
+            continue
+        wert = ziel.value
+        if not (isinstance(wert, ast.Attribute) and wert.attr == "mark"):
+            continue
+        if deko.args and isinstance(deko.args[0], ast.Constant):
+            arg = deko.args[0].value
+            if isinstance(arg, str):
+                return arg
+    return None
+
+
+def _modul_quelle(baum: ast.Module) -> str | None:
+    """`pytestmark = pytest.mark.quelle("...")` auf Modulebene, falls vorhanden."""
+    for knoten in baum.body:
+        if not isinstance(knoten, ast.Assign):
+            continue
+        if not any(isinstance(z, ast.Name) and z.id == "pytestmark" for z in knoten.targets):
+            continue
+        werte = knoten.value.elts if isinstance(knoten.value, ast.List) else [knoten.value]
+        for wert in werte:
+            if isinstance(wert, ast.Call):
+                huelle = ast.Module(body=[], type_ignores=[])
+                huelle.decorator_list = [wert]  # type: ignore[attr-defined]
+                gefunden = _quelle_marke(huelle)
+                if gefunden:
+                    return gefunden
+    return None
+
+
+def collect_live_tests(root: Path) -> list[tuple[Site, str | None]]:
+    """Alle `-m live`-Tests mit ihrer `quelle`-Marke — `None`, wenn sie fehlt.
+
+    Die Marke wird an der Funktion gesucht, dann an ihrer Klasse, dann am Modul.
+    Bis zum 19.8.2026 stand hier stattdessen eine Heuristik ueber Datei- und
+    Testnamen. Sie meldete zwar, was sie gar nicht zuordnen konnte — aber ein
+    Test, der FALSCH nach einer Quelle hiess, wurde still der falschen
+    zugerechnet, und beide Seiten der Tabelle waren gemeinsam falsch. Eine Marke
+    kann man vergessen (das faellt auf), aber nicht danebenraten.
+    """
     tests = root / TESTS
     if not tests.is_dir():
         raise GateError(f"{TESTS}/: nicht gefunden")
-    gefunden: list[Site] = []
+    gefunden: list[tuple[Site, str | None]] = []
     for datei in sorted(tests.glob("test_*.py")):
         try:
-            quelle = datei.read_text(encoding="utf-8")
+            text = datei.read_text(encoding="utf-8")
         except OSError as exc:
             raise GateError(f"{datei}: nicht lesbar ({exc})") from exc
         try:
-            baum = ast.parse(quelle)
+            baum = ast.parse(text)
         except SyntaxError as exc:
             raise GateError(f"{datei}: nicht parsebar ({exc})") from exc
         modul_live = _modul_ist_live(baum)
+        modul_quelle = _modul_quelle(baum)
         for knoten in baum.body:
             if isinstance(knoten, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if knoten.name.startswith("test_") and (modul_live or _ist_live_dekoriert(knoten)):
-                    gefunden.append(Site(f"{datei.name}:{knoten.lineno}", knoten.name))
+                    gefunden.append(
+                        (
+                            Site(f"{datei.name}:{knoten.lineno}", knoten.name),
+                            _quelle_marke(knoten) or modul_quelle,
+                        )
+                    )
             elif isinstance(knoten, ast.ClassDef):
                 klasse_live = modul_live or _ist_live_dekoriert(knoten)
+                klasse_quelle = _quelle_marke(knoten) or modul_quelle
                 for kind in knoten.body:
                     if not isinstance(kind, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         continue
                     if kind.name.startswith("test_") and (klasse_live or _ist_live_dekoriert(kind)):
-                        gefunden.append(Site(f"{datei.name}:{kind.lineno}", f"{knoten.name}.{kind.name}"))
+                        gefunden.append(
+                            (
+                                Site(f"{datei.name}:{kind.lineno}", f"{knoten.name}.{kind.name}"),
+                                _quelle_marke(kind) or klasse_quelle,
+                            )
+                        )
     return gefunden
 
 
-def _gruppe_von(site: Site) -> str:
-    datei = site.origin.split(":", 1)[0]
-    name = site.value.lower()
-    for merkmal, beschriftung, _hosts in TEST_ZU_GRUPPE:
-        art, wert = merkmal.split(":", 1)
-        if art == "datei" and datei == wert:
-            return beschriftung
-        if art == "name" and wert in name:
-            return beschriftung
-    return _UNZUGEORDNET
-
-
-def zaehle_live_tests(root: Path) -> tuple[dict[str, int], list[Site]]:
-    """Live-Tests je Gruppe — und die, die auf keine Regel passten."""
+def zaehle_live_tests(root: Path) -> tuple[dict[str, int], list[str]]:
+    """Live-Tests je Gruppe — plus Befunde zu Marken, die fehlen oder nichts sagen."""
     zaehler: dict[str, int] = {}
-    unzugeordnet: list[Site] = []
-    for site in collect_live_tests(root):
-        gruppe = _gruppe_von(site)
-        if gruppe == _UNZUGEORDNET:
-            unzugeordnet.append(site)
+    probleme: list[str] = []
+    ohne_marke: list[Site] = []
+    unbekannt: list[tuple[Site, str]] = []
+    for site, quelle in collect_live_tests(root):
+        if quelle is None:
+            ohne_marke.append(site)
+        elif quelle not in GRUPPEN:
+            unbekannt.append((site, quelle))
         else:
-            zaehler[gruppe] = zaehler.get(gruppe, 0) + 1
-    return zaehler, unzugeordnet
+            zaehler[quelle] = zaehler.get(quelle, 0) + 1
+
+    if ohne_marke:
+        orte = "\n".join(f"    {s.value:<46} {s.origin}" for s in ohne_marke)
+        probleme.append(
+            f"{TESTS}/: {len(ohne_marke)} Live-Test(s) ohne `@pytest.mark.quelle(...)`:\n"
+            f"{orte}\n"
+            f"    Ohne Marke laesst sich der Test keiner Zeile der Quellen-Tabelle "
+            f"zurechnen. Er waere sonst still nirgends mitgezaehlt, und die Tabelle "
+            f"bliebe gruen, obwohl sie zu wenig ausweist."
+        )
+    if unbekannt:
+        orte = "\n".join(f"    {s.value:<34} quelle={q!r}  {s.origin}" for s, q in unbekannt)
+        probleme.append(
+            f"{TESTS}/: {len(unbekannt)} Live-Test(s) mit unbekanntem Quellen-Namen:\n"
+            f"{orte}\n"
+            f"    Bekannt sind: {', '.join(sorted(GRUPPEN))}. Entweder ist der Name "
+            f"vertippt, oder es gibt eine neue Gruppe — dann gehoert sie in GRUPPEN "
+            f"und in die Quellen-Tabelle."
+        )
+    return zaehler, probleme
 
 
 def lies_quellen_tabelle(live_text: str) -> tuple[dict[str, int], set[str], list[str]]:
@@ -779,7 +842,7 @@ def lies_quellen_tabelle(live_text: str) -> tuple[dict[str, int], set[str], list
             ],
         )
 
-    beschriftung_zu_hosts = {b: h for _m, b, h in TEST_ZU_GRUPPE}
+    beschriftung_zu_hosts = dict(GRUPPEN)
     zahlen: dict[str, int] = {}
     hosts: set[str] = set()
     probleme: list[str] = []
@@ -831,17 +894,8 @@ def compare_live_counts(live_text: str, root: Path) -> list[str]:
     zahlen, _hosts, probleme = lies_quellen_tabelle(live_text)
     if probleme:
         return probleme
-    gezaehlt, unzugeordnet = zaehle_live_tests(root)
-
-    if unzugeordnet:
-        orte = "\n".join(f"    {s.value:<44} {s.origin}" for s in unzugeordnet)
-        probleme.append(
-            f"{TESTS}/: {len(unzugeordnet)} Live-Test(s) passen auf keine Regel in "
-            f"TEST_ZU_GRUPPE:\n{orte}\n"
-            f"    Entweder heisst der Test nicht nach seiner Quelle, oder es gibt "
-            f"eine neue — beides gehoert eingetragen. Still mitzaehlen wuerde die "
-            f"Tabelle unbemerkt falsch machen."
-        )
+    gezaehlt, marken_probleme = zaehle_live_tests(root)
+    probleme += marken_probleme
 
     for gruppe in sorted(set(zahlen) | set(gezaehlt)):
         steht, ist = zahlen.get(gruppe), gezaehlt.get(gruppe, 0)

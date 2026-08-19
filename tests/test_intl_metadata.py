@@ -304,6 +304,7 @@ def test_egress_allow_list_permits_registry_hosts():
 
 
 @pytest.mark.live
+@pytest.mark.quelle("intl_metadata")
 class TestLiveIntlSources:
     async def test_resolve_doi_live(self):
         work = await intl_metadata.resolve_doi("10.1145/3292500.3330701")
