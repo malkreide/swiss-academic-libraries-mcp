@@ -30,6 +30,57 @@ import check_gate_consistency as cgc  # noqa: E402
 PIN = "0.16.1"
 SCOPE = "src/ tests/ scripts/"
 
+# Ein Mini-`src/` mit denselben zwei Schreibweisen wie das echte: Quellen stehen
+# als Modulkonstante UND als `base_url` in einer Tabelle. Wer nur die eine Form
+# nachbaut, testet einen Checker, der die andere uebersieht. Die Doku-Links darin
+# sind Absicht — sie duerfen NICHT als Quelle zaehlen.
+SRC_MODUL = """\
+SWISSCOVERY_SRU_URL = "https://swisscovery.slsp.ch/view/sru/41SLSP_NETWORK"
+ERARA_OAI_URL = "https://www.e-rara.ch/oai"
+EPERIODICA_OAI_URL = "https://www.e-periodica.ch/oai/dataprovider"
+EMANUSCRIPTA_OAI_URL = "https://www.e-manuscripta.ch/oai"
+CROSSREF_BASE = "https://api.crossref.org"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
+
+# Doku-Links: siehe https://www.crossref.org und https://github.com/malkreide/x
+REPOSITORIEN = {
+    "sui": {"base_url": "https://sui-generis.ch/oai", "homepage": "https://sui-generis.ch"},
+    "exa": {"base_url": "https://ex-ante.ch/index.php/exante/oai"},
+}
+"""
+
+LIVE_HOSTS = """\
+#   swisscovery.slsp.ch (SRU)                           10
+#   www.e-rara.ch (OAI)                                  7
+#   www.e-manuscripta.ch (OAI)                           4
+#   www.e-periodica.ch (OAI)                             3
+#   sui-generis.ch, ex-ante.ch                           2
+#   api.crossref.org, export.arxiv.org                   2
+"""
+
+LIVE_TEMPLATE = """\
+# Geplante Live-Tests gegen die echten Quellen (DRIFT-005).
+#
+{hosts}#
+# Wer hier eine Quelle ergaenzt, aendert den Namen NICHT mit.
+
+name: Live-Tests
+on:
+  schedule:
+    - cron: "43 4 * * 1"
+jobs:
+  live:
+    name: {job_name}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const PREFIX = '{prefix}';
+"""
+
+LIVE_JOB_NAME = "Live-Suite gegen die echten Quellen"
+LIVE_PREFIX = "Live-Tests gegen die echten Quellen rot"
+
 CI_TEMPLATE = """\
 name: CI
 jobs:
@@ -170,6 +221,10 @@ def schreibe_repo(
     md_scope: str = SCOPE,
     md_block: str | None = None,
     ci_text: str | None = None,
+    src_modul: str = SRC_MODUL,
+    live_hosts: str = LIVE_HOSTS,
+    live_job_name: str = LIVE_JOB_NAME,
+    live_prefix: str = LIVE_PREFIX,
 ) -> Path:
     """Ein in sich stimmiges Mini-Repo, an dem sich einzelne Stellen verstellen lassen."""
     (root / ".github" / "workflows").mkdir(parents=True, exist_ok=True)
@@ -184,6 +239,13 @@ def schreibe_repo(
     )
     block = md_block if md_block is not None else DOC_BLOCK.format(scope=md_scope, modul="api_client")
     (root / "CLAUDE.md").write_text(CLAUDE_TEMPLATE.format(pin=md_pin, block=block), encoding="utf-8")
+    paket = root / "src" / "paket"
+    paket.mkdir(parents=True, exist_ok=True)
+    (paket / "quellen.py").write_text(src_modul, encoding="utf-8")
+    (root / ".github" / "workflows" / "live-tests.yml").write_text(
+        LIVE_TEMPLATE.format(hosts=live_hosts, job_name=live_job_name, prefix=live_prefix),
+        encoding="utf-8",
+    )
     return root
 
 
@@ -410,6 +472,80 @@ class GateKonsistenzTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             schreibe_repo(Path(tmp))
             self.assertEqual(cgc.main(["--root", tmp]), 0)
+
+    # --- Quellen-Aufzaehlung in live-tests.yml ---------------------------
+    #
+    # Der Workflow hiess bis zum 19.8.2026 «Live-Suite gegen api.crossref.org»,
+    # obwohl er neun Hosts abfragt. Wer den roten Lauf vom 17.8.2026 sah, las
+    # den Titel und suchte bei crossref; gerissen waren swisscovery, e-rara,
+    # e-periodica und e-manuscripta — genau die vier, die im Titel fehlten.
+
+    def test_angebundene_quelle_fehlt_in_der_aufzaehlung(self):
+        problems = self.pruefe(
+            src_modul=SRC_MODUL + '\nZENTRALGUT_OAI_URL = "https://www.zentralgut.ch/oai"\n'
+        )
+        self.assertTrue(any("www.zentralgut.ch" in p for p in problems), problems)
+
+    def test_quelle_aus_der_tabelle_zaehlt_auch(self):
+        """`base_url` in einer Tabelle ist so sehr eine Quelle wie eine Konstante.
+
+        Ohne diesen Fall waere ein Checker gruen, der nur Modulkonstanten liest —
+        und uebersaehe im echten Repo sui-generis, ex/ante und repositorium,
+        also drei von neun.
+        """
+        modul = SRC_MODUL.replace(
+            '"exa": {"base_url": "https://ex-ante.ch/index.php/exante/oai"},',
+            '"exa": {"base_url": "https://ex-ante.ch/index.php/exante/oai"},\n'
+            '    "neu": {"base_url": "https://neue-quelle.ch/oai"},',
+        )
+        problems = self.pruefe(src_modul=modul)
+        self.assertTrue(any("neue-quelle.ch" in p for p in problems), problems)
+
+    def test_aufzaehlung_nennt_host_den_es_nicht_mehr_gibt(self):
+        problems = self.pruefe(
+            src_modul=SRC_MODUL.replace('ARXIV_API_URL = "https://export.arxiv.org/api/query"', "")
+        )
+        self.assertTrue(any("export.arxiv.org" in p for p in problems), problems)
+        self.assertTrue(any("nicht mehr anbindet" in p for p in problems), problems)
+
+    def test_doku_links_zaehlen_nicht_als_quelle(self):
+        """Die Gegenprobe gegen zu breite Extraktion.
+
+        `https://www.crossref.org`, `https://github.com/...` und die `homepage`
+        eines Repositoriums stehen in der Attrappe. Wuerden sie als Quelle
+        zaehlen, verlangte der Gate, Doku-Links in die Workflow-Liste zu
+        schreiben — ein Gate, das zum Eintragen von Unwahrheiten noetigt, wird
+        umgangen. Der stimmige Fall oben ist still; hier steht, warum.
+        """
+        self.assertEqual(self.pruefe(), [])
+
+    def test_job_name_der_eine_quelle_herausgreift_ist_ein_befund(self):
+        problems = self.pruefe(live_job_name="Live-Suite gegen api.crossref.org")
+        self.assertTrue(any("Job-Name" in p and "api.crossref.org" in p for p in problems), problems)
+
+    def test_issue_praefix_der_eine_quelle_herausgreift_ist_ein_befund(self):
+        """Die vollstaendige Liste im Kommentar nuetzt nichts, wenn das Issue
+        weiter nach einem Host heisst — im Posteingang steht der Titel."""
+        problems = self.pruefe(live_prefix="Live-Tests gegen swisscovery.slsp.ch rot")
+        self.assertTrue(any("Issue-Praefix" in p for p in problems), problems)
+
+    def test_umzug_auf_beiden_seiten_ist_kein_befund(self):
+        """Kein Fehlalarm, wenn Quelle und Aufzaehlung zusammen umziehen."""
+        problems = self.pruefe(
+            src_modul=SRC_MODUL.replace("export.arxiv.org", "arxiv-neu.example.org"),
+            live_hosts=LIVE_HOSTS.replace("export.arxiv.org", "arxiv-neu.example.org"),
+        )
+        self.assertEqual(problems, [])
+
+    def test_leergelaufene_extraktion_ist_ein_befund(self):
+        """Nichts gefunden ist nicht dasselbe wie nichts zu beanstanden.
+
+        Laufen die Regexes an einem Umbau vorbei, vergleicht der Gate zwei
+        leere Mengen und bliebe still gruen — der gefaehrlichste Zustand, weil
+        er wie Zustimmung aussieht.
+        """
+        problems = self.pruefe(src_modul="# hier stand einmal etwas\n")
+        self.assertTrue(any("mindestens" in p and "Quell-Hosts" in p for p in problems), problems)
 
 
 if __name__ == "__main__":
