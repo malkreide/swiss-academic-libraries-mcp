@@ -51,7 +51,7 @@ Please report security issues responsibly — see [SECURITY.md](SECURITY.md).
 **Cadence:** every Monday at 04:43 UTC, plus on demand via *Actions → Live-Tests → Run
 workflow*. See [`.github/workflows/live-tests.yml`](.github/workflows/live-tests.yml).
 
-**Who sees it:** A red run opens an issue labelled `upstream` and the stable title “Live-Tests gegen api.crossref.org rot (<Datum>)”. A second red run recognises the open issue by its title prefix and appends to that same thread rather than opening a second one. Once the suite is green again, the issue closes itself.
+**Who sees it:** A red run opens an issue labelled `upstream` and the stable title “Live-Tests gegen die echten Quellen rot (<Datum>)”. A second red run recognises the open issue by its title prefix and appends to that same thread rather than opening a second one. Once the suite is green again, the issue closes itself.
 
 **Three answers, not two.** `scripts/classify_live_run.py` reads the JUnit XML rather than
 the exit code and separates `clear` (ran, green), `finding` (ran, something

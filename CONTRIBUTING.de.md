@@ -51,7 +51,7 @@ Bitte melden Sie Sicherheitsprobleme verantwortungsvoll — siehe [SECURITY.md](
 **Kadenz:** jeden Montag um 04:43 UTC, dazu jederzeit von Hand über *Actions → Live-Tests → Run
 workflow*. Siehe [`.github/workflows/live-tests.yml`](.github/workflows/live-tests.yml).
 
-**Wer es sieht:** Ein roter Lauf öffnet ein Issue mit dem Label `upstream` und dem stabilen Titel «Live-Tests gegen api.crossref.org rot (<Datum>)». Ein zweiter roter Lauf erkennt das offene Issue am Titelanfang und hängt sich an denselben Thread, statt ein zweites aufzumachen. Wird die Suite wieder grün, schliesst sich das Issue selbst.
+**Wer es sieht:** Ein roter Lauf öffnet ein Issue mit dem Label `upstream` und dem stabilen Titel «Live-Tests gegen die echten Quellen rot (<Datum>)». Ein zweiter roter Lauf erkennt das offene Issue am Titelanfang und hängt sich an denselben Thread, statt ein zweites aufzumachen. Wird die Suite wieder grün, schliesst sich das Issue selbst.
 
 **Drei Antworten, nicht zwei.** `scripts/classify_live_run.py` liest das JUnit-XML statt des
 Exit-Codes und unterscheidet: `clear` (gelaufen, grün), `finding` (gelaufen,
