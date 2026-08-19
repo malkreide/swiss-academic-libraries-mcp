@@ -47,18 +47,124 @@ Annahme hat schon einmal einen Branch 15 Commits alt werden lassen.
 `FETCH_HEAD`; gezählt wird `git rev-list --count HEAD..FETCH_HEAD`. Kein Merge,
 kein Rebase, kein Ref-Update — die Entscheidung bleibt beim Menschen.
 
-## Selbst prüfen
+## Gegenproben
 
-Das Skript ist direkt aufrufbar; es verhält sich ausserhalb der Session gleich.
+Zuletzt vollständig gefahren am **2026-08-19**, alle Fälle wie beschrieben.
+Wer das Skript ändert, fährt sie erneut und zieht das Datum nach.
 
-    .claude/hooks/check-clone-freshness.sh; echo "exit=$?"
+Ein Test, der grün bleibt, wenn man die Implementation entfernt, prüft nichts.
+Für diesen Hook heisst das: «still und `exit 0`» allein ist wertlos, denn ein
+Skript, das gar nichts tut, besteht jede dieser Proben. Deshalb stehen beide
+Richtungen hier — dass er in Abschnitt A schweigt **und** dass er in
+Abschnitt C wirklich meldet.
 
-Gegenprobe zu «blockiert nie» — jeder dieser Aufrufe muss `exit=0` liefern und
-darf nicht hängen:
+Alle Blöcke setzen voraus:
 
-    ( cd /tmp && .../check-clone-freshness.sh )                 # kein Repo
-    CLAUDE_PROJECT_DIR=/nicht/vorhanden .../check-clone-freshness.sh
-    git -c ... remote set-url origin https://192.0.2.1/x.git    # totes Netz
+    H="$PWD/.claude/hooks/check-clone-freshness.sh"
 
-Gegenprobe zu «meldet wirklich» — nur ein `git reset --hard HEAD~3` in einem
-Wegwerf-Klon zeigt, dass die Meldung nicht bloss nie erscheint.
+### A — blockiert nie
+
+Jeder Aufruf muss `exit=0` liefern **und** darf nicht hängen. Die Dauer gehört
+mitgemessen; ein Fall, der erst nach 30 Sekunden mit 0 endet, hat den
+Sessionstart trotzdem angehalten.
+
+    # kein Repo
+    ( cd /tmp && env -u CLAUDE_PROJECT_DIR "$H"; echo "exit=$?" )
+
+    # Projektverzeichnis existiert nicht
+    CLAUDE_PROJECT_DIR=/nicht/vorhanden "$H"; echo "exit=$?"
+
+    # gar kein Remote
+    git clone -q --no-local . /tmp/gp-clone && git -C /tmp/gp-clone remote remove origin
+    CLAUDE_PROJECT_DIR=/tmp/gp-clone "$H"; echo "exit=$?"
+
+    # unborn HEAD (frisch init, kein Commit)
+    git init -q /tmp/gp-unborn
+    CLAUDE_PROJECT_DIR=/tmp/gp-unborn "$H"; echo "exit=$?"
+
+    # totes Netz (192.0.2.1 ist TEST-NET-1, nicht routbar)
+    git -C /tmp/gp-clone remote add origin https://192.0.2.1/x.git
+    time CLAUDE_PROJECT_DIR=/tmp/gp-clone "$H"; echo "exit=$?"
+
+    # DNS löst nicht auf
+    git -C /tmp/gp-clone remote set-url origin https://nonexistent.invalid/x.git
+    time CLAUDE_PROJECT_DIR=/tmp/gp-clone "$H"; echo "exit=$?"
+
+### B — das Timeout greift wirklich
+
+**Die beiden Netz-Fälle aus A beweisen das Timeout nicht.** Hinter einem
+ausgehenden Proxy oder einer Firewall, die mit RST antwortet, kommen sie in
+0 Sekunden zurück: die Verbindung scheitert sofort, der Timeout-Pfad läuft
+gar nicht erst an. Das sieht aus wie ein bestandener Test und ist keiner —
+genau so besteht auch ein Hook mit kaputtem Timeout diese zwei Fälle. Am
+2026-08-19 war das in der Container-Umgebung tatsächlich der Fall (0s statt
+der erwarteten Wartezeit), deshalb steht dieser Abschnitt hier.
+
+Nötig ist ein Remote, das wirklich hängt statt abzulehnen. Ein `ssh`-Ersatz,
+der nur schläft, liefert das ohne Netz:
+
+    printf '#!/usr/bin/env bash\nsleep 120\n' > /tmp/gp-ssh.sh && chmod +x /tmp/gp-ssh.sh
+    git clone -q --no-local . /tmp/gp-hang
+    git -C /tmp/gp-hang remote set-url origin ssh://git@example.invalid/x.git
+    git -C /tmp/gp-hang update-ref -d refs/remotes/origin/HEAD
+
+    # Hook: muss nach ~3s durch sein
+    time GIT_SSH_COMMAND=/tmp/gp-ssh.sh CLAUDE_FRESHNESS_TIMEOUT=3 \
+        CLAUDE_PROJECT_DIR=/tmp/gp-hang "$H"; echo "exit=$?"
+
+Das `update-ref -d` ist nicht Kosmetik: mit lokalem `refs/remotes/origin/HEAD`
+beantwortet `resolve_default_branch` die Frage ohne Netz, und der Aufruf käme
+sofort zurück, ohne je zu fetchen — die Probe würde sich selbst entschärfen.
+
+Und die Gegenprobe dazu, ohne die der Block oben nichts zeigt — derselbe
+Zugriff ohne die Bremse des Hooks muss wirklich hängen:
+
+    time GIT_SSH_COMMAND=/tmp/gp-ssh.sh timeout 8 \
+        git -C /tmp/gp-hang ls-remote --symref origin HEAD; echo "exit=$?"
+
+Erwartet: `exit=124` nach 8 Sekunden — `timeout` musste abschneiden, der
+Aufruf wäre also gehangen. Kommt hier etwas anderes als 124, hängt das Remote
+nicht, und der Block darüber hat nichts bewiesen.
+
+### C — er meldet wirklich
+
+Ohne diesen Abschnitt ist jede Probe aus A auch von einem `exit 0` als ganzem
+Skript erfüllt.
+
+    # zurückgesetzter Stand: meldet «N Commits hinter <remote>/<default>»
+    git worktree add -q --detach /tmp/gp-detached HEAD~2
+    CLAUDE_PROJECT_DIR=/tmp/gp-detached "$H"; echo "exit=$?"
+
+Erwartet: eine Meldung mit **irgendeinem** N grösser 0, `exit=0`. Nicht auf
+N = 2 prüfen: `HEAD~2` folgt den ersten Eltern und springt über Merge-Commits
+hinweg, während gezählt wird, was im Klon insgesamt fehlt. Am 2026-08-19 stand
+dort deshalb 4, und das war richtig. Wer hier eine feste Zahl erwartet, hält
+korrektes Verhalten für einen Fehler.
+
+Der detached HEAD deckt zwei Zusicherungen auf einmal ab: dass gemeldet wird,
+und dass ein abgelöster HEAD den Hook nicht aus dem Tritt bringt.
+
+Dass der Standard-Branch **ermittelt** und nicht `main` geraten wird, zeigt nur
+ein Repo, das anders heisst — im Portfolio sind das `openlex-mcp`,
+`swiss-courts-mcp` und `swisstopo-mcp`:
+
+    git init -q -b master /tmp/gp-master-src
+    git -C /tmp/gp-master-src -c user.email=t@t -c user.name=t commit -q --allow-empty -m c1
+    git -C /tmp/gp-master-src -c user.email=t@t -c user.name=t commit -q --allow-empty -m c2
+    git clone -q /tmp/gp-master-src /tmp/gp-master && git -C /tmp/gp-master reset -q --hard HEAD~1
+    CLAUDE_PROJECT_DIR=/tmp/gp-master "$H"; echo "exit=$?"
+
+Erwartet: «1 Commit hinter origin/**master**». Steht dort `main` oder kommt
+gar nichts, wird geraten statt ermittelt. Der Fall prüft nebenbei den
+Singular — «1 Commits» wäre falsch.
+
+Zuletzt die stille Richtung, die nur im Verbund mit C etwas aussagt:
+
+    CLAUDE_PROJECT_DIR="$PWD" "$H"; echo "exit=$?"
+
+Erwartet auf aktuellem Klon: keine Ausgabe, `exit=0`.
+
+### Aufräumen
+
+    git worktree remove --force /tmp/gp-detached; git worktree prune
+    rm -rf /tmp/gp-clone /tmp/gp-unborn /tmp/gp-hang /tmp/gp-master /tmp/gp-master-src /tmp/gp-ssh.sh
