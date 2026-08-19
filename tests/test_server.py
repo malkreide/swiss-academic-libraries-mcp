@@ -687,14 +687,28 @@ class TestEraraLive:
         print(f"\n  ✅ e-rara (ETH): {len(result['records'])} Einträge, erster: {first['title'][:60]}")
 
     async def test_list_sets(self) -> None:
-        from swiss_academic_libraries_mcp.api_client import ERARA_OAI_URL, http_get, parse_oai_sets
+        """Alle Sammlungen — ueber alle Seiten, nicht nur die erste.
 
-        xml_text = await http_get(ERARA_OAI_URL, {"verb": "ListSets"})
-        sets = parse_oai_sets(xml_text)
-        assert len(sets) > 5
+        Dieser Test las frueher EINE ListSets-Seite und verlangte darin `zut`.
+        e-rara liefert 105 Sets in 11 Seiten zu je 10; `zut` steht an Position
+        28. Der Test konnte also nur gruen sein, solange `zut` zufaellig auf
+        Seite 1 stand — am 17.8.2026 tat es das nicht mehr, und der Lauf war
+        rot, ohne dass sich an der Quelle etwas geaendert haette.
+
+        Er geht jetzt ueber `_oai_list_collections`, also ueber genau den Pfad,
+        den die Tools nehmen. Damit bewacht er zugleich, dass der der
+        Paginierung folgt: Ohne das kaeme `zut` nie zurueck.
+        """
+        from swiss_academic_libraries_mcp.api_client import ERARA_OAI_URL
+        from swiss_academic_libraries_mcp.server import _oai_list_collections
+
+        sets = await _oai_list_collections(ERARA_OAI_URL)
         specs = [s["spec"] for s in sets]
+        # Deutlich mehr als eine Seite (10) — sonst ist die Paginierung tot,
+        # und der Test faende `zut` bloss deshalb nicht.
+        assert len(sets) > 50, f"Nur {len(sets)} Sets — folgt der Pfad dem resumptionToken noch?"
         assert "zut" in specs
-        print(f"\n  ✅ e-rara ListSets: {len(sets)} Sammlungen gefunden")
+        print(f"\n  ✅ e-rara ListSets: {len(sets)} Sammlungen ueber alle Seiten")
 
 
 @pytest.mark.live

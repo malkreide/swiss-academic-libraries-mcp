@@ -51,12 +51,27 @@ results: list[dict] = []
 
 
 def record_result(name: str, passed: bool, detail: str = "", duration: float = 0):
+    """Protokolliert das Szenario — und laesst den Test fallen, wenn es fiel.
+
+    Das `assert` am Ende ist der Punkt dieser Funktion, nicht ihr Beiwerk.
+    Ohne es sammelte sie 30 Ergebnisse ein, druckte brav `FAIL` daneben und
+    kehrte normal zurueck: Alle 20 Szenarien waren gruen, solange nur keine
+    Ausnahme flog — unabhaengig davon, ob ihre `checks` zutrafen. Ein Test,
+    der gruen bleibt, wenn man die Implementierung entfernt, prueft nichts,
+    und diese hier pruefte 20-mal nichts.
+
+    Aufgefallen ist das bei der Aufarbeitung des roten Live-Laufs vom
+    17.8.2026: Der Lauf war rot wegen `RuntimeError: Event loop is closed` —
+    also weil etwas WARF. Was die Szenarien darueber hinaus behaupteten, hatte
+    nie jemand geprueft.
+    """
     results.append({"name": name, "passed": passed, "detail": detail, "duration": duration})
     icon = "PASS" if passed else "FAIL"
     dur = f" ({duration:.1f}s)" if duration > 0 else ""
     print(f"  {icon} {name}{dur}")
     if detail and not passed:
         print(f"     Detail: {detail}")
+    assert passed, f"{name}: {detail}"
 
 
 # ─── Szenario 1: library_info Grundfunktion ────────────────────────────────
@@ -463,15 +478,25 @@ async def test_14_eperiodica_list_records():
 async def test_15_eperiodica_get_record():
     """Szenario 15: e-periodica Einzelartikel via bekanntem OAI-Identifier."""
     t = time.time()
-    # Bekannter e-periodica Identifier (Schweizer Pädagogische Zeitschrift)
-    oai_id = "oai:agora.ch:spz-001:1911:27::337"
+    # Am 19.8.2026 an der Quelle verifiziert: liefert einen Datensatz mit Titel.
+    # Der frühere Identifier (spz-001:1911:27::337) beantwortet die Quelle seit
+    # mindestens dem 17.8.2026 mit `idDoesNotExist` — über drei Abfragen stabil.
+    # Nachgesehen, statt aus der Meldung zu schliessen: Das Set `spz-001` gibt
+    # es weiterhin, und die Schreibweise der Identifier ist unverändert
+    # (`oai:agora.ch:SET:JAHR:BAND::SEITE`). Es fehlt wirklich dieser eine
+    # Datensatz — kein Formatwechsel, wie ihn der 3.8.2026 gebracht hatte.
+    oai_id = "oai:agora.ch:spz-001:1862:7::225"
     detail = await eperiodica_get_record(OaiGetRecordInput(oai_identifier=oai_id))
     dur = time.time() - t
     # Timeout oder gültige Antwort sind beide akzeptabel
-    checks = [
-        "e-periodica" in detail or "Fehler" in detail or "Zeitüberschreitung" in detail,
-    ]
+    # Eine Zeitüberschreitung bleibt zulässig — die Quelle ist manchmal langsam,
+    # und daraus einen Vertragsbruch zu machen hiesse, den Lauf zum Wetterbericht
+    # zu erklären. "Fehler" ist NICHT mehr zulässig: Genau diese Nachsicht hat
+    # verdeckt, dass der Identifier seit Monaten ins Leere zeigte.
     is_timeout = "Zeitüberschreitung" in detail
+    checks = [
+        is_timeout or ("e-periodica" in detail and "Fehler" not in detail),
+    ]
     record_result(
         "15 e-periodica: Einzelartikel via OAI-ID",
         all(checks),
