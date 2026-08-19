@@ -176,7 +176,11 @@ gemeldet, bevor die CI es tat.
 **Live-Tests sind geplant, nicht nur ausgeschlossen.** `.github/workflows/live-tests.yml`
 läuft wöchentlich per cron (`43 4 * * 1`) plus `workflow_dispatch` gegen die
 echten Quellen und ordnet das Ergebnis über `scripts/classify_live_run.py` in
-`clear` / `finding` / `unknown` ein, statt aus dem Exit-Code zu schliessen.
+`clear` / `finding` / `upstream` / `unknown` ein, statt aus dem Exit-Code zu
+schliessen. `upstream` (seit diesem Commit) greift nur, wenn **jeder**
+Fehlschlag ein Quellen-Ausfall ist — ein Timeout neben einer gerissenen
+Zusicherung bleibt `finding`, sonst wäre der neue Zustand ein Weg, echte
+Befunde wegzuerklären.
 DRIFT-005 ist damit erfüllt; die PR-CI schliesst `-m "not live"` weiterhin aus,
 und das bleibt so. `schedule` greift nur auf dem Default-Branch — Änderungen an
 der Datei wirken erst nach dem Merge, vorher von Hand auslösen.

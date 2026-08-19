@@ -56,7 +56,69 @@ from pathlib import Path
 
 CLEAR = "clear"
 FINDING = "finding"
+UPSTREAM = "upstream"
 UNKNOWN = "unknown"
+
+# WARUM ES EINE VIERTE ANTWORT GIBT
+# ---------------------------------
+# `finding` hiess bis hierher zweierlei: «der Vertrag mit der Quelle ist
+# gebrochen» und «die Quelle hat gerade nicht geantwortet». Das erste gehoert
+# gefixt, das zweite ausgesessen — und wer sie nicht auseinanderhaelt, tut
+# entweder zu viel oder gewoehnt sich das Hinsehen ab.
+#
+# Anlass waren zwei Ausfaelle an zwei Tagen, beide ohne Vertragsaenderung:
+# arXiv mit HTTP 429 am 19.8.2026 vormittags, e-manuscripta mit einem Timeout
+# am selben Abend. Beide Male antwortete die Quelle kurz darauf wieder normal.
+#
+# `upstream` ist NICHT gruen. Es heisst: Die Suite lief, und was fiel, fiel
+# daran, dass eine Quelle nicht antwortete — geprueft wurde der Vertrag damit
+# nicht. Wie `unknown` schliesst es deshalb kein Issue: Zuzumachen hiesse zu
+# behaupten, der Vergleich sei gelaufen.
+#
+# DIE ENGE SEITE IST ABSICHT
+# Der Zustand greift nur, wenn JEDER Fehlschlag eindeutig ein Ausfall ist. Ein
+# gemischter Lauf — ein Timeout und eine gerissene Zusicherung — bleibt
+# `finding`. Ebenso ein Fehlschlag, dessen Meldung hier nicht wiedererkannt
+# wird. Der Fehlermodus dieses Zustands ist nicht der falsche Alarm, sondern
+# das Wegerklaeren: Ein `upstream`, das zu breit greift, verwandelt jeden
+# echten Befund in ein Achselzucken.
+
+# Aus echten Laeufen abgelesen, nicht ausgedacht: Die ersten drei stammen aus
+# JUnit-XMLs, die am 19.8.2026 gegen eine haengende bzw. mit 429 antwortende
+# Attrappe erzeugt wurden; der Timeout-Text ist derselbe, den der reale
+# e-manuscripta-Ausfall an jenem Abend hinterliess.
+UPSTREAM_MUSTER = (
+    "Zeitüberschreitung. Der Server antwortet nicht.",
+    "Rate-Limit erreicht (429)",
+    "Dienst vorübergehend nicht verfügbar (503)",
+    "RemoteProtocolError: Server disconnected",
+    "UpstreamUnavailableError",
+    "Alle OA-Rechtsquellen sind derzeit nicht erreichbar",
+    "ConnectTimeout",
+    "ReadTimeout",
+    "PoolTimeout",
+    "ConnectError",
+)
+
+
+def _fehlermeldungen(root: ET.Element) -> list[str]:
+    """Text jedes `<failure>`/`<error>` — Attribut und Inhalt zusammen.
+
+    Beides, weil pytest die Meldung ins `message`-Attribut schreibt, den
+    Traceback aber in den Elementtext. Ein Ausfall kann in jedem von beiden
+    stehen, je nachdem, ob er als Ausnahme durchschlaegt oder in einer
+    Zusicherung landet.
+    """
+    texte = []
+    for testcase in root.iter("testcase"):
+        for kind in testcase:
+            if kind.tag in ("failure", "error"):
+                texte.append(f"{kind.get('message') or ''}\n{kind.text or ''}")
+    return texte
+
+
+def _ist_ausfall(meldung: str) -> bool:
+    return any(muster in meldung for muster in UPSTREAM_MUSTER)
 
 
 def classify(report: Path, pytest_exit: int | None = None) -> tuple[str, str]:
@@ -87,9 +149,28 @@ def classify(report: Path, pytest_exit: int | None = None) -> tuple[str, str]:
     )
 
     if failures or errors:
+        meldungen = _fehlermeldungen(root)
+        ausfaelle = [m for m in meldungen if _ist_ausfall(m)]
+        # Nur wenn ALLE Fehlschlaege Ausfaelle sind — und wenn ueberhaupt
+        # Meldungen im XML stehen. Ein XML ohne `<failure>`-Elemente, das
+        # trotzdem Fehlschlaege zaehlt, ist nichts, worueber sich urteilen
+        # laesst; das bleibt `finding`.
+        if meldungen and len(ausfaelle) == len(meldungen):
+            return (
+                UPSTREAM,
+                f"{len(ausfaelle)} von {tests} Test(s) gefallen, alle an einer "
+                f"Quelle, die nicht geantwortet hat — ueber den Vertrag sagt das "
+                f"nichts",
+            )
         return (
             FINDING,
-            f"{failures} Fehlschlag/Fehlschlaege und {errors} Fehler von {tests} Test(s)",
+            f"{failures} Fehlschlag/Fehlschlaege und {errors} Fehler von {tests} Test(s)"
+            + (
+                f" (davon {len(ausfaelle)} durch einen Quellen-Ausfall; der Rest "
+                f"nicht, deshalb kein `upstream`)"
+                if ausfaelle
+                else ""
+            ),
         )
     if tests == 0:
         return (

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="1.071" timestamp="2026-08-19T18:26:23.374343+00:00" hostname="vm"><testcase classname="tests.test_20_scenarios" name="test_99_echte_zusicherung_reisst" time="0.002"><failure message="AssertionError: Vertrag verletzt&#10;assert 'Handschrift' in 'das steht da nicht'">@pytest.mark.quelle("swisscovery")
+    async def test_99_echte_zusicherung_reisst():
+        """Kein Ausfall, sondern eine gerissene Zusicherung."""
+&gt;       assert "Handschrift" in "das steht da nicht", "Vertrag verletzt"
+E       AssertionError: Vertrag verletzt
+E       assert 'Handschrift' in 'das steht da nicht'
+
+tests/test_20_scenarios.py:767: AssertionError</failure></testcase></testsuite></testsuites>

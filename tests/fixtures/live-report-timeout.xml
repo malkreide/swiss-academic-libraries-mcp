@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="4.120" timestamp="2026-08-19T18:24:40.200777+00:00" hostname="vm"><testcase classname="tests.test_20_scenarios" name="test_17_emanuscripta_list_records" time="3.053"><failure message="mcp.shared.exceptions.MCPError: Fehler bei emanuscripta_list_records: Zeitüberschreitung. Der Server antwortet nicht.">@contextlib.contextmanager
+    def map_httpcore_exceptions() -&gt; typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+&gt;           yield
+
+/usr/local/lib/python3.11/dist-packages/httpx/_transports/default.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.11/dist-packages/httpx/_transports/default.py:394: in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpcore/_async/connection_pool.py:256: in handle_async_request
+    raise exc from None
+/usr/local/lib/python3.11/dist-packages/httpcore/_async/connection_pool.py:236: in handle_async_request
+    response = await connection.handle_async_request(
+/usr/local/lib/python3.11/dist-packages/httpcore/_async/connection.py:103: in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpcore/_async/http11.py:136: in handle_async_request
+    raise exc
+/usr/local/lib/python3.11/dist-packages/httpcore/_async/http11.py:106: in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpcore/_async/http11.py:177: in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpcore/_async/http11.py:217: in _receive_event
+    data = await self._network_stream.read(
+/usr/local/lib/python3.11/dist-packages/httpcore/_backends/anyio.py:32: in read
+    with map_exceptions(exc_map):
+/usr/lib/python3.11/contextlib.py:158: in __exit__
+    self.gen.throw(typ, value, traceback)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+map = {&lt;class 'TimeoutError'&gt;: &lt;class 'httpcore.ReadTimeout'&gt;, &lt;class 'anyio.BrokenResourceError'&gt;: &lt;class 'httpcore.ReadErr... 'anyio.ClosedResourceError'&gt;: &lt;class 'httpcore.ReadError'&gt;, &lt;class 'anyio.EndOfStream'&gt;: &lt;class 'httpcore.ReadError'&gt;}
+
+    @contextlib.contextmanager
+    def map_exceptions(map: ExceptionMapping) -&gt; typing.Iterator[None]:
+        try:
+            yield
+        except Exception as exc:  # noqa: PIE786
+            for from_exc, to_exc in map.items():
+                if isinstance(exc, from_exc):
+&gt;                   raise to_exc(exc) from exc
+E                   httpcore.ReadTimeout
+
+/usr/local/lib/python3.11/dist-packages/httpcore/_exceptions.py:14: ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+params = OaiSearchInput(from_date='2024-01-01', until_date='2024-12-31', set_spec=None, resumption_token=None, response_format='markdown')
+
+    @mcp.tool(
+        name="emanuscripta_list_records",
+        annotations={
+            "title": "e-manuscripta: Handschriften und Archivalien",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        },
+    )
+    async def emanuscripta_list_records(params: OaiSearchInput) -&gt; str:
+        """
+        Listet digitalisierte Handschriften und Archivalien aus e-manuscripta (OAI-PMH).
+    
+        e-manuscripta bietet Zugriff auf digitalisierte Handschriften, Nachlässe,
+        Briefe und andere Archivmaterialien aus Schweizer Bibliotheken und Archiven.
+        Darunter Bestände der ETH-Bibliothek, ZB Zürich, UB Basel u.a.
+    
+        Verfügbare Sammlungen mit emanuscripta_list_collections() abrufen.
+    
+        Args:
+            params (OaiSearchInput): Filterparameter:
+                - from_date (str): Startdatum YYYY-MM-DD (optional)
+                - until_date (str): Enddatum YYYY-MM-DD (optional)
+                - set_spec (str): Sammlung/Archiv (optional)
+                - resumption_token (str): Pagination-Token (optional)
+                - response_format (str): 'markdown' oder 'json'
+    
+        Returns:
+            str: Liste der Objekte mit Titel, Autor(en), Datum, Sammlung, Typ, URL.
+                 Enthält resumption_token und Gesamtanzahl für Pagination.
+        """
+        try:
+&gt;           result = await _oai_list_records(EMANUSCRIPTA_OAI_URL, params)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+src/swiss_academic_libraries_mcp/server.py:1107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/swiss_academic_libraries_mcp/server.py:427: in _oai_list_records
+    xml_text = await http_get(base_url, query_params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/swiss_academic_libraries_mcp/api_client.py:309: in http_get
+    response = await client.get(url, params=params or {})
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpx/_client.py:1768: in get
+    return await self.request(
+/usr/local/lib/python3.11/dist-packages/httpx/_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+/usr/local/lib/python3.11/dist-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+/usr/local/lib/python3.11/dist-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.11/dist-packages/httpx/_transports/default.py:393: in handle_async_request
+    with map_httpcore_exceptions():
+/usr/lib/python3.11/contextlib.py:158: in __exit__
+    self.gen.throw(typ, value, traceback)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -&gt; typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+            yield
+        except Exception as exc:
+            mapped_exc = None
+    
+            for from_exc, to_exc in HTTPCORE_EXC_MAP.items():
+                if not isinstance(exc, from_exc):
+                    continue
+                # We want to map to the most specific exception we can find.
+                # Eg if `exc` is an `httpcore.ReadTimeout`, we want to map to
+                # `httpx.ReadTimeout`, not just `httpx.TimeoutException`.
+                if mapped_exc is None or issubclass(to_exc, mapped_exc):
+                    mapped_exc = to_exc
+    
+            if mapped_exc is None:  # pragma: no cover
+                raise
+    
+            message = str(exc)
+&gt;           raise mapped_exc(message) from exc
+E           httpx.ReadTimeout
+
+/usr/local/lib/python3.11/dist-packages/httpx/_transports/default.py:118: ReadTimeout
+
+The above exception was the direct cause of the following exception:
+
+    @pytest.mark.quelle("e-manuscripta")
+    async def test_17_emanuscripta_list_records():
+        """Szenario 17: e-manuscripta Handschriften eines Zeitraums."""
+        t = time.time()
+&gt;       result = await emanuscripta_list_records(
+            OaiSearchInput(
+                from_date="2024-01-01",
+                until_date="2024-12-31",
+            )
+        )
+
+tests/test_20_scenarios.py:551: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+params = OaiSearchInput(from_date='2024-01-01', until_date='2024-12-31', set_spec=None, resumption_token=None, response_format='markdown')
+
+    @mcp.tool(
+        name="emanuscripta_list_records",
+        annotations={
+            "title": "e-manuscripta: Handschriften und Archivalien",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        },
+    )
+    async def emanuscripta_list_records(params: OaiSearchInput) -&gt; str:
+        """
+        Listet digitalisierte Handschriften und Archivalien aus e-manuscripta (OAI-PMH).
+    
+        e-manuscripta bietet Zugriff auf digitalisierte Handschriften, Nachlässe,
+        Briefe und andere Archivmaterialien aus Schweizer Bibliotheken und Archiven.
+        Darunter Bestände der ETH-Bibliothek, ZB Zürich, UB Basel u.a.
+    
+        Verfügbare Sammlungen mit emanuscripta_list_collections() abrufen.
+    
+        Args:
+            params (OaiSearchInput): Filterparameter:
+                - from_date (str): Startdatum YYYY-MM-DD (optional)
+                - until_date (str): Enddatum YYYY-MM-DD (optional)
+                - set_spec (str): Sammlung/Archiv (optional)
+                - resumption_token (str): Pagination-Token (optional)
+                - response_format (str): 'markdown' oder 'json'
+    
+        Returns:
+            str: Liste der Objekte mit Titel, Autor(en), Datum, Sammlung, Typ, URL.
+                 Enthält resumption_token und Gesamtanzahl für Pagination.
+        """
+        try:
+            result = await _oai_list_records(EMANUSCRIPTA_OAI_URL, params)
+        except Exception as e:
+&gt;           raise _to_mcp_error(e, "emanuscripta_list_records") from e
+E           mcp.shared.exceptions.MCPError: Fehler bei emanuscripta_list_records: Zeitüberschreitung. Der Server antwortet nicht.
+
+src/swiss_academic_libraries_mcp/server.py:1109: MCPError</failure></testcase></testsuite></testsuites>

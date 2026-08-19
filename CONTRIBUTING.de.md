@@ -97,11 +97,26 @@ workflow*. Siehe [`.github/workflows/live-tests.yml`](.github/workflows/live-tes
 
 **Wer es sieht:** Ein roter Lauf öffnet ein Issue mit dem Label `upstream` und dem stabilen Titel «Live-Tests gegen die echten Quellen rot (<Datum>)». Ein zweiter roter Lauf erkennt das offene Issue am Titelanfang und hängt sich an denselben Thread, statt ein zweites aufzumachen. Wird die Suite wieder grün, schliesst sich das Issue selbst.
 
-**Drei Antworten, nicht zwei.** `scripts/classify_live_run.py` liest das JUnit-XML statt des
-Exit-Codes und unterscheidet: `clear` (gelaufen, grün), `finding` (gelaufen,
-etwas gefallen) und `unknown` (nicht gelaufen — Installation gescheitert, null
-Tests eingesammelt, alle übersprungen). Ein `unknown` schliesst nie ein Issue:
-Zuzumachen hiesse zu behaupten, der Vergleich sei gelaufen.
+**Vier Antworten, nicht zwei.** `scripts/classify_live_run.py` liest das JUnit-XML statt des
+Exit-Codes und unterscheidet:
+
+| Zustand | Heisst | Job | Issue |
+|---|---|---|---|
+| `clear` | gelaufen, grün | grün | wird geschlossen |
+| `finding` | gelaufen, der Vertrag hat sich bewegt | rot | wird geöffnet |
+| `upstream` | gelaufen, aber **jeder** Fehlschlag ist ein Quellen-Ausfall | rot | unberührt |
+| `unknown` | nicht gelaufen (Install gescheitert, null Tests, alle übersprungen) | rot | unberührt |
+
+Weder `unknown` noch `upstream` schliesst ein Issue: Zuzumachen hiesse zu
+behaupten, der Vergleich sei gelaufen. Beide öffnen auch keins — es gäbe nichts
+zu fixen.
+
+`upstream` greift **nur**, wenn jeder einzelne Fehlschlag eindeutig ein Ausfall
+ist (Timeout, 429, 503, Verbindungsabbruch). Ein Timeout neben einer gerissenen
+Zusicherung bleibt `finding`, ebenso ein Fehlschlag, dessen Meldung das Skript
+nicht wiedererkennt. Der Fehlermodus dieses Zustands ist nicht der falsche
+Alarm, sondern das Wegerklären: Ein `upstream`, das zu breit greift, verwandelt
+jeden echten Befund in ein Achselzucken.
 
 **Ein roter Live-Lauf heisst dreierlei**, und keines davon ist aus der
 Fehlermeldung abzulesen: Der Vertrag mit der Quelle hat sich geändert; die
