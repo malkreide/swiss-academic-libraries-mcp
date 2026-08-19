@@ -49,6 +49,8 @@ CI = ".github/workflows/ci.yml"
 PYPROJECT = "pyproject.toml"
 PRE_COMMIT = ".pre-commit-config.yaml"
 CLAUDE_MD = "CLAUDE.md"
+LIVE_TESTS = ".github/workflows/live-tests.yml"
+SRC = "src"
 
 # Unterschreitet eine Datei ihre Zahl, ist die Bewachung loechrig geworden —
 # unabhaengig davon, ob das Gefundene untereinander stimmt.
@@ -62,6 +64,12 @@ CLAUDE_MD = "CLAUDE.md"
 MIN_PINS = {PYPROJECT: 1, PRE_COMMIT: 1}
 MIN_SCOPES = {CI: 3, PYPROJECT: 2, PRE_COMMIT: 2, CLAUDE_MD: 2}
 MIN_CI_COMMANDS = 10
+
+# Untergrenze fuer die Quellen-Extraktion. Kein Sollwert, sondern ein Test der
+# Extraktion selbst: Findet sie ploetzlich fast nichts mehr, ist nicht das
+# Portfolio geschrumpft, sondern die Regex an einem Umbau vorbeigelaufen — und
+# ein Vergleich von zwei leeren Mengen ist immer gruen.
+MIN_SOURCE_HOSTS = 6
 MIN_DOC_GATES = 6
 
 # Woran ein Gate in `ci.yml` erkennbar ist, ohne die Shell zu parsen. Steht
@@ -129,6 +137,23 @@ FILES_SHAPE_RE = re.compile(r"^\^\((?P<dirs>[A-Za-z0-9_|-]+)\)/$")
 RUFF_CMD_RE = re.compile(r"\bruff\s+(?:check|format)\b(?P<rest>[^\n]*)")
 MD_VERSION_RE = re.compile(r"`v?(\d+\.\d+\.\d+)`")
 MD_REV_RE = re.compile(r"rev:\s*v?(\d+\.\d+\.\d+)")
+
+# Die zwei Stellen, an denen eine angebundene Quelle wirklich steht. Bewusst
+# NICHT «jedes https:// in src/»: Das faengt Doku-Links mit ein (github.com,
+# doi.org, www.crossref.org, arxiv.org, www.repositorium.ch — am 19.8.2026 fuenf
+# Stueck) und zwaenge dazu, Homepages in die Workflow-Liste zu schreiben, die
+# der Server nie abfragt. Ein Gate, das zum Eintragen von Unwahrheiten noetigt,
+# wird umgangen.
+SOURCE_CONST_RE = re.compile(r'^[A-Z][A-Z0-9_]*_(?:URL|BASE)\s*=\s*"(?P<url>https://[^"]+)"')
+SOURCE_DICT_RE = re.compile(r'"base_url":\s*"(?P<url>https://[^"]+)"')
+HOST_RE = re.compile(r"^https://(?P<host>[^/]+)")
+
+# Der Host-Block im Kopfkommentar von live-tests.yml: Kommentarzeilen, in denen
+# ein Hostname mit Punkt steht. Der Job-Name und das Issue-Praefix stehen NICHT
+# im Kommentar und werden getrennt geprueft.
+LIVE_COMMENT_HOST_RE = re.compile(r"^#.*?(?P<host>[a-z0-9][a-z0-9.-]*\.[a-z]{2,})")
+LIVE_JOB_NAME_RE = re.compile(r"^\s*name:\s*(?P<name>Live-Suite.*)$")
+LIVE_PREFIX_RE = re.compile(r"const PREFIX\s*=\s*'(?P<prefix>[^']+)'")
 
 
 @dataclass(frozen=True)
@@ -510,6 +535,120 @@ def compare_gate_block(ci_text: str, md_text: str) -> list[str]:
     return problems
 
 
+def collect_source_hosts(root: Path) -> list[Site]:
+    """Die Hosts, die der Server wirklich abfragt — aus `src/` gelesen.
+
+    Zwei Stellen, weil die Quellen an zwei Stellen stehen: als Modulkonstante
+    (`ERARA_OAI_URL = "https://www.e-rara.ch/oai"`) und als `base_url` in der
+    Repositorien-Tabelle von `oa_legal`. Wer nur die Konstanten liest, uebersieht
+    sui-generis, ex/ante und repositorium — also drei von neun.
+    """
+    sites: list[Site] = []
+    src = root / SRC
+    if not src.is_dir():
+        raise GateError(f"{SRC}/: nicht gefunden")
+    for datei in sorted(src.rglob("*.py")):
+        try:
+            text = datei.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise GateError(f"{datei}: nicht lesbar ({exc})") from exc
+        rel = datei.relative_to(root).as_posix()
+        for number, raw in enumerate(text.splitlines(), start=1):
+            line = raw.strip()
+            for regex in (SOURCE_CONST_RE, SOURCE_DICT_RE):
+                match = regex.search(line)
+                if not match:
+                    continue
+                host = HOST_RE.match(match.group("url"))
+                if host:
+                    sites.append(Site(f"{rel}:{number}", host.group("host")))
+    return sites
+
+
+def collect_live_comment_hosts(text: str) -> set[str]:
+    """Die Hosts, die der Kopfkommentar von `live-tests.yml` aufzaehlt."""
+    hosts = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line.startswith("#"):
+            continue
+        for match in re.finditer(r"\b[a-z0-9][a-z0-9.-]*\.[a-z]{2,}\b", line):
+            wort = match.group(0)
+            # `.py`, `.yml`, `.md` sind Dateinamen, keine Quellen.
+            if wort.rsplit(".", 1)[-1] not in {"py", "yml", "yaml", "md", "toml", "txt"}:
+                hosts.add(wort)
+    return hosts
+
+
+def compare_live_hosts(live_text: str, quellen: list[Site]) -> list[str]:
+    """Deckt sich die Aufzaehlung im Workflow mit dem, was `src/` anbindet?
+
+    WARUM ES DIESEN VERGLEICH GIBT
+    ------------------------------
+    Der Workflow hiess bis zum 19.8.2026 «Live-Suite gegen api.crossref.org»,
+    obwohl er neun Hosts abfragt und crossref zu den am schwaechsten
+    vertretenen gehoert. Wer den roten Lauf vom 17.8.2026 im Posteingang sah,
+    las den Titel und suchte bei der dort genannten Quelle; gerissen waren
+    swisscovery, e-rara, e-periodica und e-manuscripta — genau die vier, die
+    im Titel fehlten.
+
+    Ein falscher Name kostet keine Pipeline und keinen Test. Er kostet die
+    halbe Stunde, in der jemand an der falschen Stelle sucht, und die faellt
+    genau dann an, wenn ohnehin etwas kaputt ist.
+    """
+    genannt = collect_live_comment_hosts(live_text)
+    angebunden = {site.value for site in quellen}
+    problems: list[str] = []
+
+    fehlend = sorted(angebunden - genannt)
+    if fehlend:
+        orte = {site.value: site.origin for site in quellen}
+        zeilen = "\n".join(f"    {host:<28} {orte[host]}" for host in fehlend)
+        problems.append(
+            f"{LIVE_TESTS}: die Aufzaehlung im Kopfkommentar nennt "
+            f"{len(fehlend)} angebundene Quelle(n) nicht:\n{zeilen}\n"
+            f"    Die Liste sagt, wogegen die Live-Suite laeuft. Fehlt eine Quelle "
+            f"darin, sucht der naechste rote Lauf sie auch nicht."
+        )
+
+    ueberzaehlig = sorted(genannt - angebunden)
+    if ueberzaehlig:
+        problems.append(
+            f"{LIVE_TESTS}: der Kopfkommentar nennt Host(s), die `src/` nicht "
+            f"mehr anbindet: {', '.join(ueberzaehlig)}. Entweder ist die Quelle "
+            f"weggefallen und die Liste ist nachzuziehen, oder eine URL ist "
+            f"umgezogen und niemand hat es bemerkt."
+        )
+    return problems
+
+
+def live_name_nennt_quelle(live_text: str, quellen: list[Site]) -> list[str]:
+    """Greift der Name des Jobs oder des Issues eine einzelne Quelle heraus?
+
+    Die Gegenprobe zum Vergleich oben: Eine vollstaendige Aufzaehlung im
+    Kommentar nuetzt nichts, wenn der Job weiter nach einem der Hosts heisst —
+    im Posteingang steht der Job-Name, nicht der Kommentar.
+    """
+    angebunden = {site.value for site in quellen}
+    problems: list[str] = []
+    for regex, was in ((LIVE_JOB_NAME_RE, "Job-Name"), (LIVE_PREFIX_RE, "Issue-Praefix")):
+        for raw in live_text.splitlines():
+            match = regex.search(raw)
+            if not match:
+                continue
+            wert = match.group(1)
+            getroffen = sorted(h for h in angebunden if h in wert)
+            if getroffen:
+                problems.append(
+                    f"{LIVE_TESTS}: der {was} «{wert.strip()}» nennt "
+                    f"{', '.join(getroffen)}. Die Suite faehrt gegen "
+                    f"{len(angebunden)} Hosts; ein Name, der einen herausgreift, "
+                    f"schickt den Leser in die falsche Richtung, bevor er die "
+                    f"erste Zeile Log gelesen hat."
+                )
+    return problems
+
+
 def _disagreements(kind: str, sites: list[Site]) -> list[str]:
     values = {site.value for site in sites}
     if len(values) <= 1:
@@ -557,6 +696,7 @@ def check(root: Path) -> list[str]:
     """Alle Fundstellen einsammeln und vergleichen. Rueckgabe: Liste der Befunde."""
     ci_text = _read(root, CI)
     md_text = _read(root, CLAUDE_MD)
+    live_text = _read(root, LIVE_TESTS)
 
     ci_pins, ci_scopes = collect_ci(ci_text)
     py_pins, py_scopes = collect_pyproject(_read(root, PYPROJECT))
@@ -572,6 +712,19 @@ def check(root: Path) -> list[str]:
     problems += _too_few("Scope", scopes, MIN_SCOPES)
     problems += _disagreements("ruff-Pin", pins)
     problems += _disagreements("Gate-Scope", scopes)
+
+    quellen = collect_source_hosts(root)
+    hosts = {site.value for site in quellen}
+    if len(hosts) < MIN_SOURCE_HOSTS:
+        problems.append(
+            f"{SRC}/: nur {len(hosts)} von mindestens {MIN_SOURCE_HOSTS} erwarteten "
+            f"Quell-Hosts gefunden. Entweder sind Quellen weggefallen, oder die "
+            f"Extraktion laeuft an einem Umbau vorbei — im zweiten Fall vergleicht "
+            f"der Gate darunter zwei fast leere Mengen und bleibt still gruen."
+        )
+    else:
+        problems += compare_live_hosts(live_text, quellen)
+        problems += live_name_nennt_quelle(live_text, quellen)
     return problems
 
 
@@ -599,7 +752,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         "ruff-Pin und Gate-Scope stimmen an allen geprueften Stellen ueberein, "
-        "und der Gate-Block in CLAUDE.md deckt sich mit ci.yml."
+        "der Gate-Block in CLAUDE.md deckt sich mit ci.yml, und die "
+        "Quellen-Aufzaehlung in live-tests.yml deckt sich mit src/."
     )
     return 0
 

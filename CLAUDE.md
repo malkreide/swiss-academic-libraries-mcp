@@ -127,6 +127,19 @@ zwischenzeitlich `pip-audit` im falschen Job, und kein Gate wurde davon rot.
 Commit `check_version_sync.py` daneben und hält `pyproject.toml` gegen
 `server.json` und die README-Badges.
 
+Seit diesem Commit hält `check_gate_consistency.py` zusätzlich die
+Quellen-Aufzählung im Kopfkommentar von `.github/workflows/live-tests.yml`
+gegen das, was `src/` wirklich anbindet — gelesen aus Modulkonstanten
+(`*_URL`, `*_BASE`) **und** den `base_url`-Einträgen der Repositorien-Tabelle
+in `oa_legal`; wer nur die Konstanten liest, übersieht drei von neun Quellen.
+Bewusst nicht «jedes `https://` in `src/`»: Das fängt Doku-Links mit ein
+(github.com, doi.org, www.crossref.org …) und zwänge dazu, Homepages als
+Quellen einzutragen. Zusätzlich meldet es, wenn Job-Name oder Issue-Präfix
+eine einzelne Quelle herausgreifen. Anlass war der Workflow, der bis zum
+19.8.2026 «gegen api.crossref.org» hiess, während er neun Hosts abfragt: Der
+rote Lauf vom 17.8.2026 schickte damit jeden, der den Titel las, zu crossref
+— gerissen waren swisscovery, e-rara, e-periodica und e-manuscripta.
+
 Die zwei greifen ineinander: Wer einen Gate-Schritt in `ci.yml` ergänzt und
 den Block oben nicht nachzieht, macht `check_gate_consistency.py` rot — beim
 Einbau des Versions-Gates ist genau das passiert, und der Guard hat es
