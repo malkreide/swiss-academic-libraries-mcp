@@ -166,19 +166,68 @@ MAX_KEEPALIVE_CONNECTIONS = 5
 _client: httpx.AsyncClient | None = None
 _semaphore: asyncio.Semaphore | None = None
 
+# An WELCHEN Loop sind die beiden oben gebunden?
+#
+# `httpx.AsyncClient.is_closed` sagt nur, ob das Objekt geschlossen wurde — nicht,
+# ob sein Connection-Pool noch benutzbar ist. Die Keep-alive-Sockets darin haengen
+# an dem Event-Loop, der sie geoeffnet hat. Stirbt der Loop, bleibt `is_closed`
+# False, und der naechste Zugriff greift ueber einen toten Transport:
+# `RuntimeError: Event loop is closed`.
+#
+# Genau das hat die geplante Live-Suite am 17.8.2026 rot gemacht: 13 von 30 Tests,
+# alle mit dieser Meldung, waehrend swisscovery, e-rara, e-periodica und
+# e-manuscripta einwandfrei antworteten. Die Einordnung des Laufs lautete
+# `finding` — also «Vertrag mit der Quelle geaendert». Das war sie nicht; der
+# Fehler stand auf unserer Seite. Wer aus so einer Meldung auf die Quelle
+# schliesst, sucht tagelang in der falschen Datei.
+#
+# Im Server faellt es nicht auf: Dort laeuft genau ein Loop, solange der Prozess
+# lebt. Auffallen kann es ueberall, wo ein Prozess mehr als einen Loop sieht —
+# `asyncio.run()` zweimal, ein Neustart des Servers im selben Prozess, und eben
+# pytest-asyncio, das pro Test einen frischen Loop aufmacht.
+_client_loop: asyncio.AbstractEventLoop | None = None
+_semaphore_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _running_loop() -> asyncio.AbstractEventLoop | None:
+    """Der laufende Loop, oder None ausserhalb eines Loops."""
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None
+
 
 def _get_semaphore() -> asyncio.Semaphore:
-    """Lazy-init der Semaphore (muss innerhalb eines Event-Loops erfolgen)."""
-    global _semaphore
-    if _semaphore is None:
+    """Semaphore des laufenden Loops; bei Loop-Wechsel eine neue.
+
+    Eine `asyncio.Semaphore` bindet ihre Warteschlange an den Loop, in dem
+    zuerst auf sie gewartet wurde. Ueber eine Loop-Grenze mitgenommen, weckt
+    sie ihre Warter nie wieder.
+    """
+    global _semaphore, _semaphore_loop
+    loop = _running_loop()
+    if _semaphore is None or _semaphore_loop is not loop:
         _semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        _semaphore_loop = loop
     return _semaphore
 
 
 def _get_client() -> httpx.AsyncClient:
-    """Modulweiter httpx.AsyncClient mit Connection-Pool und UA-Header."""
-    global _client
-    if _client is None or _client.is_closed:
+    """Modulweiter httpx.AsyncClient mit Connection-Pool und UA-Header.
+
+    Modulweit heisst hier: einer pro Event-Loop, nicht einer pro Prozess.
+    Wechselt der Loop, wird der alte Client fallengelassen und ein neuer
+    gebaut — siehe die Begruendung bei `_client_loop`.
+    """
+    global _client, _client_loop
+    loop = _running_loop()
+    if _client is not None and (_client.is_closed or _client_loop is not loop):
+        # Bewusst kein `aclose()`: Das ist eine Koroutine und braucht den Loop,
+        # der hier gerade nicht mehr laeuft. Mit ihm sind seine Sockets ohnehin
+        # geschlossen worden; was bleibt, raeumt der GC.
+        _client = None
+        _client_loop = None
+    if _client is None:
         _client = httpx.AsyncClient(
             timeout=REQUEST_TIMEOUT,
             headers={"User-Agent": USER_AGENT},
@@ -187,15 +236,19 @@ def _get_client() -> httpx.AsyncClient:
                 max_keepalive_connections=MAX_KEEPALIVE_CONNECTIONS,
             ),
         )
+        _client_loop = loop
     return _client
 
 
 async def shutdown() -> None:
     """Schliesst den globalen httpx-Client. Im Server-Lifespan aufrufen."""
-    global _client
+    global _client, _client_loop, _semaphore, _semaphore_loop
     if _client is not None and not _client.is_closed:
         await _client.aclose()
     _client = None
+    _client_loop = None
+    _semaphore = None
+    _semaphore_loop = None
 
 
 # ─── XML-Namespaces ───────────────────────────────────────────────────────────
