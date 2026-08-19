@@ -46,22 +46,96 @@ ARXIV_API_URL = "https://export.arxiv.org/api/query"
 REPOSITORIEN = {
     "sui": {"base_url": "https://sui-generis.ch/oai", "homepage": "https://sui-generis.ch"},
     "exa": {"base_url": "https://ex-ante.ch/index.php/exante/oai"},
+    "rep": {"base_url": "https://api.repositorium.ch/rest/v1"},
 }
 """
 
-LIVE_HOSTS = """\
-#   swisscovery.slsp.ch (SRU)                           10
-#   www.e-rara.ch (OAI)                                  7
-#   www.e-manuscripta.ch (OAI)                           4
-#   www.e-periodica.ch (OAI)                             3
-#   sui-generis.ch, ex-ante.ch                           2
-#   api.crossref.org, export.arxiv.org                   2
+# Die Live-Tests der Attrappe — beide Schreibweisen, wie im echten Repo:
+# modulweites `pytestmark` und `@pytest.mark.live` an der Klasse. Ein Checker,
+# der nur eine davon liest, zaehlt hier zu wenig und faellt auf.
+TESTS_SZENARIEN = """\
+import pytest
+
+pytestmark = pytest.mark.live
+
+
+async def test_01_library_info_overview():
+    pass
+
+
+async def test_02_swisscovery_fulltext():
+    pass
+
+
+async def test_03_swisscovery_pagination():
+    pass
+
+
+async def test_04_erara_list_collections():
+    pass
+
+
+async def test_05_eperiodica_list_records():
+    pass
+
+
+async def test_06_emanuscripta_list_records():
+    pass
+
+
+async def test_07_cross_source_research():
+    pass
+"""
+
+# Die Funktion ausserhalb der Klasse traegt keine Marke und darf NICHT zaehlen.
+# Sie steht bewusst hier und nicht in TESTS_SZENARIEN: Dort gilt ein modulweites
+# `pytestmark`, das JEDEN Test der Datei live macht — auch einen, der anders
+# heisst. (Genau daran ist die erste Fassung dieser Attrappe gescheitert.)
+TESTS_OA_LEGAL = """\
+import pytest
+
+
+async def test_ohne_marke_zaehlt_nicht():
+    pass
+
+
+@pytest.mark.live
+class TestLiveOaSources:
+    async def test_search_datenschutz_live(self):
+        pass
+"""
+
+TESTS_INTL = """\
+import pytest
+
+
+@pytest.mark.live
+class TestLiveIntlSources:
+    async def test_resolve_doi_live(self):
+        pass
+"""
+
+# Die Zahlen spiegeln die Attrappe oben: swisscovery 2, alles andere 1.
+LIVE_TABELLE = """\
+# QUELLEN-TABELLE ANFANG
+#   swisscovery.slsp.ch (SRU)                            2
+#   www.e-rara.ch (OAI)                                  1
+#   www.e-manuscripta.ch (OAI)                           1
+#   www.e-periodica.ch (OAI)                             1
+#   sui-generis.ch, ex-ante.ch, api.repositorium.ch      1   (oa_legal)
+#   api.crossref.org, export.arxiv.org                   1   (intl_metadata)
+#   quellenuebergreifend                                 1
+#   library_info (ohne externe Quelle)                   1
+# QUELLEN-TABELLE ENDE
 """
 
 LIVE_TEMPLATE = """\
 # Geplante Live-Tests gegen die echten Quellen (DRIFT-005).
 #
-{hosts}#
+# Bis zum 19.8.2026 hiess der Workflow «gegen api.crossref.org» — dieser Satz
+# steht als Prosa hier und darf NICHT als Aufzaehlung zaehlen.
+#
+{tabelle}#
 # Wer hier eine Quelle ergaenzt, aendert den Namen NICHT mit.
 
 name: Live-Tests
@@ -222,9 +296,12 @@ def schreibe_repo(
     md_block: str | None = None,
     ci_text: str | None = None,
     src_modul: str = SRC_MODUL,
-    live_hosts: str = LIVE_HOSTS,
+    live_tabelle: str = LIVE_TABELLE,
     live_job_name: str = LIVE_JOB_NAME,
     live_prefix: str = LIVE_PREFIX,
+    tests_szenarien: str = TESTS_SZENARIEN,
+    tests_oa_legal: str = TESTS_OA_LEGAL,
+    tests_intl: str = TESTS_INTL,
 ) -> Path:
     """Ein in sich stimmiges Mini-Repo, an dem sich einzelne Stellen verstellen lassen."""
     (root / ".github" / "workflows").mkdir(parents=True, exist_ok=True)
@@ -243,9 +320,14 @@ def schreibe_repo(
     paket.mkdir(parents=True, exist_ok=True)
     (paket / "quellen.py").write_text(src_modul, encoding="utf-8")
     (root / ".github" / "workflows" / "live-tests.yml").write_text(
-        LIVE_TEMPLATE.format(hosts=live_hosts, job_name=live_job_name, prefix=live_prefix),
+        LIVE_TEMPLATE.format(tabelle=live_tabelle, job_name=live_job_name, prefix=live_prefix),
         encoding="utf-8",
     )
+    testdir = root / "tests"
+    testdir.mkdir(parents=True, exist_ok=True)
+    (testdir / "test_20_scenarios.py").write_text(tests_szenarien, encoding="utf-8")
+    (testdir / "test_oa_legal.py").write_text(tests_oa_legal, encoding="utf-8")
+    (testdir / "test_intl_metadata.py").write_text(tests_intl, encoding="utf-8")
     return root
 
 
@@ -533,7 +615,7 @@ class GateKonsistenzTest(unittest.TestCase):
         """Kein Fehlalarm, wenn Quelle und Aufzaehlung zusammen umziehen."""
         problems = self.pruefe(
             src_modul=SRC_MODUL.replace("export.arxiv.org", "arxiv-neu.example.org"),
-            live_hosts=LIVE_HOSTS.replace("export.arxiv.org", "arxiv-neu.example.org"),
+            live_tabelle=LIVE_TABELLE.replace("export.arxiv.org", "arxiv-neu.example.org"),
         )
         self.assertEqual(problems, [])
 
@@ -546,6 +628,91 @@ class GateKonsistenzTest(unittest.TestCase):
         """
         problems = self.pruefe(src_modul="# hier stand einmal etwas\n")
         self.assertTrue(any("mindestens" in p and "Quell-Hosts" in p for p in problems), problems)
+
+    # --- die Zahlen in der Quellen-Tabelle -------------------------------
+    #
+    # Die Tabelle traegt das Argument, warum der Workflow keine Quelle im Namen
+    # fuehrt: crossref sind 2 von 30. Stimmt die Verteilung nicht mehr, ist das
+    # Argument nicht mehr belegt — und ein Beleg, den niemand prueft, ist eine
+    # Behauptung.
+
+    def test_veraltete_zahl_in_der_tabelle_ist_ein_befund(self):
+        problems = self.pruefe(
+            live_tabelle=LIVE_TABELLE.replace(
+                "#   www.e-rara.ch (OAI)                                  1",
+                "#   www.e-rara.ch (OAI)                                  4",
+            )
+        )
+        self.assertTrue(any("e-rara" in p and "4" in p for p in problems), problems)
+
+    def test_neuer_live_test_ohne_nachgezogene_zahl_ist_ein_befund(self):
+        problems = self.pruefe(
+            tests_szenarien=TESTS_SZENARIEN + "\n\nasync def test_08_swisscovery_noch_eine():\n    pass\n"
+        )
+        self.assertTrue(any("swisscovery" in p and "gezaehlt sind 3" in p for p in problems), problems)
+
+    def test_live_test_ohne_zuordnung_ist_ein_befund(self):
+        """Die Zuordnung ist eine Heuristik ueber Namen — und darf deshalb
+        nichts still verschlucken. Ein Test, der auf keine Regel passt, senkte
+        sonst eine Zahl, ohne dass jemand es merkt."""
+        problems = self.pruefe(
+            tests_szenarien=TESTS_SZENARIEN + "\n\nasync def test_08_zentralgut_liefert():\n    pass\n"
+        )
+        self.assertTrue(any("keine Regel" in p and "zentralgut" in p for p in problems), problems)
+
+    def test_klassen_marke_zaehlt_wie_modul_marke(self):
+        """Beide `live`-Schreibweisen des Repos muessen gezaehlt werden.
+
+        Ein Checker, der nur `pytestmark` liest, saehe die vier Live-Klassen in
+        `test_server.py` nicht — und meldete zu wenig, ohne rot zu werden.
+        """
+        problems = self.pruefe(
+            tests_intl=TESTS_INTL + "\n\n@pytest.mark.live\nclass TestNochEine:\n"
+            "    async def test_resolve_doi_zweitens(self):\n        pass\n"
+        )
+        self.assertTrue(any("intl_metadata" in p and "gezaehlt sind 2" in p for p in problems), problems)
+
+    def test_test_ohne_live_marke_zaehlt_nicht(self):
+        """Gegenrichtung: Nicht jeder Test ist ein Live-Test.
+
+        Ohne diesen Fall waere ein Checker gruen, der einfach alles zaehlt —
+        und die Tabelle muesste Zahlen tragen, die mit der Live-Suite nichts
+        zu tun haben.
+        """
+        problems = self.pruefe(
+            tests_oa_legal=TESTS_OA_LEGAL + "\n\nasync def test_noch_einer_ohne_marke():\n    pass\n"
+        )
+        self.assertEqual(problems, [])
+
+    def test_fehlende_tabellen_marker_sind_ein_befund(self):
+        """Ein Gate, der seine Stelle nicht mehr findet, meldet — statt still
+        gruen zu bleiben."""
+        problems = self.pruefe(live_tabelle=LIVE_TABELLE.replace("# QUELLEN-TABELLE ANFANG\n", ""))
+        self.assertTrue(any("Marker" in p for p in problems), problems)
+
+    def test_host_nur_in_der_prosa_zaehlt_nicht_als_aufzaehlung(self):
+        """Die Tabelle ist die Liste, der Fliesstext ist es nicht.
+
+        Im Kopfkommentar steht der historische Satz «hiess bis zum 19.8.2026
+        gegen api.crossref.org». Zaehlte der als Aufzaehlung, ginge eine Quelle
+        als «genannt» durch, weil sie zufaellig in der Prosa vorkommt.
+        """
+        problems = self.pruefe(
+            live_tabelle=LIVE_TABELLE.replace(
+                "#   api.crossref.org, export.arxiv.org                   1   (intl_metadata)",
+                "#   export.arxiv.org                                     1   (intl_metadata)",
+            )
+        )
+        self.assertTrue(any("api.crossref.org" in p for p in problems), problems)
+
+    def test_tabellenzeile_mit_zwei_zahlen_ist_ein_befund(self):
+        problems = self.pruefe(
+            live_tabelle=LIVE_TABELLE.replace(
+                "#   www.e-rara.ch (OAI)                                  1",
+                "#   www.e-rara.ch (OAI)                              1 bis 2",
+            )
+        )
+        self.assertTrue(any("Zahlen statt genau einer" in p for p in problems), problems)
 
 
 if __name__ == "__main__":

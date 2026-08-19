@@ -4,8 +4,12 @@
 # ---------------------------------
 # Bis zum 19.8.2026 hiess dieser Workflow «gegen api.crossref.org». Die Suite
 # fragt neun Hosts ab, und crossref gehoert zu den am schwaechsten vertretenen.
-# Ausgezaehlt am 19.8.2026 ueber `pytest -m live --collect-only`, 30 Tests:
+# Ausgezaehlt aus den `-m live`-Tests. Die Tabelle ist kein Merkzettel: Sie wird
+# von `scripts/check_gate_consistency.py` gegen `src/` (Hosts) und gegen
+# `tests/` (Zahlen) gehalten. Die Marker unten begrenzen den geprueften Bereich
+# — wer sie entfernt, macht den Gate rot, statt ihn still abzuschalten.
 #
+# QUELLEN-TABELLE ANFANG
 #   swisscovery.slsp.ch (SRU)                           10
 #   www.e-rara.ch (OAI)                                  7
 #   www.e-manuscripta.ch (OAI)                           4
@@ -14,6 +18,7 @@
 #   api.crossref.org, export.arxiv.org                   2   (intl_metadata)
 #   quellenuebergreifend                                 1
 #   library_info (ohne externe Quelle)                   1
+# QUELLEN-TABELLE ENDE
 #
 # Ein Name, der eine Quelle herausgreift, ist nicht bloss ungenau: Wer den
 # roten Lauf vom 17.8.2026 im Posteingang sah, las den Titel und suchte bei

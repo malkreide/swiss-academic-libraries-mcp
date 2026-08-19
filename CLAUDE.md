@@ -135,7 +135,19 @@ in `oa_legal`; wer nur die Konstanten liest, übersieht drei von neun Quellen.
 Bewusst nicht «jedes `https://` in `src/`»: Das fängt Doku-Links mit ein
 (github.com, doi.org, www.crossref.org …) und zwänge dazu, Homepages als
 Quellen einzutragen. Zusätzlich meldet es, wenn Job-Name oder Issue-Präfix
-eine einzelne Quelle herausgreifen. Anlass war der Workflow, der bis zum
+eine einzelne Quelle herausgreifen.
+
+Seit diesem Commit hält es auch die **Zahlen** der Tabelle — die Testzahl je
+Quelle — gegen die tatsächlichen `-m live`-Tests, gezählt per AST (das Skript
+bleibt stdlib-only und läuft im `lint`-Job, wo pytest nichts zu suchen hat).
+Beide `live`-Schreibweisen des Repos werden gelesen: modulweites `pytestmark`
+und `@pytest.mark.live` an Klasse oder Funktion. Die Zuordnung Test → Quelle
+ist eine Heuristik über Datei- und Testnamen und verschluckt deshalb nichts
+still: Ein Live-Test, der auf keine Regel passt, ist ein Befund. Die Tabelle
+ist von `# QUELLEN-TABELLE ANFANG/ENDE` eingefasst; fehlen die Marker, meldet
+der Guard das, statt sich still abzuschalten. Der Fliesstext drumherum zählt
+nicht als Aufzählung — sonst ginge eine Quelle als «genannt» durch, weil sie
+zufällig im historischen Hinweis vorkommt. Anlass war der Workflow, der bis zum
 19.8.2026 «gegen api.crossref.org» hiess, während er neun Hosts abfragt: Der
 rote Lauf vom 17.8.2026 schickte damit jeden, der den Titel las, zu crossref
 — gerissen waren swisscovery, e-rara, e-periodica und e-manuscripta.
