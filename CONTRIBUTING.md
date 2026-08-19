@@ -67,10 +67,13 @@ The permitted values live in `GRUPPEN` in
 at the same time the rows of the source table in the header of
 [`.github/workflows/live-tests.yml`](.github/workflows/live-tests.yml):
 
+<!-- GRUPPEN-LISTE ANFANG (checked by scripts/check_gate_consistency.py) -->
 `swisscovery`, `e-rara`, `e-periodica`, `e-manuscripta`, `oa_legal`,
-`intl_metadata` — plus `quellenuebergreifend` for the one test that touches
-several sources at once, and `library_info` for the one that queries no external
-source at all.
+`intl_metadata`, `quellenuebergreifend`, `library_info`
+<!-- GRUPPEN-LISTE ENDE -->
+
+`quellenuebergreifend` is for the one test that touches several sources at once;
+`library_info` for the one that queries no external source at all.
 
 **A missing marker turns CI red**, as does a value `GRUPPEN` does not know. That
 is deliberate: `check_gate_consistency.py` counts the live tests per source and

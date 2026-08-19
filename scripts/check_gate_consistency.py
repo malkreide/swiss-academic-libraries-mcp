@@ -913,6 +913,76 @@ def compare_live_counts(live_text: str, root: Path) -> list[str]:
     return probleme
 
 
+CONTRIBUTING = ("CONTRIBUTING.de.md", "CONTRIBUTING.md")
+GRUPPEN_LISTE_START = "<!-- GRUPPEN-LISTE ANFANG"
+GRUPPEN_LISTE_ENDE = "<!-- GRUPPEN-LISTE ENDE"
+BACKTICK_RE = re.compile(r"`([^`]+)`")
+
+
+def lies_gruppen_liste(text: str, datei: str) -> tuple[set[str], list[str]]:
+    """Die Werte zwischen den GRUPPEN-LISTE-Markern einer CONTRIBUTING-Datei.
+
+    Abgegrenzt statt frei gelesen: Der Abschnitt drumherum nennt `GRUPPEN`,
+    Dateinamen und Beispielwerte ebenfalls in Backticks. Wer alles einsammelt,
+    vergleicht Prosa mit einer Konstante und meldet Unsinn — und ein Gate, das
+    Unsinn meldet, wird abgeschaltet.
+
+    Die Marker sind HTML-Kommentare: im gerenderten Markdown unsichtbar, fuer
+    diesen Checker sichtbar. Fehlen sie, ist das ein Befund und keine stille
+    Abschaltung.
+    """
+    zeilen = text.splitlines()
+    start = next((i for i, z in enumerate(zeilen) if z.startswith(GRUPPEN_LISTE_START)), None)
+    ende = next((i for i, z in enumerate(zeilen) if z.startswith(GRUPPEN_LISTE_ENDE)), None)
+    if start is None or ende is None or ende <= start:
+        return set(), [
+            f"{datei}: die Marker «{GRUPPEN_LISTE_START}…» / «{GRUPPEN_LISTE_ENDE}…» "
+            f"fehlen oder stehen in der falschen Reihenfolge. Ohne sie weiss dieser "
+            f"Gate nicht, welche Backticks die Werteliste sind — und pruefte sie ab "
+            f"hier gar nicht mehr."
+        ]
+    werte: set[str] = set()
+    for zeile in zeilen[start + 1 : ende]:
+        werte |= set(BACKTICK_RE.findall(zeile))
+    return werte, []
+
+
+def compare_contributing_gruppen(root: Path) -> list[str]:
+    """Nennen beide CONTRIBUTING-Dateien genau die Gruppen aus `GRUPPEN`?
+
+    Die Marke `@pytest.mark.quelle` ist Pflicht fuer jeden Live-Test, und wer
+    von aussen beitraegt, erfaehrt die zulaessigen Werte aus CONTRIBUTING. Eine
+    neunte Gruppe, die in Skript und Workflow landet, aber nicht in der Doku,
+    schickt den naechsten Beitrag in eine rote CI mit einer Fehlermeldung, die
+    Werte nennt, welche die Anleitung nicht kennt.
+
+    Beide Sprachen, weil eine zweisprachige Doku, die nur einsprachig gepflegt
+    wird, schlimmer ist als eine einsprachige: Sie sieht vollstaendig aus.
+    """
+    probleme: list[str] = []
+    for datei in CONTRIBUTING:
+        werte, marker_probleme = lies_gruppen_liste(_read(root, datei), datei)
+        probleme += marker_probleme
+        if marker_probleme:
+            continue
+        fehlend = sorted(set(GRUPPEN) - werte)
+        if fehlend:
+            probleme.append(
+                f"{datei}: die Werteliste nennt {len(fehlend)} Gruppe(n) aus "
+                f"`GRUPPEN` nicht: {', '.join(fehlend)}. Wer die Marke setzen "
+                f"soll, liest hier nach — was hier fehlt, gibt es fuer ihn nicht."
+            )
+        ueberzaehlig = sorted(werte - set(GRUPPEN))
+        if ueberzaehlig:
+            probleme.append(
+                f"{datei}: die Werteliste nennt {len(ueberzaehlig)} Wert(e), die "
+                f"`GRUPPEN` nicht kennt: {', '.join(ueberzaehlig)}. Wer sie als "
+                f"Marke setzt, bekommt eine rote CI — die Anleitung haette ihn "
+                f"hineinlaufen lassen."
+            )
+    return probleme
+
+
 def _disagreements(kind: str, sites: list[Site]) -> list[str]:
     values = {site.value for site in sites}
     if len(values) <= 1:
@@ -990,6 +1060,7 @@ def check(root: Path) -> list[str]:
         problems += compare_live_hosts(live_text, quellen)
         problems += live_name_nennt_quelle(live_text, quellen)
     problems += compare_live_counts(live_text, root)
+    problems += compare_contributing_gruppen(root)
     return problems
 
 
@@ -1018,8 +1089,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         "ruff-Pin und Gate-Scope stimmen an allen geprueften Stellen ueberein, "
         "der Gate-Block in CLAUDE.md deckt sich mit ci.yml, und die "
-        "Quellen-Tabelle in live-tests.yml deckt sich mit src/ (Hosts) "
-        "und tests/ (Zahlen)."
+        "Quellen-Tabelle in live-tests.yml deckt sich mit src/ (Hosts), "
+        "tests/ (Zahlen) und beiden CONTRIBUTING-Dateien (Gruppen)."
     )
     return 0
 
