@@ -159,7 +159,20 @@ Liste ist von `<!-- GRUPPEN-LISTE ANFANG/ENDE -->` eingefasst (HTML-Kommentare:
 im gerenderten Markdown unsichtbar, für den Guard sichtbar); ohne die Marker
 meldet er das, statt sich abzuschalten. Beide Sprachen, weil eine zweisprachige
 Doku, die nur einsprachig gepflegt wird, schlimmer ist als eine einsprachige:
-Sie sieht vollständig aus. Die Tabelle
+Sie sieht vollständig aus.
+
+Seit diesem Commit hält er ausserdem die **Ausfall-Muster** des Klassifikators
+gegen den Code, aus dem sie stammen: Die Texte, an denen `classify_live_run.py`
+einen Quellen-Ausfall erkennt, gehören nicht ihm, sondern `handle_api_error` in
+`api_client.py` (und einer Stelle in `oa_legal.py`). Formuliert dort jemand um,
+wird kein Lauf falsch grün — er wird `finding` statt `upstream`, die
+konservative Richtung. Aber die vierte Antwort wäre für diesen Fall still tot,
+und ein Wächter, der nie mehr anschlägt, sieht aus wie einer, bei dem nichts
+vorfällt. Docstrings zählen dabei **nicht** als Vorkommen: Eine Meldung, die
+nur noch in einer Beschreibung steht, gibt es im Code nicht mehr. Die
+Ausnahme-Typnamen (`ConnectTimeout` und Verwandte) stehen nirgends als Text —
+sie erreichen eine Meldung nur über den generischen Zweig
+`Unerwarteter Fehler: {type(e).__name__}`, und stellvertretend wird der geprüft. Die Tabelle
 ist von `# QUELLEN-TABELLE ANFANG/ENDE` eingefasst; fehlen die Marker, meldet
 der Guard das, statt sich still abzuschalten. Der Fliesstext drumherum zählt
 nicht als Aufzählung — sonst ginge eine Quelle als «genannt» durch, weil sie
