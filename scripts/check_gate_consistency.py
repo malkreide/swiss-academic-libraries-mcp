@@ -983,6 +983,153 @@ def compare_contributing_gruppen(root: Path) -> list[str]:
     return probleme
 
 
+CLASSIFY = "scripts/classify_live_run.py"
+MIN_UPSTREAM_MELDUNGEN = 3
+
+
+def _literale(baum: ast.Module) -> set[str]:
+    """Alle String-Literale eines Moduls — ohne Docstrings.
+
+    Docstrings fliegen raus, weil eine Meldung, die nur noch in einer
+    Beschreibung vorkommt, im Code nicht mehr existiert. Sonst haette ein
+    umformulierter Rueckgabewert weiter als vorhanden gegolten, solange die
+    alte Fassung irgendwo erklaert wird.
+    """
+    docs: set[str] = set()
+    for knoten in ast.walk(baum):
+        if isinstance(knoten, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            doc = ast.get_docstring(knoten, clean=False)
+            if doc:
+                docs.add(doc)
+    werte: set[str] = set()
+    for knoten in ast.walk(baum):
+        if isinstance(knoten, ast.Constant) and isinstance(knoten.value, str):
+            if knoten.value not in docs:
+                werte.add(knoten.value)
+    return werte
+
+
+def _zuweisung(baum: ast.Module, name: str) -> object | None:
+    """Der Wert einer Zuweisung auf Modulebene, sofern er ein reines Literal ist."""
+    for knoten in baum.body:
+        ziele = (
+            knoten.targets
+            if isinstance(knoten, ast.Assign)
+            else [knoten.target]
+            if isinstance(knoten, ast.AnnAssign) and knoten.value is not None
+            else []
+        )
+        if not any(isinstance(z, ast.Name) and z.id == name for z in ziele):
+            continue
+        wert = knoten.value
+        try:
+            return ast.literal_eval(wert)
+        except (ValueError, SyntaxError):
+            return None
+    return None
+
+
+def _modul_pfad(root: Path, modul: str) -> Path | None:
+    """Ein Modul unter `src/`, ohne den Paketnamen fest zu verdrahten.
+
+    Fest verdrahtet waere der Paketname eine zehnte Stelle, an der jemand beim
+    Umbenennen nachziehen muesste — und dieses Skript wuerde dann abbrechen,
+    statt zu melden. Gesucht wird deshalb der Dateiname im Baum.
+    """
+    treffer = sorted((root / SRC).rglob(modul))
+    return treffer[0] if treffer else None
+
+
+def compare_upstream_muster(root: Path) -> list[str]:
+    """Stehen die Ausfall-Muster noch so im Code, wie der Klassifikator sie sucht?
+
+    WARUM ES DIESEN VERGLEICH GIBT
+    ------------------------------
+    `classify_live_run.py` erkennt einen Quellen-Ausfall daran, dass die
+    Fehlermeldung bestimmte Texte enthaelt — «Zeitüberschreitung. Der Server
+    antwortet nicht.» und Verwandte. Diese Texte gehoeren aber nicht dem
+    Klassifikator, sondern `handle_api_error` in `api_client.py`.
+
+    Formuliert dort jemand um, passt kein Muster mehr. Der Lauf wird dann nicht
+    etwa falsch gruen — er wird `finding` statt `upstream`, also die
+    konservative Richtung. Aber die vierte Antwort waere still tot, und niemand
+    saehe es: Ein Wächter, der nie mehr anschlaegt, sieht aus wie einer, bei dem
+    nichts vorfaellt.
+
+    Geprueft wird nur, was pruefbar ist: die woertlichen Meldungen. Die
+    Typnamen in `UPSTREAM_TYPEN` stehen nirgends als Text — sie erreichen eine
+    Meldung ausschliesslich ueber den generischen Zweig, und genau der wird
+    stellvertretend geprueft.
+    """
+    probleme: list[str] = []
+    try:
+        classify_baum = ast.parse(_read(root, CLASSIFY))
+    except SyntaxError as exc:
+        return [f"{CLASSIFY}: nicht parsebar ({exc})"]
+
+    meldungen = _zuweisung(classify_baum, "UPSTREAM_MELDUNGEN")
+    typen = _zuweisung(classify_baum, "UPSTREAM_TYPEN")
+    zweig = _zuweisung(classify_baum, "GENERISCHER_ZWEIG")
+    if not isinstance(meldungen, dict) or not isinstance(typen, tuple) or not isinstance(zweig, str):
+        return [
+            f"{CLASSIFY}: `UPSTREAM_MELDUNGEN`, `UPSTREAM_TYPEN` oder "
+            f"`GENERISCHER_ZWEIG` fehlt oder ist kein reines Literal mehr. "
+            f"Ohne sie weiss dieser Gate nicht, welche Muster er halten soll — "
+            f"und pruefte ab hier gar nichts."
+        ]
+    if len(meldungen) < MIN_UPSTREAM_MELDUNGEN:
+        probleme.append(
+            f"{CLASSIFY}: nur {len(meldungen)} von mindestens "
+            f"{MIN_UPSTREAM_MELDUNGEN} erwarteten Ausfall-Meldungen. Entweder "
+            f"sind Muster weggefallen, oder die Liste wird nicht mehr gelesen — "
+            f"im zweiten Fall vergleicht der Gate darunter fast nichts."
+        )
+
+    # Jede woertliche Meldung muss im genannten Modul als String-Literal stehen.
+    literale_je_modul: dict[str, set[str]] = {}
+    for muster, modul in sorted(meldungen.items()):
+        if modul not in literale_je_modul:
+            pfad = _modul_pfad(root, modul)
+            if pfad is None:
+                probleme.append(
+                    f"{SRC}/: `{modul}` nicht gefunden, obwohl {CLASSIFY} ein "
+                    f"Ausfall-Muster dorthin verweist. Umbenannt oder verschoben?"
+                )
+                literale_je_modul[modul] = set()
+            else:
+                try:
+                    literale_je_modul[modul] = _literale(ast.parse(pfad.read_text(encoding="utf-8")))
+                except (OSError, SyntaxError) as exc:
+                    probleme.append(f"{pfad}: nicht lesbar oder parsebar ({exc})")
+                    literale_je_modul[modul] = set()
+        if not any(muster in lit for lit in literale_je_modul[modul]):
+            probleme.append(
+                f"{CLASSIFY}: das Ausfall-Muster «{muster}» steht nicht mehr in "
+                f"{modul}. Wurde die Meldung umformuliert, erkennt der "
+                f"Klassifikator diesen Ausfall nicht mehr und ordnet ihn als "
+                f"`finding` ein — die vierte Antwort waere fuer diesen Fall "
+                f"still tot."
+            )
+
+    # Der generische Zweig traegt die ganze Typnamen-Gruppe.
+    api_literale = literale_je_modul.get("api_client.py")
+    if api_literale is None:
+        pfad = _modul_pfad(root, "api_client.py")
+        try:
+            api_literale = _literale(ast.parse(pfad.read_text(encoding="utf-8"))) if pfad else set()
+        except (OSError, SyntaxError) as exc:
+            probleme.append(f"{pfad}: nicht lesbar oder parsebar ({exc})")
+            api_literale = set()
+    if typen and not any(zweig in lit for lit in api_literale):
+        probleme.append(
+            f"{CLASSIFY}: der Zweig «{zweig}» steht nicht mehr in api_client.py. "
+            f"Ueber ihn allein erreichen die {len(typen)} Typnamen aus "
+            f"`UPSTREAM_TYPEN` ueberhaupt eine Fehlermeldung; ohne ihn ist die "
+            f"ganze Gruppe wirkungslos, ohne dass ein einzelnes Muster falsch waere."
+        )
+    return probleme
+
+
 def _disagreements(kind: str, sites: list[Site]) -> list[str]:
     values = {site.value for site in sites}
     if len(values) <= 1:
@@ -1061,6 +1208,7 @@ def check(root: Path) -> list[str]:
         problems += live_name_nennt_quelle(live_text, quellen)
     problems += compare_live_counts(live_text, root)
     problems += compare_contributing_gruppen(root)
+    problems += compare_upstream_muster(root)
     return problems
 
 
@@ -1090,7 +1238,8 @@ def main(argv: list[str] | None = None) -> int:
         "ruff-Pin und Gate-Scope stimmen an allen geprueften Stellen ueberein, "
         "der Gate-Block in CLAUDE.md deckt sich mit ci.yml, und die "
         "Quellen-Tabelle in live-tests.yml deckt sich mit src/ (Hosts), "
-        "tests/ (Zahlen) und beiden CONTRIBUTING-Dateien (Gruppen)."
+        "tests/ (Zahlen) und beiden CONTRIBUTING-Dateien (Gruppen); die "
+        "Ausfall-Muster des Klassifikators stehen so im Code."
     )
     return 0
 

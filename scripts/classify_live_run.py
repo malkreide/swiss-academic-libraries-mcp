@@ -83,22 +83,38 @@ UNKNOWN = "unknown"
 # das Wegerklaeren: Ein `upstream`, das zu breit greift, verwandelt jeden
 # echten Befund in ein Achselzucken.
 
-# Aus echten Laeufen abgelesen, nicht ausgedacht: Die ersten drei stammen aus
-# JUnit-XMLs, die am 19.8.2026 gegen eine haengende bzw. mit 429 antwortende
-# Attrappe erzeugt wurden; der Timeout-Text ist derselbe, den der reale
-# e-manuscripta-Ausfall an jenem Abend hinterliess.
-UPSTREAM_MUSTER = (
-    "Zeitüberschreitung. Der Server antwortet nicht.",
-    "Rate-Limit erreicht (429)",
-    "Dienst vorübergehend nicht verfügbar (503)",
+# Aus echten Laeufen abgelesen, nicht ausgedacht — und nach Herkunft getrennt,
+# weil sich die drei Sorten unterschiedlich pruefen lassen.
+#
+# Die Meldungen unten stehen woertlich im Code. `scripts/check_gate_consistency.py`
+# haelt sie dagegen: Formuliert jemand `handle_api_error` um, faellt das auf,
+# statt dass der zugehoerige Ausfall ab da still als `finding` durchgeht.
+UPSTREAM_MELDUNGEN: dict[str, str] = {
+    # Muster -> Modul in `src/`, in dem es als String-Literal stehen muss
+    "Zeitüberschreitung. Der Server antwortet nicht.": "api_client.py",
+    "Rate-Limit erreicht (429)": "api_client.py",
+    "Dienst vorübergehend nicht verfügbar (503)": "api_client.py",
+    "Alle OA-Rechtsquellen sind derzeit nicht erreichbar": "oa_legal.py",
+}
+
+# Ausnahme-Typnamen. Sie stehen nirgends als fertiger Text: Sie erscheinen nur,
+# weil `handle_api_error` im letzten Zweig `type(e).__name__` einbettet. Faellt
+# dieser Zweig weg, erreicht kein Typname mehr eine Meldung — dann ist die ganze
+# Gruppe tot, ohne dass ein einzelnes Muster falsch waere. Genau deshalb prueft
+# der Guard den Zweig und nicht die Namen.
+UPSTREAM_TYPEN: tuple[str, ...] = (
     "RemoteProtocolError: Server disconnected",
     "UpstreamUnavailableError",
-    "Alle OA-Rechtsquellen sind derzeit nicht erreichbar",
     "ConnectTimeout",
     "ReadTimeout",
     "PoolTimeout",
     "ConnectError",
 )
+
+# Der Zweig, der die Typnamen ueberhaupt sichtbar macht.
+GENERISCHER_ZWEIG = "Unerwarteter Fehler: "
+
+UPSTREAM_MUSTER: tuple[str, ...] = tuple(UPSTREAM_MELDUNGEN) + UPSTREAM_TYPEN
 
 
 def _fehlermeldungen(root: ET.Element) -> list[str]:

@@ -161,6 +161,38 @@ jobs:
             const PREFIX = '{prefix}';
 """
 
+# Ein Mini-`api_client.py` mit denselben Rueckgabetexten wie das echte — samt
+# generischem Zweig, denn ueber ihn allein erreichen Ausnahme-Typnamen eine
+# Meldung. Der Docstring nennt eine der Meldungen absichtlich: Er darf NICHT
+# als Vorkommen zaehlen, sonst gaelte eine umformulierte Meldung als vorhanden,
+# solange die alte Fassung irgendwo erklaert wird.
+SRC_API_CLIENT = '''
+def handle_api_error(e, context=""):
+    """Fehlermeldung, z. B. bei Rate-Limit erreicht (429) — nur Prosa."""
+    prefix = f"Fehler bei {context}: " if context else "Fehler: "
+    if code == 429:
+        return f"{prefix}Rate-Limit erreicht (429). Bitte kurz warten."
+    if code == 503:
+        return f"{prefix}Dienst voruebergehend nicht verfuegbar (503)."
+    return f"{prefix}Unerwarteter Fehler: {type(e).__name__}: {e}"
+'''
+
+SRC_OA_LEGAL = """
+def alle_aus():
+    raise RuntimeError("Alle OA-Rechtsquellen sind derzeit nicht erreichbar.")
+"""
+
+# Der Klassifikator der Attrappe — nur die drei Konstanten, die der Guard liest.
+CLASSIFY_QUELLE = """
+UPSTREAM_MELDUNGEN: dict[str, str] = {
+    "Rate-Limit erreicht (429)": "api_client.py",
+    "Dienst voruebergehend nicht verfuegbar (503)": "api_client.py",
+    "Alle OA-Rechtsquellen sind derzeit nicht erreichbar": "oa_legal.py",
+}
+UPSTREAM_TYPEN: tuple[str, ...] = ("ConnectTimeout", "ReadTimeout")
+GENERISCHER_ZWEIG = "Unerwarteter Fehler: "
+"""
+
 CONTRIB = """\
 ## Tests
 
@@ -325,6 +357,9 @@ def schreibe_repo(
     tests_oa_legal: str = TESTS_OA_LEGAL,
     tests_intl: str = TESTS_INTL,
     contrib: str = CONTRIB,
+    src_api_client: str = SRC_API_CLIENT,
+    src_oa_legal: str = SRC_OA_LEGAL,
+    classify_quelle: str = CLASSIFY_QUELLE,
 ) -> Path:
     """Ein in sich stimmiges Mini-Repo, an dem sich einzelne Stellen verstellen lassen."""
     (root / ".github" / "workflows").mkdir(parents=True, exist_ok=True)
@@ -342,6 +377,11 @@ def schreibe_repo(
     paket = root / "src" / "paket"
     paket.mkdir(parents=True, exist_ok=True)
     (paket / "quellen.py").write_text(src_modul, encoding="utf-8")
+    (paket / "api_client.py").write_text(src_api_client, encoding="utf-8")
+    (paket / "oa_legal.py").write_text(src_oa_legal, encoding="utf-8")
+    skripte = root / "scripts"
+    skripte.mkdir(parents=True, exist_ok=True)
+    (skripte / "classify_live_run.py").write_text(classify_quelle, encoding="utf-8")
     (root / ".github" / "workflows" / "live-tests.yml").write_text(
         LIVE_TEMPLATE.format(tabelle=live_tabelle, job_name=live_job_name, prefix=live_prefix),
         encoding="utf-8",
@@ -839,6 +879,100 @@ class GateKonsistenzTest(unittest.TestCase):
         laerm = CONTRIB + "\n\nSiehe `GRUPPEN` in `scripts/check_gate_consistency.py`, "
         laerm += "etwa `swisscoverry` als Vertipper-Beispiel.\n"
         self.assertEqual(self.contributing(de=laerm, en=laerm), [])
+
+    # --- die Ausfall-Muster des Klassifikators ---------------------------
+    #
+    # `classify_live_run.py` erkennt einen Quellen-Ausfall an Texten, die ihm
+    # nicht gehoeren: Sie stehen in `handle_api_error`. Formuliert dort jemand
+    # um, wird der Lauf nicht falsch gruen — er wird `finding` statt `upstream`,
+    # also die konservative Richtung. Aber die vierte Antwort waere still tot,
+    # und ein Waechter, der nie mehr anschlaegt, sieht aus wie einer, bei dem
+    # nichts vorfaellt.
+
+    def test_stimmige_muster_sind_still(self):
+        self.assertEqual(self.pruefe(), [])
+
+    def test_umformulierte_meldung_ist_ein_befund(self):
+        problems = self.pruefe(
+            src_api_client=SRC_API_CLIENT.replace(
+                "Rate-Limit erreicht (429). Bitte kurz warten.",
+                "Zu viele Anfragen, bitte spaeter erneut.",
+            )
+        )
+        self.assertTrue(any("Rate-Limit erreicht (429)" in p for p in problems), problems)
+        self.assertTrue(any("still tot" in p for p in problems), problems)
+
+    def test_meldung_nur_noch_im_docstring_ist_ein_befund(self):
+        """Die Gegenprobe gegen zu grosszuegiges Suchen.
+
+        Der Docstring der Attrappe nennt «Rate-Limit erreicht (429)». Zaehlte er
+        als Vorkommen, gaelte eine umformulierte Meldung weiter als vorhanden,
+        solange die alte Fassung irgendwo erklaert wird.
+        """
+        problems = self.pruefe(
+            src_api_client=SRC_API_CLIENT.replace(
+                'return f"{prefix}Rate-Limit erreicht (429). Bitte kurz warten."',
+                'return f"{prefix}Anders formuliert."',
+            )
+        )
+        self.assertTrue(any("Rate-Limit erreicht (429)" in p for p in problems), problems)
+
+    def test_meldung_aus_einem_anderen_modul_wird_dort_gesucht(self):
+        """`oa_legal.py` traegt eine eigene Ausfall-Meldung.
+
+        Wer nur `api_client.py` durchsucht, findet sie nie — und meldete einen
+        Befund, den es nicht gibt, bis jemand den Gate abschaltet.
+        """
+        problems = self.pruefe(
+            src_oa_legal=SRC_OA_LEGAL.replace(
+                "Alle OA-Rechtsquellen sind derzeit nicht erreichbar",
+                "Keine Rechtsquelle antwortet",
+            )
+        )
+        self.assertTrue(any("oa_legal" in p or "OA-Rechtsquellen" in p for p in problems), problems)
+
+    def test_fehlender_generischer_zweig_ist_ein_befund(self):
+        """Er traegt die ganze Typnamen-Gruppe, ohne selbst ein Muster zu sein."""
+        problems = self.pruefe(
+            src_api_client=SRC_API_CLIENT.replace(
+                'return f"{prefix}Unerwarteter Fehler: {type(e).__name__}: {e}"',
+                'return f"{prefix}Fehler."',
+            )
+        )
+        self.assertTrue(any("Unerwarteter Fehler" in p for p in problems), problems)
+
+    def test_zu_wenige_muster_sind_ein_befund(self):
+        """Nichts gefunden ist nicht dasselbe wie nichts zu beanstanden."""
+        problems = self.pruefe(
+            classify_quelle=CLASSIFY_QUELLE.replace(
+                '    "Dienst voruebergehend nicht verfuegbar (503)": "api_client.py",\n', ""
+            ).replace('    "Alle OA-Rechtsquellen sind derzeit nicht erreichbar": "oa_legal.py",\n', "")
+        )
+        self.assertTrue(any("mindestens" in p for p in problems), problems)
+
+    def test_konstante_ohne_literal_ist_ein_befund(self):
+        problems = self.pruefe(
+            classify_quelle=CLASSIFY_QUELLE.replace(
+                'UPSTREAM_TYPEN: tuple[str, ...] = ("ConnectTimeout", "ReadTimeout")',
+                "UPSTREAM_TYPEN = tuple(irgendwas())",
+            )
+        )
+        self.assertTrue(any("kein reines Literal" in p for p in problems), problems)
+
+    def test_verschwundenes_modul_ist_ein_befund(self):
+        """Ein Muster, das auf ein Modul zeigt, das es nicht gibt."""
+        problems = self.pruefe(classify_quelle=CLASSIFY_QUELLE.replace('"oa_legal.py"', '"gibt_es_nicht.py"'))
+        self.assertTrue(any("nicht gefunden" in p for p in problems), problems)
+
+    def test_paketname_wird_gesucht_nicht_angenommen(self):
+        """Der Guard darf nicht am Paketnamen haengen.
+
+        Fest verdrahtet waere er eine weitere Stelle zum Nachziehen — und das
+        Skript braeche ab, statt zu melden. Die Attrappe heisst `paket`, nicht
+        wie das echte Paket; bliebe der Name verdrahtet, faende der Guard hier
+        gar nichts und alle Muster-Tests waeren falsch gruen.
+        """
+        self.assertEqual(self.pruefe(), [])
 
 
 if __name__ == "__main__":
