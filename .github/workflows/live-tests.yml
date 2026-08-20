@@ -83,11 +83,13 @@ jobs:
           pytest -m live -v --junitxml=live-report.xml 2>&1 | tee live-output.txt
           echo "pytest_exit=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
-      # `if: failure()` kennt rot und nicht rot. Ein Live-Lauf hat drei
-      # Antworten, und die dritte zaehlt: Ein gescheitertes `pip install`, ein
-      # Timeout oder eine umbenannte Marke sind NICHT dasselbe wie ein
-      # gebrochener Vertrag mit der Quelle. Und ein Lauf, in dem jeder Test
-      # uebersprungen wurde, sieht unter jedem Exit-Code-Check aus wie Erfolg.
+      # `if: failure()` kennt rot und nicht rot. Ein Live-Lauf hat vier
+      # Antworten, und die letzten drei zaehlen: Ein gescheitertes `pip
+      # install` oder eine umbenannte Marke (`unknown`) sind NICHT dasselbe wie
+      # ein gebrochener Vertrag (`finding`), und eine Quelle, die gerade nicht
+      # antwortet (`upstream`), ist wieder etwas anderes. Und ein Lauf, in dem
+      # jeder Test uebersprungen wurde, sieht unter jedem Exit-Code-Check aus
+      # wie Erfolg.
       - name: Ergebnis einordnen
         id: verdict
         run: |
@@ -146,6 +148,17 @@ jobs:
               // einen Lauf hin zugeht, behauptet einen Vergleich, den es nicht
               // gab. Sichtbar wird es ueber den roten Job.
               core.warning(`Live-Suite nicht ausgewertet: ${reason}. Am Issue wurde nichts geaendert.`);
+              return;
+            }
+
+            if (state === 'upstream') {
+              // Dieselbe Behandlung wie `unknown`, aus demselben Grund: Der
+              // Vertrag wurde nicht geprueft, sondern die Quelle antwortete
+              // nicht. Kein Issue aufmachen (es gaebe nichts zu fixen) und
+              // keines zumachen (es wurde nichts verglichen). Rot wird der Job
+              // weiter unten — ein Ausfall, der eine Woche anhaelt, gehoert
+              // gesehen, auch wenn niemand ihn beheben kann.
+              core.warning(`Quelle nicht erreichbar: ${reason}. Am Issue wurde nichts geaendert.`);
               return;
             }
 
@@ -216,9 +229,9 @@ jobs:
               });
             }
 
-      # Erst hier wird der Job rot. `clear` ist gruen; `finding` und `unknown`
-      # sind beide rot, aber nur `finding` hat oben ein Issue erzeugt — der
-      # Unterschied steht im Log, nicht im Exit-Code.
+      # Erst hier wird der Job rot. `clear` ist gruen; `finding`, `upstream`
+      # und `unknown` sind alle rot, aber nur `finding` hat oben ein Issue
+      # erzeugt — der Unterschied steht im Log, nicht im Exit-Code.
       - name: Ergebnis durchreichen
         if: steps.verdict.outputs.state != 'clear'
         run: |

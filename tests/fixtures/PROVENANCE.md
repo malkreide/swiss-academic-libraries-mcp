@@ -102,3 +102,19 @@ genau die Unterschiede wegzulassen, wegen derer es drei Fixtures braucht.
 - **Auswahl:** unveraendert, 2 Eintraege; `opensearch:totalResults` unveraendert
 - **Groesse:** 5126 B
 - **SHA-256:** `ebc94a6e9e337023eff843e34f68787998d2b9be6a9398a02bc345337602c85b`
+
+## `live-report-timeout.xml`
+
+- **Quelle:** `pytest -m live --junitxml` gegen eine Attrappe, die die Verbindung annimmt und nie antwortet (127.0.0.1)
+- **Aufgezeichnet:** 2026-08-19
+- **Auswahl:** Der Timeout-Text ist derselbe, den der reale e-manuscripta-Ausfall am Abend des 19.8.2026 hinterliess. Aufgezeichnet statt geschrieben, weil eine handgeschriebene Meldung die Annahme des Autors kodiert und `handle_api_error` nicht widerlegen kann
+- **Groesse:** 10490 B
+- **SHA-256:** `49b6f0c1ca3be894a64c7da85516b8214037bde98f60efd568ae16e2c81f60f1`
+
+## `live-report-assertion.xml`
+
+- **Quelle:** `pytest -m live --junitxml` mit einer absichtlich gerissenen Zusicherung
+- **Aufgezeichnet:** 2026-08-19
+- **Auswahl:** Das Gegenstueck: ein Fehlschlag, der KEIN Quellen-Ausfall ist und deshalb `finding` bleiben muss
+- **Groesse:** 825 B
+- **SHA-256:** `9950d15d8c1e7ce4316a607b5e604bd3fd545f170ef9921ba8493f8f9fae41de`

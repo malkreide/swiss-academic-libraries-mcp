@@ -97,11 +97,25 @@ workflow*. See [`.github/workflows/live-tests.yml`](.github/workflows/live-tests
 
 **Who sees it:** A red run opens an issue labelled `upstream` and the stable title “Live-Tests gegen die echten Quellen rot (<Datum>)”. A second red run recognises the open issue by its title prefix and appends to that same thread rather than opening a second one. Once the suite is green again, the issue closes itself.
 
-**Three answers, not two.** `scripts/classify_live_run.py` reads the JUnit XML rather than
-the exit code and separates `clear` (ran, green), `finding` (ran, something
-fell) and `unknown` (did not run — install failed, nothing collected,
-everything skipped). An `unknown` never closes an issue: closing would claim a
-comparison that never happened.
+**Four answers, not two.** `scripts/classify_live_run.py` reads the JUnit XML rather than
+the exit code and separates:
+
+| State | Means | Job | Issue |
+|---|---|---|---|
+| `clear` | ran, green | green | closed |
+| `finding` | ran, the contract moved | red | opened |
+| `upstream` | ran, but **every** failure is a source outage | red | untouched |
+| `unknown` | did not run (install failed, nothing collected, all skipped) | red | untouched |
+
+Neither `unknown` nor `upstream` closes an issue: closing would claim a
+comparison that never happened. Neither opens one either — there would be
+nothing to fix.
+
+`upstream` applies **only** when every single failure is unambiguously an outage
+(timeout, 429, 503, dropped connection). A timeout next to a broken assertion
+stays `finding`, as does a failure whose message the script does not recognise.
+The failure mode of this state is not the false alarm but the explaining-away:
+an `upstream` that reaches too far turns every real finding into a shrug.
 
 **A red live run means one of three things**, and none of them can be read off
 the error message: the contract with the source has changed; the source is down;
