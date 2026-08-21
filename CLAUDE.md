@@ -66,9 +66,9 @@ Ein Codex-Review auf einem PR wird beantwortet oder behoben, nie ignoriert.
 ## Wenn zwei Agenten dasselbe tun
 
 Vor dem Anlegen eines Branches mit vorgegebenem Namen prüfen, ob es ihn schon
-gibt:
+gibt — wieder ohne `bash`-Fence, aus demselben Grund wie oben:
 
-```bash
+```
 git ls-remote --heads origin claude/<name> | wc -l
 ```
 
