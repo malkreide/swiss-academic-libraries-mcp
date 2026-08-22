@@ -144,9 +144,9 @@ wie der Code: Nichts ist rot, weil nichts geprüft wird, worauf es ankommt.
 
 ## Dieses Repo
 
-**ruff ist auf `0.16.1` gepinnt** — im `dev`-Extra von `pyproject.toml` und,
+**ruff ist auf `0.16.3` gepinnt** — im `dev`-Extra von `pyproject.toml` und,
 weil pre-commit `pyproject.toml` nicht lesen kann, ein zweites Mal als
-`rev: v0.16.1` in `.pre-commit-config.yaml`. Beide werden zusammen hochgezogen.
+`rev: v0.16.3` in `.pre-commit-config.yaml`. Beide werden zusammen hochgezogen.
 
 `.github/workflows/ci.yml` pinnt **nicht** mehr selbst. Vorher tat es das an
 zwei Stellen, und `[tool.hatch.envs.default]` zählte seine Abhängigkeiten

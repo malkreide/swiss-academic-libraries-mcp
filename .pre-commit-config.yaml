@@ -1,6 +1,6 @@
 # Lokales Gegenstueck zu den ruff-Gates aus .github/workflows/ci.yml.
 #
-# `rev` ist der Pin: Das Tag v0.16.1 dieses Hook-Repos installiert `ruff==0.16.1`
+# `rev` ist der Pin: Das Tag v0.16.3 dieses Hook-Repos installiert `ruff==0.16.3`
 # — dieselbe Version wie CI-Job `test`, CI-Job `lint` und `[tool.hatch.envs.default]`
 # in pyproject.toml. Vier Stellen, ein Pin. Wer eine davon hochzieht, zieht alle
 # vier hoch: Eine andere ruff-Version meldet Abweichungen, die niemand verursacht
@@ -16,7 +16,7 @@
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.1
+    rev: v0.16.3
     hooks:
       # `files` haelt den Scope deckungsgleich mit der CI, die beide Gates auf
       # `src/ tests/ scripts/` fahrt. Weicht der Hook davon ab, ist er in der
