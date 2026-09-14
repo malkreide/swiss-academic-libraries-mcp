@@ -167,6 +167,16 @@ jobs:
 # als Vorkommen zaehlen, sonst gaelte eine umformulierte Meldung als vorhanden,
 # solange die alte Fassung irgendwo erklaert wird.
 SRC_API_CLIENT = '''
+async def http_get_with_retry(url, rest=5.0):
+    """Die Wanduhr, ueber die allein ein nackter TimeoutError entsteht.
+
+    `asyncio.timeout` steht hier auch als Wort im Fliesstext — absichtlich:
+    Der Guard soll den AUFRUF finden, nicht diese Zeile.
+    """
+    async with asyncio.timeout(rest):
+        return await client.get(url)
+
+
 def handle_api_error(e, context=""):
     """Fehlermeldung, z. B. bei Rate-Limit erreicht (429) — nur Prosa."""
     prefix = f"Fehler bei {context}: " if context else "Fehler: "
@@ -182,7 +192,11 @@ def alle_aus():
     raise RuntimeError("Alle OA-Rechtsquellen sind derzeit nicht erreichbar.")
 """
 
-# Der Klassifikator der Attrappe — nur die drei Konstanten, die der Guard liest.
+# Der Klassifikator der Attrappe — nur die Konstanten, die der Guard liest.
+# `UPSTREAM_TYPEN` fuehrt hier bewusst KEIN "TimeoutError": Die Wanduhr-Pruefung
+# haengt an diesem Namen, und eine Attrappe, die ihn immer mitbringt, koennte
+# nicht mehr zeigen, dass die Pruefung ohne ihn ruht. Der Fall mit dem Namen
+# steht in `WanduhrTest` weiter unten.
 CLASSIFY_QUELLE = """
 UPSTREAM_MELDUNGEN: dict[str, str] = {
     "Rate-Limit erreicht (429)": "api_client.py",
@@ -191,6 +205,7 @@ UPSTREAM_MELDUNGEN: dict[str, str] = {
 }
 UPSTREAM_TYPEN: tuple[str, ...] = ("ConnectTimeout", "ReadTimeout")
 GENERISCHER_ZWEIG = "Unerwarteter Fehler: "
+BUDGET_SCHRANKE = "asyncio.timeout"
 """
 
 CONTRIB = """\
@@ -958,6 +973,59 @@ class GateKonsistenzTest(unittest.TestCase):
             )
         )
         self.assertTrue(any("kein reines Literal" in p for p in problems), problems)
+
+    # --- die Wanduhr, ueber die allein `TimeoutError` entsteht -----------
+    # Die Typnamen-Gruppe haengt sonst am generischen Zweig von
+    # `handle_api_error`. `TimeoutError` nicht: Er entsteht daran, dass
+    # `http_get_with_retry` eine Wanduhr ueber den Versuch spannt, und wird roh
+    # durchgereicht. Faellt die Schranke weg, ist das Muster still tot — und
+    # `_literale` sieht sie nicht, weil sie ein Aufruf ist und kein Text.
+
+    TYPEN_MIT_TIMEOUT = 'UPSTREAM_TYPEN: tuple[str, ...] = ("ConnectTimeout", "TimeoutError")'
+
+    def _classify_mit_timeout(self) -> str:
+        return CLASSIFY_QUELLE.replace(
+            'UPSTREAM_TYPEN: tuple[str, ...] = ("ConnectTimeout", "ReadTimeout")',
+            self.TYPEN_MIT_TIMEOUT,
+        )
+
+    def test_fehlende_wanduhr_ist_ein_befund(self):
+        problems = self.pruefe(
+            classify_quelle=self._classify_mit_timeout(),
+            src_api_client=SRC_API_CLIENT.replace("async with asyncio.timeout(rest):", "if True:"),
+        )
+        self.assertTrue(any("asyncio.timeout" in p for p in problems), problems)
+
+    def test_vorhandene_wanduhr_ist_still(self):
+        """Der Bezugspunkt — sonst wuerde der Test oben auch bei kaputtem Guard gruen."""
+        self.assertEqual(self.pruefe(classify_quelle=self._classify_mit_timeout()), [])
+
+    def test_wanduhr_nur_im_kommentar_ist_ein_befund(self):
+        """Die Gegenprobe gegen eine Textsuche.
+
+        In `api_client.py` steht «asyncio.timeout» als Erklaerung direkt neben
+        dem Aufruf. Zaehlte der Kommentar, gaelte die Schranke als gespannt,
+        nachdem sie entfernt wurde — der Guard prueft deshalb den Aufruf.
+        """
+        problems = self.pruefe(
+            classify_quelle=self._classify_mit_timeout(),
+            src_api_client=SRC_API_CLIENT.replace(
+                "async with asyncio.timeout(rest):",
+                "# asyncio.timeout(rest) stand hier einmal\n    if True:",
+            ),
+        )
+        self.assertTrue(any("asyncio.timeout" in p for p in problems), problems)
+
+    def test_wanduhr_ruht_ohne_das_muster(self):
+        """Ohne «TimeoutError» in `UPSTREAM_TYPEN` gibt es nichts zu schuetzen.
+
+        Sonst verlangte der Guard eine Schranke fuer ein Muster, das gar nicht
+        gefuehrt wird — und meldete an einem Repo, an dem nichts fehlt.
+        """
+        problems = self.pruefe(
+            src_api_client=SRC_API_CLIENT.replace("async with asyncio.timeout(rest):", "if True:")
+        )
+        self.assertEqual([p for p in problems if "asyncio.timeout" in p], [])
 
     def test_verschwundenes_modul_ist_ein_befund(self):
         """Ein Muster, das auf ein Modul zeigt, das es nicht gibt."""

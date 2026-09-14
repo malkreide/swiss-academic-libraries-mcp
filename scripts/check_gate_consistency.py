@@ -1070,12 +1070,18 @@ def compare_upstream_muster(root: Path) -> list[str]:
     meldungen = _zuweisung(classify_baum, "UPSTREAM_MELDUNGEN")
     typen = _zuweisung(classify_baum, "UPSTREAM_TYPEN")
     zweig = _zuweisung(classify_baum, "GENERISCHER_ZWEIG")
-    if not isinstance(meldungen, dict) or not isinstance(typen, tuple) or not isinstance(zweig, str):
+    schranke = _zuweisung(classify_baum, "BUDGET_SCHRANKE")
+    if (
+        not isinstance(meldungen, dict)
+        or not isinstance(typen, tuple)
+        or not isinstance(zweig, str)
+        or not isinstance(schranke, str)
+    ):
         return [
-            f"{CLASSIFY}: `UPSTREAM_MELDUNGEN`, `UPSTREAM_TYPEN` oder "
-            f"`GENERISCHER_ZWEIG` fehlt oder ist kein reines Literal mehr. "
-            f"Ohne sie weiss dieser Gate nicht, welche Muster er halten soll — "
-            f"und pruefte ab hier gar nichts."
+            f"{CLASSIFY}: `UPSTREAM_MELDUNGEN`, `UPSTREAM_TYPEN`, "
+            f"`GENERISCHER_ZWEIG` oder `BUDGET_SCHRANKE` fehlt oder ist kein "
+            f"reines Literal mehr. Ohne sie weiss dieser Gate nicht, welche "
+            f"Muster er halten soll — und pruefte ab hier gar nichts."
         ]
     if len(meldungen) < MIN_UPSTREAM_MELDUNGEN:
         probleme.append(
@@ -1127,7 +1133,51 @@ def compare_upstream_muster(root: Path) -> list[str]:
             f"`UPSTREAM_TYPEN` ueberhaupt eine Fehlermeldung; ohne ihn ist die "
             f"ganze Gruppe wirkungslos, ohne dass ein einzelnes Muster falsch waere."
         )
+
+    # `TimeoutError` entsteht nicht ueber den Zweig oben, sondern allein daran,
+    # dass `http_get_with_retry` eine Wanduhr ueber den Versuch spannt. Die
+    # steht als AUFRUF im Code und nicht als String — `_literale` sieht sie
+    # nicht, und der Zweig-Test oben deckt sie nicht ab. Faellt sie weg, laeuft
+    # der Guard fuer dieses Muster ins Leere, ohne dass ein Muster falsch waere.
+    if "TimeoutError" in typen and not _ruft_auf(root, "api_client.py", schranke):
+        probleme.append(
+            f"{CLASSIFY}: `{schranke}(...)` wird in api_client.py nicht mehr "
+            f"aufgerufen. Ueber diese Wanduhr allein entsteht der nackte "
+            f"`TimeoutError` aus `UPSTREAM_TYPEN`; ohne sie erkennt der "
+            f"Klassifikator den Budget-Ausfall nicht mehr und ordnet ihn als "
+            f"`finding` ein — genau der Fall vom 14.9.2026, nur rueckwaerts."
+        )
     return probleme
+
+
+def _ruft_auf(root: Path, modul: str, punktname: str) -> bool:
+    """Steht `punktname(...)` als Aufruf in `modul`? (z. B. «asyncio.timeout»)
+
+    Als Aufruf und nicht als Text: Ein Vorkommen in einem Kommentar oder
+    Docstring beweist nicht, dass die Schranke noch gespannt wird — und
+    ausgerechnet dieser Kommentar steht in `api_client.py` direkt daneben.
+    """
+    pfad = _modul_pfad(root, modul)
+    if pfad is None:
+        return False
+    try:
+        baum = ast.parse(pfad.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError):
+        return False
+    for knoten in ast.walk(baum):
+        if isinstance(knoten, ast.Call) and _punktname(knoten.func) == punktname:
+            return True
+    return False
+
+
+def _punktname(knoten: ast.expr) -> str | None:
+    """«asyncio.timeout» aus dem Attribut-Baum — None, wenn es keiner ist."""
+    if isinstance(knoten, ast.Name):
+        return knoten.id
+    if isinstance(knoten, ast.Attribute):
+        basis = _punktname(knoten.value)
+        return f"{basis}.{knoten.attr}" if basis else None
+    return None
 
 
 def _disagreements(kind: str, sites: list[Site]) -> list[str]:

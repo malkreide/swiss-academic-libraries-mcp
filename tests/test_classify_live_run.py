@@ -18,7 +18,9 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
+from xml.sax.saxutils import quoteattr
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
@@ -153,8 +155,13 @@ ZUSICHERUNG_MELDUNG = "AssertionError: Vertrag verletzt\nassert 'Handschrift' in
 
 
 def suite_mit_fehlern(meldungen: list[str], tests: int | None = None) -> str:
+    # `quoteattr` statt einer f-String-Naht: Eine echte pytest-Meldung traegt
+    # Anfuehrungszeichen und spitze Klammern (der Traceback zeigt Quelltext).
+    # Roh eingesetzt zerbricht sie das XML, und `classify` antwortet dann
+    # `unknown` — ein Test, der so seinen eigenen Gegenstand verfehlt, sagt
+    # ueber die Einordnung nichts und sieht trotzdem nach einem Urteil aus.
     faelle = "".join(
-        f'<testcase name="test_{i}"><failure message="{m}"></failure></testcase>'
+        f'<testcase name="test_{i}"><failure message={quoteattr(m)}></failure></testcase>'
         for i, m in enumerate(meldungen)
     )
     gesamt = tests if tests is not None else len(meldungen)
@@ -163,6 +170,16 @@ def suite_mit_fehlern(meldungen: list[str], tests: int | None = None) -> str:
         f'<testsuites><testsuite name="pytest" tests="{gesamt}" '
         f'failures="{len(meldungen)}" errors="0" skipped="0">{faelle}</testsuite></testsuites>'
     )
+
+
+def _failure_text(pfad: Path) -> str:
+    """Der Meldungstext eines aufgezeichneten Reports, unveraendert.
+
+    Abgeschrieben waere er wieder eine Annahme des Autors; gelesen ist er das,
+    was pytest wirklich schreibt.
+    """
+    root = ET.parse(pfad).getroot()
+    return clr._fehlermeldungen(root)[0]
 
 
 class UpstreamTest(unittest.TestCase):
@@ -249,6 +266,36 @@ class EchteReportsTest(unittest.TestCase):
         pfad = Path(__file__).parent / "fixtures" / "live-report-assertion.xml"
         state, _ = clr.classify(pfad)
         self.assertEqual(state, clr.FINDING)
+
+    def test_aufgezeichneter_budget_timeout_ist_upstream(self):
+        """Der Timeout, den dieses Repo selbst erzeugt — und lange nicht erkannte.
+
+        `live-report-timeout.xml` daneben nimmt den Weg ueber ein MCP-Tool und
+        traegt deshalb «Zeitueberschreitung. Der Server antwortet nicht.». Diese
+        Aufzeichnung nimmt den Weg, den die `intl_metadata`-Live-Tests nehmen:
+        direkt auf `search_preprints`, ohne `handle_api_error` dazwischen. Uebrig
+        bleibt der nackte `TimeoutError` aus der Wanduhr von
+        `http_get_with_retry` — kein httpx-Name trifft ihn, kein deutscher Text
+        nennt ihn. Am 14.9.2026 zaehlte er unter neun Fehlschlaegen als Befund.
+        """
+        pfad = Path(__file__).parent / "fixtures" / "live-report-budget-timeout.xml"
+        state, reason = clr.classify(pfad)
+        self.assertEqual(state, clr.UPSTREAM)
+        self.assertIn("nicht geantwortet", reason)
+
+    def test_budget_timeout_neben_befund_bleibt_finding(self):
+        """Die enge Seite gilt auch fuer das neue Muster.
+
+        Sonst waere aus der geschlossenen Luecke ein neuer Weg geworden, einen
+        echten Befund wegzuerklaeren — der Fehlermodus, vor dem der
+        Klassenkommentar von `UpstreamTest` warnt.
+        """
+        budget = _failure_text(Path(__file__).parent / "fixtures" / "live-report-budget-timeout.xml")
+        xml = suite_mit_fehlern([budget, ZUSICHERUNG_MELDUNG], tests=30)
+        with tempfile.TemporaryDirectory() as tmp:
+            state, reason = clr.classify(write(Path(tmp), xml))
+        self.assertEqual(state, clr.FINDING)
+        self.assertIn("deshalb kein `upstream`", reason)
 
 
 class GithubOutputZeilenTest(unittest.TestCase):
