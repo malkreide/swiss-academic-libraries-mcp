@@ -101,6 +101,26 @@ jobs:
             echo "PYTEST_TAIL"
           } >> "$GITHUB_OUTPUT"
 
+      # Die Einordnung behauptet etwas ueber den Lauf; ohne den Report ist sie
+      # nicht nachpruefbar. Am 14.9.2026 stand im Issue `finding`, und ob der
+      # Klassifikator einen der neun Fehlschlaege ueberhaupt als Ausfall erkannt
+      # hatte, liess sich nicht mehr feststellen: `live-report.xml` starb mit
+      # dem Runner, und die 40 Zeilen `tail` im Issue enthalten die Meldungen
+      # nicht, die der Klassifikator liest. Der Befund war am Ende nur deshalb
+      # zu belegen, weil der Ausfall sich nachstellen liess — das ist Glueck,
+      # kein Verfahren. `if: always()`, weil gerade der rote Lauf der ist, der
+      # nachgeprueft wird.
+      - name: Report aufheben
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-report
+          path: |
+            live-report.xml
+            live-output.txt
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Issue oeffnen, aktualisieren oder schliessen
         uses: actions/github-script@v9
         # Ueber `env`, nicht ueber `${{ }}` im Skript: Die pytest-Ausgabe ist

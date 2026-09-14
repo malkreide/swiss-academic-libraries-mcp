@@ -97,11 +97,25 @@ UPSTREAM_MELDUNGEN: dict[str, str] = {
     "Alle OA-Rechtsquellen sind derzeit nicht erreichbar": "oa_legal.py",
 }
 
-# Ausnahme-Typnamen. Sie stehen nirgends als fertiger Text: Sie erscheinen nur,
-# weil `handle_api_error` im letzten Zweig `type(e).__name__` einbettet. Faellt
-# dieser Zweig weg, erreicht kein Typname mehr eine Meldung — dann ist die ganze
-# Gruppe tot, ohne dass ein einzelnes Muster falsch waere. Genau deshalb prueft
-# der Guard den Zweig und nicht die Namen.
+# Ausnahme-Typnamen. Sie stehen nirgends als fertiger Text — sie erscheinen nur
+# als Name einer Ausnahme. Auf ZWEI Wegen, und das ist kein Detail, weil jeder
+# Weg anders wegbrechen kann:
+#
+#   ueber `handle_api_error`  Der letzte Zweig bettet `type(e).__name__` ein.
+#       Faellt dieser Zweig weg, erreicht ueber ihn kein Typname mehr eine
+#       Meldung. Deshalb prueft der Guard den Zweig und nicht die Namen.
+#   roh durchgereicht         `http_get_with_retry` verpackt seinen letzten
+#       Fehler absichtlich nicht (`raise last_error`). Wer die Funktion direkt
+#       ruft statt ueber ein MCP-Tool — die Live-Tests von `intl_metadata` tun
+#       genau das —, sieht den nackten Ausnahmenamen, nie eine deutsche Meldung.
+#
+# `TimeoutError` kam am 14.9.2026 dazu, und sein Fehlen war die unangenehmste
+# Sorte Luecke: Es ist der Timeout, den dieses Repo SELBST erzeugt. httpx'
+# Read-Timeout beginnt mit jedem Chunk von vorn, deshalb spannt
+# `http_get_with_retry` mit `asyncio.timeout` eine Wanduhr darueber — und deren
+# Auslauf ist ein nackter `TimeoutError`, den kein httpx-Name trifft und kein
+# deutscher Text nennt. Der Live-Lauf vom 14.9.2026 zaehlte ihn unter neun
+# Fehlschlaegen als Befund mit; erkannt wurde von den neun kein einziger.
 UPSTREAM_TYPEN: tuple[str, ...] = (
     "RemoteProtocolError: Server disconnected",
     "UpstreamUnavailableError",
@@ -109,10 +123,16 @@ UPSTREAM_TYPEN: tuple[str, ...] = (
     "ReadTimeout",
     "PoolTimeout",
     "ConnectError",
+    "TimeoutError",
 )
 
 # Der Zweig, der die Typnamen ueberhaupt sichtbar macht.
 GENERISCHER_ZWEIG = "Unerwarteter Fehler: "
+
+# Die Wanduhr, ueber die allein `TimeoutError` entsteht. Sie steht als Code in
+# `api_client.py`, nicht als Text, und wird deshalb eigens geprueft: Ohne sie
+# gibt es diesen Ausfall nicht mehr, und das Muster waere still tot.
+BUDGET_SCHRANKE = "asyncio.timeout"
 
 UPSTREAM_MUSTER: tuple[str, ...] = tuple(UPSTREAM_MELDUNGEN) + UPSTREAM_TYPEN
 

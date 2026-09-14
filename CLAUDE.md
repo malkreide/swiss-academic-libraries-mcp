@@ -477,6 +477,34 @@ meldet er das, statt sich abzuschalten. Beide Sprachen, weil eine zweisprachige
 Doku, die nur einsprachig gepflegt wird, schlimmer ist als eine einsprachige:
 Sie sieht vollständig aus.
 
+Seit diesem Commit hält er zusätzlich die **Wanduhr**, über die allein ein
+nackter `TimeoutError` entsteht. Die übrigen Typnamen in `UPSTREAM_TYPEN`
+erreichen eine Meldung über den generischen Zweig von `handle_api_error`;
+dieser eine nicht. `http_get_with_retry` spannt mit `asyncio.timeout` eine
+Schranke über den Versuch, weil httpx' Read-Timeout mit jedem Chunk von vorn
+beginnt — und reicht den Fehler roh durch. Wer die Funktion direkt ruft statt
+über ein MCP-Tool, und die `intl_metadata`-Live-Tests tun genau das, sieht den
+nackten Ausnahmenamen, nie eine deutsche Meldung. Geprüft wird der **Aufruf**
+per AST, nicht der Text: In `api_client.py` steht `asyncio.timeout` als
+Erklärung direkt neben der Schranke, und eine Textsuche hielte sie noch für
+gespannt, nachdem sie entfernt wurde.
+
+Anlass war der Live-Lauf vom 14.9.2026. Neun Fehlschläge, acht davon e-rara mit
+HTTP 403, einer der Budget-Timeout aus `search_preprints` — erkannt wurde als
+Ausfall **kein einziger**. Der 403 ist dabei richtig eingeordnet und bleibt es:
+Er ist vieldeutig (eine Sperre vor der Anwendung, aber ebenso gut eine neu
+verlangte Authentisierung, und das wäre ein Vertragsbruch), und `upstream` ist
+der Zustand, dessen Fehlermodus das Wegerklären ist. Der Timeout dagegen war
+eine echte Lücke, und die unangenehme Sorte: der einzige Timeout, den dieses
+Repo selbst erzeugt, war der einzige, den der Wächter nicht kannte.
+
+Dass es überhaupt zu belegen war, ist Glück gewesen. `live-report.xml` starb mit
+dem Runner, und die 40 Zeilen `tail` im Issue tragen die Meldungen nicht, die
+der Klassifikator liest; nachweisbar wurde der Befund erst, als der Ausfall sich
+nachstellen liess. Seit diesem Commit hebt `live-tests.yml` den Report als
+Artefakt auf — die Einordnung behauptet etwas über den Lauf, und ohne den Report
+lässt sich das nicht nachprüfen.
+
 Seit diesem Commit hält er ausserdem die **Ausfall-Muster** des Klassifikators
 gegen den Code, aus dem sie stammen: Die Texte, an denen `classify_live_run.py`
 einen Quellen-Ausfall erkennt, gehören nicht ihm, sondern `handle_api_error` in

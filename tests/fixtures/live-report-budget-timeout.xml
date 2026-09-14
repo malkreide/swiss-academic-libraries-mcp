@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="3.411" timestamp="2026-09-14T13:53:14.039733+00:00" hostname="vm"><testcase classname="test_intl_metadata.TestLiveIntlSources" name="test_search_preprints_live_phrase" time="3.082"><failure message="TimeoutError">url = 'http://127.0.0.1:34253/api/query'
+params = {'search_query': 'all:"model context protocol"', 'start': '0', 'max_results': '3', 'sortBy': 'relevance', ...}
+headers = None, max_attempts = 4
+
+    async def http_get_with_retry(
+        url: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        max_attempts: int = 4,
+    ) -&gt; str:
+        """GET mit exponentiellem Backoff (2s/4s/8s) für resiliente Upstream-Abfragen.
+    
+        Additive Variante von ``http_get`` — das bestehende Katalog-Verhalten bleibt
+        unangetastet. Retried werden 5xx, 429 und Netzwerkfehler; andere 4xx werden
+        sofort weitergereicht (kein Retry bei Client-Fehlern). Nutzt denselben
+        modulweiten Client (Connection-Reuse, UA-Header) und die Semaphore.
+        """
+        last_error: Exception | None = None
+        client = _get_client()
+        deadline = time.monotonic() + RETRY_TOTAL_BUDGET
+        attempts = 0
+    
+        for attempt in range(max_attempts):
+            if attempt &gt; 0:
+                delay = compute_delay(attempt, last_error)
+                # Eine Wartezeit, die das Budget überdauert, wartet für niemanden:
+                # Der Aufrufende hat aufgegeben, bevor sie endet. Dann lieber Schluss.
+                if delay &gt;= deadline - time.monotonic():
+                    break
+                await asyncio.sleep(delay)
+    
+            remaining = deadline - time.monotonic()
+            if remaining &lt;= 0:
+                break
+            attempts += 1
+            new_request_id()
+            logger.info("upstream_request url=%s attempt=%d", url, attempt + 1)
+            try:
+                async with _get_semaphore():
+                    # httpx begrenzt pro Operation, und sein Read-Timeout beginnt
+                    # mit jedem Chunk von vorn — eine tröpfelnde Antwort überdauert
+                    # jede Einzelschranke, ohne dass ein Read abläuft.
+                    # `asyncio.timeout` ist die Wanduhr, die das Budget zusagt.
+                    async with asyncio.timeout(remaining):
+&gt;                       response = await client.get(url, params=params or {}, headers=headers)
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+src/swiss_academic_libraries_mcp/api_client.py:369: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpx/_client.py:1768: in get
+    return await self.request(
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpx/_client.py:1540: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpx/_client.py:1629: in send
+    response = await self._send_handling_auth(
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpx/_client.py:1657: in _send_handling_auth
+    response = await self._send_handling_redirects(
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpx/_client.py:1694: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpx/_client.py:1730: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpx/_transports/default.py:394: in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_async/connection_pool.py:256: in handle_async_request
+    raise exc from None
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_async/connection_pool.py:236: in handle_async_request
+    response = await connection.handle_async_request(
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_async/connection.py:103: in handle_async_request
+    return await self._connection.handle_async_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_async/http11.py:136: in handle_async_request
+    raise exc
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_async/http11.py:106: in handle_async_request
+    ) = await self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_async/http11.py:177: in _receive_response_headers
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_async/http11.py:217: in _receive_event
+    data = await self._network_stream.read(
+/tmp/claude-0/venv/lib/python3.11/site-packages/httpcore/_backends/anyio.py:35: in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/claude-0/venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py:1407: in receive
+    await self._protocol.read_event.wait()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;asyncio.locks.Event object at 0x7f9339f31ed0 [set]&gt;
+
+    async def wait(self):
+        """Block until the internal flag is true.
+    
+        If the internal flag is true on entry, return True
+        immediately.  Otherwise, block until another coroutine calls
+        set() to set the flag to true, then return True.
+        """
+        if self._value:
+            return True
+    
+        fut = self._get_loop().create_future()
+        self._waiters.append(fut)
+        try:
+&gt;           await fut
+E           asyncio.exceptions.CancelledError
+
+/usr/lib/python3.11/asyncio/locks.py:213: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+self = &lt;test_intl_metadata.TestLiveIntlSources object at 0x7f933951f110&gt;
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x7f9339f33110&gt;
+
+    async def test_search_preprints_live_phrase(self, monkeypatch):
+        port = _stille_attrappe()
+        monkeypatch.setattr(intl_metadata, "ARXIV_API_URL", f"http://127.0.0.1:{port}/api/query")
+        monkeypatch.setattr(intl_metadata, "ALLOWED_HOSTS", frozenset({"127.0.0.1"}))
+        monkeypatch.setattr(api_client, "RETRY_TOTAL_BUDGET", 3.0)
+&gt;       await intl_metadata.search_preprints("model context protocol", limit=3)
+
+/tmp/claude-0/rec/test_intl_metadata.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/swiss_academic_libraries_mcp/intl_metadata.py:452: in search_preprints
+    xml_text = await _fetch(ARXIV_API_URL, params=params, max_attempts=4)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/swiss_academic_libraries_mcp/intl_metadata.py:162: in _fetch
+    return await http_get_with_retry(url, params=params, headers=headers, max_attempts=max_attempts)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/swiss_academic_libraries_mcp/api_client.py:413: in http_get_with_retry
+    raise last_error
+src/swiss_academic_libraries_mcp/api_client.py:368: in http_get_with_retry
+    async with asyncio.timeout(remaining):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;Timeout [expired]&gt;
+exc_type = &lt;class 'asyncio.exceptions.CancelledError'&gt;
+exc_val = CancelledError(), exc_tb = &lt;traceback object at 0x7f933953d100&gt;
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -&gt; Optional[bool]:
+        assert self._state in (_State.ENTERED, _State.EXPIRING)
+    
+        if self._timeout_handler is not None:
+            self._timeout_handler.cancel()
+            self._timeout_handler = None
+    
+        if self._state is _State.EXPIRING:
+            self._state = _State.EXPIRED
+    
+            if self._task.uncancel() &lt;= self._cancelling and exc_type is exceptions.CancelledError:
+                # Since there are no new cancel requests, we're
+                # handling this.
+&gt;               raise TimeoutError from exc_val
+E               TimeoutError
+
+/usr/lib/python3.11/asyncio/timeouts.py:115: TimeoutError</failure></testcase></testsuite></testsuites>

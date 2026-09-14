@@ -111,6 +111,14 @@ genau die Unterschiede wegzulassen, wegen derer es drei Fixtures braucht.
 - **Groesse:** 10490 B
 - **SHA-256:** `49b6f0c1ca3be894a64c7da85516b8214037bde98f60efd568ae16e2c81f60f1`
 
+## `live-report-budget-timeout.xml`
+
+- **Quelle:** `pytest -m live --junitxml` ueber `intl_metadata.search_preprints` gegen eine Attrappe, die die Verbindung annimmt und nie antwortet (127.0.0.1); `RETRY_TOTAL_BUDGET` auf 3 s
+- **Aufgezeichnet:** 2026-09-14
+- **Auswahl:** Das Gegenstueck zu `live-report-timeout.xml`, und der Grund dafuer steht im Aufrufweg: Jenes nimmt den Weg ueber ein MCP-Tool und traegt deshalb den Text aus `handle_api_error`. Die `intl_metadata`-Live-Tests rufen die Funktion direkt, ohne `handle_api_error` dazwischen — uebrig bleibt der nackte `TimeoutError` aus der Wanduhr von `http_get_with_retry`, den kein httpx-Name trifft. Genau dieser Fehlschlag lief am 14.9.2026 unerkannt unter neun Fehlschlaegen mit; der Lauf wurde `finding`, und erkannt war von den neun kein einziger
+- **Groesse:** 8962 B
+- **SHA-256:** `63d80eeb125482c835d387306201d51d2f221ddaa909b3135ed96e91b709f93d`
+
 ## `live-report-assertion.xml`
 
 - **Quelle:** `pytest -m live --junitxml` mit einer absichtlich gerissenen Zusicherung
