@@ -318,11 +318,16 @@ das ist eingetreten. Codex schreibt einen Kommentar mit HTML-Marker
 ```
 
 Sie ist **kein Schweigen**, sondern die aussagekräftigste der Formen: Sie nennt
-den geprüften Commit und den Auslöser. Damit belegt sie mehr als jede andere —
-ein fehlender Kommentar beweist nie etwas, eine Befundlos-Meldung sagt nicht,
-*welchen* Stand sie freispricht.
+den geprüften Commit und den Auslöser. Damit belegt sie mehr als ein fehlender
+Kommentar, der nie etwas beweist.
 
-Vier Eigenheiten, jede eine eigene Falle:
+Hier stand zwei Fassungen lang, sie belege mehr als *jede* andere, weil eine
+Befundlos-Meldung nicht sage, welchen Stand sie freispricht. Das ist seit dem
+15.9.2026 falsch: Die Befundlos-Meldung trägt inzwischen selbst eine
+Commit-Angabe (unten, Eigenheit sechs). Wer den Satz noch so im Kopf hat, hält
+die Tabelle für den einzigen belastbaren Beleg und übersieht den zweiten.
+
+Sechs Eigenheiten, jede eine eigene Falle:
 
 - **Der Status wechselt im selben Kommentar.** Er erscheint als
   `🔄 **Running**` und wird später auf `✅ **Completed**` überschrieben —
@@ -334,13 +339,35 @@ Vier Eigenheiten, jede eine eigene Falle:
 - **Die Commit-Angabe ist die halbe Aussage.** Geprüft ist der genannte Stand,
   nicht der Branch. Nach einem weiteren Push belegt dieselbe Tabelle nichts
   mehr über den Kopf.
-- **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in allen drei
+- **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in allen vier
   belegten Fällen leer; der Beleg steht allein in `get_comments`.
-- **Die 👍-Reaktion bleibt aus.** In allen drei Fällen `reactions.total_count: 0`,
+- **Die 👍-Reaktion bleibt aus.** In allen vier Fällen `reactions.total_count: 0`,
   obwohl der Infokasten sie weiter zusagt. Das ist keine neue Erkenntnis,
   sondern dieselbe wie am 23.8. — der Kasten ist keine Quelle, zum zweiten Mal.
+- **Ein Push löst KEINEN neuen Lauf aus.** Das ist die Eigenheit, die aus der
+  Commit-Angabe darüber eine Falle macht: Nach einem Push steht die Tabelle
+  weiter auf dem alten Commit, und es kommt nichts nach. Gemessen am 15.9.2026
+  auf PR #101 — Push um 13:26:06, sechs Minuten später unverändert `6fb0c13`,
+  bei 77 bis 109 Sekunden Laufzeit. Ein Kommentar `@codex review` löst dagegen
+  aus: 13:32:53 gepostet, 13:33:12 lief die Tabelle auf `ebb32ad` an, mit einem
+  fünften Auslöserwert — `Manual request` statt `Draft marked ready`. **Wer nach
+  einem Push mergt, mergt mit einem Häkchen für einen Commit, den es nicht mehr
+  gibt.** Ausgerechnet hier hat der Infokasten recht: Er listet drei Auslöser,
+  und ein Push ist keiner davon.
+- **Die Befundlos-Meldung kommt DANEBEN, nicht statt dessen.** Beide erschienen
+  auf #101, 13:35:45 und 13:35:46 — die Tabelle auf `Completed`, daneben ein
+  eigener Kommentar:
 
-Belegt in diesem Repo an fünf Datenpunkten:
+  ```
+  Codex Review: Didn't find any major issues. Can't wait for the next one!
+
+  **Reviewed commit:** `ebb32adc11`
+  ```
+
+  Sie nennt jetzt also **auch** den geprüften Stand. Das ist neu gegenüber der
+  Fassung vom 23.8. und der Grund, warum der Satz weiter oben fallen musste.
+
+Belegt in diesem Repo an sechs Datenpunkten:
 
 | PR | Zeit (UTC) | Codex-Kommentar |
 |---|---|---|
@@ -349,6 +376,7 @@ Belegt in diesem Repo an fünf Datenpunkten:
 | #95 | 30.8.2026 08:15:28 → 08:16:41 | Summary-Tabelle, `6b84aa5` |
 | #99 | 14.9.2026 14:25:30 → 14:26:38 | Summary-Tabelle, `985cad8` |
 | #100 | 15.9.2026 09:15:19 → 09:16:28 | Summary-Tabelle, `8e3d2ef` |
+| #101 | 15.9.2026 13:33:12 → 13:35:46 | Summary-Tabelle **und** Befundlos-Meldung, `ebb32ad` |
 
 **Das Format ist also nicht neu.** Beim ersten Hinsehen am 14.9. sah es danach
 aus; #95 vom 30.8. widerlegt das. Es lief schon, als dieser Abschnitt zuletzt
@@ -358,28 +386,35 @@ weh tat.
 Was die Messung **nicht** hergibt, und das ist mehr als üblich:
 
 - Ob die Summary-Tabelle die Befundlos-Meldung **ersetzt** oder neben ihr steht.
-  «Didn't find any major issues. Swish!» kommt in keinem der fünf PRs vor —
-  aber am 23.8. kam sie in sechs Repos, und die stehen hier nicht zur Messung.
+  Am 15.9. auf #101 **beantwortet: nebeneinander.** Offen bleibt, wovon es
+  abhängt — bei #95/#99/#100 (Auslöser `Draft marked ready`) kam nur die
+  Tabelle, bei #101 (`Manual request`) beides. Die Korrelation ist da, die
+  Ursache ist mit einem Datenpunkt nicht belegt; es kann ebenso der Zeitpunkt
+  sein.
 - Ob Kontingent- und Environment-Meldung weiter Freitext sind. Seit dem 30.8.
   gab es in diesem Repo keinen solchen Fall.
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
-  wurde deshalb nicht gefahren. **Fünf Datenpunkte aus einem Repo sind kein
+  wurde deshalb nicht gefahren. **Sechs Datenpunkte aus einem Repo sind kein
   Portfolio-Befund** — wer daraus einen macht, wiederholt den Fehler, gegen den
   der Dependabot-Absatz weiter oben geschrieben ist.
 
-**Und derselbe Merge-vor-Review, dreimal.** In jedem Fall mit Tabelle lag der
-Merge **vor** dem Abschluss:
+**Und derselbe Merge-vor-Review, dreimal — bis es einmal anders lief.**
 
 | PR | ready | Codex startet | Merge | Review fertig | Merge zu früh um |
 |---|---|---|---|---|---|
 | #95 | ungemessen | 08:15:28 | 08:15:22 | 08:16:41 | 79 s |
 | #99 | 14:25:15 | 14:25:25 | 14:25:21 | 14:26:38 | 77 s |
 | #100 | 09:15:11 | 09:15:17 | 09:15:22 | 09:16:28 | 66 s |
+| #101 | 09:21:56 | 13:33:12¹ | **13:59:31** | 13:35:46 | — (24 min danach) |
+
+¹ Der zweite Lauf, nach `@codex review`. Der erste lief 09:22:03 bis 09:23:45
+auf dem damaligen Kopf `6fb0c13` und war durch den Merge von `main` überholt.
 
 **Die Spalten sind nicht chronologisch zu lesen.** Bei #95 und #99 lag der Merge
 sogar vor dem *Start* des Reviews — Codex begann erst vier bis sechs Sekunden
-danach zu laufen. Nur bei #100 lief er beim Mergen schon.
+danach zu laufen. Bei #100 lief er beim Mergen schon. Nur bei #101 stimmt die
+Reihenfolge, und dort steht sie in der Tabelle ausserhalb der Spalten.
 
 Vom Umschalten bis zum Ergebnis vergehen **77 bis 109 Sekunden** (#99: 83 s,
 #100: 77 s, #101: 109 s; für #95 ist der ready-Zeitpunkt nicht gemessen).
@@ -389,11 +424,20 @@ zwei Messwerte, aus denen die Rundung stammte. Wer nach 80 Sekunden nachsieht,
 kann noch `Running` finden.
 
 Das ist der zweite Weg, den Prüfer zu verlieren, vom Ende dieses Abschnitts —
-und er ist hier nicht Theorie: Von den drei PRs, auf denen überhaupt ein Review
-lief, hat **keiner** ihn abgewartet. (Die anderen zwei sagen dazu nichts: #90
-bekam keinen Kommentar, #92 die Kontingent-Meldung — da war kein Review, den man
-hätte abwarten können.) Gut ausgegangen ist es, weil nichts gefunden wurde; ein
-Befund wäre auf `main` gelandet und hätte einen Folge-PR gebraucht.
+und er ist hier nicht Theorie: Von den vier PRs, auf denen überhaupt ein Review
+lief, haben **drei** ihn nicht abgewartet. (Die anderen zwei sagen dazu nichts:
+#90 bekam keinen Kommentar, #92 die Kontingent-Meldung — da war kein Review, den
+man hätte abwarten können.) Gut ausgegangen ist es, weil nichts gefunden wurde;
+ein Befund wäre auf `main` gelandet und hätte einen Folge-PR gebraucht.
+
+**#101 ist die Gegenprobe, und sie kostete zwei Anläufe.** Der erste Review lief
+sauber vor dem Merge durch — dann kam ein Konflikt-Merge dazwischen, und das
+Häkchen zeigte plötzlich auf einen Commit, den es nicht mehr gab. Erst
+`@codex review` holte den Lauf auf den neuen Kopf, und erst danach wurde gemergt,
+24 Minuten später. Wer den PR in dem Moment dazwischen angesehen hätte, hätte
+grüne CI, einen abgeschlossenen Review und eine erfüllte Checkliste gesehen —
+und trotzdem Ungeprüftes gemergt. **Nicht «ist ein Review da», sondern «auf
+welchem Commit» ist die Frage.**
 
 **#100 ist dabei der Beleg gegen die eigene Absicht.** Es ist der PR, der diesen
 Abschnitt eingeführt hat — und elf Sekunden nach «ready» gemergt worden, während
@@ -401,6 +445,15 @@ sein eigener Review seit fünf Sekunden lief. Eine Minute vorher stand in der
 Lagemeldung, hier liesse es sich vermeiden. Dreimal in Folge, und beim dritten
 Mal auf dem PR, der die Regel einführt: Sie wird nicht dadurch befolgt, dass man
 sie aufschreibt.
+
+**Und der Infokasten widerspricht sich selbst, im selben PR.** Auf #101 standen
+am 15.9. gleichzeitig zwei Fassungen: Die unter der Tabelle nennt
+`@codex review` **oder** `@codex security review` und verspricht eine
+👀-Reaktion während des Laufs; die unter der Befundlos-Meldung nennt nur
+`@codex review`, lässt 👀 weg und wirbt stattdessen für
+`@codex address that feedback`. Beide behaupten weiter das 👍, das in keinem der
+vier Fälle kam. Der Kasten ist keine Quelle — zum dritten Mal, und diesmal ist
+der Beleg, dass zwei Exemplare nebeneinander Verschiedenes sagen.
 
 Und ein befundloser Lauf ist kein Freispruch. Am 23.8. lief derselbe Text durch
 42 Reviews: 36 meldeten denselben P2-Befund, 6 die Befundlos-Meldung — gleiche
