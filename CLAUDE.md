@@ -381,9 +381,12 @@ Merge **vor** dem Abschluss:
 sogar vor dem *Start* des Reviews — Codex begann erst vier bis sechs Sekunden
 danach zu laufen. Nur bei #100 lief er beim Mergen schon.
 
-Vom Umschalten bis zum Ergebnis vergehen **rund 80 Sekunden** (#99: 83 s, #100:
-77 s; für #95 ist der ready-Zeitpunkt nicht gemessen). Gemergt wurde nach sechs
-bzw. elf.
+Vom Umschalten bis zum Ergebnis vergehen **77 bis 109 Sekunden** (#99: 83 s,
+#100: 77 s, #101: 109 s; für #95 ist der ready-Zeitpunkt nicht gemessen).
+Gemergt wurde bei #99 und #100 nach sechs bzw. elf. Hier stand zuerst «rund 80
+Sekunden» — bis #101 zeigte, dass die Spanne um ein Drittel breiter ist als die
+zwei Messwerte, aus denen die Rundung stammte. Wer nach 80 Sekunden nachsieht,
+kann noch `Running` finden.
 
 Das ist der zweite Weg, den Prüfer zu verlieren, vom Ende dieses Abschnitts —
 und er ist hier nicht Theorie: Von den drei PRs, auf denen überhaupt ein Review

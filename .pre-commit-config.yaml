@@ -1,10 +1,14 @@
 # Lokales Gegenstueck zu den ruff-Gates aus .github/workflows/ci.yml.
 #
 # `rev` ist der Pin: Das Tag v0.16.6 dieses Hook-Repos installiert `ruff==0.16.6`
-# — dieselbe Version wie CI-Job `test`, CI-Job `lint` und `[tool.hatch.envs.default]`
-# in pyproject.toml. Vier Stellen, ein Pin. Wer eine davon hochzieht, zieht alle
-# vier hoch: Eine andere ruff-Version meldet Abweichungen, die niemand verursacht
-# hat, und kostet die Suche danach.
+# — dieselbe Version wie das `dev`-Extra in pyproject.toml, aus dem die CI-Jobs
+# `test` und `lint` installieren. `ci.yml` pinnt nicht mehr selbst; geprueft wird
+# der Gleichstand von pyproject.toml, dieser `rev`-Zeile und den zwei Stellen im
+# CLAUDE.md-Absatz «Dieses Repo» — scripts/check_gate_consistency.py haelt sie
+# gegeneinander. Wer eine davon hochzieht, zieht alle hoch: Eine andere
+# ruff-Version meldet Abweichungen, die niemand verursacht hat, und kostet die
+# Suche danach. Genau daran ist der Dependabot-Bump auf 0.16.6 zuerst gescheitert,
+# der nur pyproject.toml anfasste.
 #
 # Der Pin wirkt erst nach der Installation im Klon — pre-commit richtet sich
 # nicht von selbst ein:
