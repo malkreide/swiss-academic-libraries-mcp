@@ -334,13 +334,13 @@ Vier Eigenheiten, jede eine eigene Falle:
 - **Die Commit-Angabe ist die halbe Aussage.** Geprüft ist der genannte Stand,
   nicht der Branch. Nach einem weiteren Push belegt dieselbe Tabelle nichts
   mehr über den Kopf.
-- **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in beiden belegten
-  Fällen leer; der Beleg steht allein in `get_comments`.
-- **Die 👍-Reaktion bleibt aus.** In beiden Fällen `reactions.total_count: 0`,
+- **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in allen drei
+  belegten Fällen leer; der Beleg steht allein in `get_comments`.
+- **Die 👍-Reaktion bleibt aus.** In allen drei Fällen `reactions.total_count: 0`,
   obwohl der Infokasten sie weiter zusagt. Das ist keine neue Erkenntnis,
   sondern dieselbe wie am 23.8. — der Kasten ist keine Quelle, zum zweiten Mal.
 
-Belegt in diesem Repo an vier Datenpunkten:
+Belegt in diesem Repo an fünf Datenpunkten:
 
 | PR | Zeit (UTC) | Codex-Kommentar |
 |---|---|---|
@@ -348,6 +348,7 @@ Belegt in diesem Repo an vier Datenpunkten:
 | #92 | 29.8.2026 11:04:12 | Kontingent-Meldung, Freitext |
 | #95 | 30.8.2026 08:15:28 → 08:16:41 | Summary-Tabelle, `6b84aa5` |
 | #99 | 14.9.2026 14:25:30 → 14:26:38 | Summary-Tabelle, `985cad8` |
+| #100 | 15.9.2026 09:15:19 → 09:16:28 | Summary-Tabelle, `8e3d2ef` |
 
 **Das Format ist also nicht neu.** Beim ersten Hinsehen am 14.9. sah es danach
 aus; #95 vom 30.8. widerlegt das. Es lief schon, als dieser Abschnitt zuletzt
@@ -357,29 +358,46 @@ weh tat.
 Was die Messung **nicht** hergibt, und das ist mehr als üblich:
 
 - Ob die Summary-Tabelle die Befundlos-Meldung **ersetzt** oder neben ihr steht.
-  «Didn't find any major issues. Swish!» kommt in keinem der vier PRs vor —
+  «Didn't find any major issues. Swish!» kommt in keinem der fünf PRs vor —
   aber am 23.8. kam sie in sechs Repos, und die stehen hier nicht zur Messung.
 - Ob Kontingent- und Environment-Meldung weiter Freitext sind. Seit dem 30.8.
   gab es in diesem Repo keinen solchen Fall.
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
-  wurde deshalb nicht gefahren. **Vier Datenpunkte aus einem Repo sind kein
+  wurde deshalb nicht gefahren. **Fünf Datenpunkte aus einem Repo sind kein
   Portfolio-Befund** — wer daraus einen macht, wiederholt den Fehler, gegen den
   der Dependabot-Absatz weiter oben geschrieben ist.
 
-**Und derselbe Merge-vor-Review, zweimal.** In beiden Fällen mit Tabelle lag der
-Merge **vor** dem Abschluss: #95 gemergt 08:15:22, fertig 08:16:41; #99 gemergt
-14:25:21, fertig 14:26:38. Beide Male lief der Review danach noch gut eine
-Minute; bei #99 lagen zwischen «ready for review» (14:25:15) und Merge sechs
-Sekunden. Für #95 ist der ready-Zeitpunkt nicht gemessen — belegt ist dort nur,
-dass Codex sechs Sekunden **nach** dem Merge zu laufen begann.
+**Und derselbe Merge-vor-Review, dreimal.** In jedem Fall mit Tabelle lag der
+Merge **vor** dem Abschluss:
+
+| PR | ready | Codex startet | Merge | Review fertig | Merge zu früh um |
+|---|---|---|---|---|---|
+| #95 | ungemessen | 08:15:28 | 08:15:22 | 08:16:41 | 79 s |
+| #99 | 14:25:15 | 14:25:25 | 14:25:21 | 14:26:38 | 77 s |
+| #100 | 09:15:11 | 09:15:17 | 09:15:22 | 09:16:28 | 66 s |
+
+**Die Spalten sind nicht chronologisch zu lesen.** Bei #95 und #99 lag der Merge
+sogar vor dem *Start* des Reviews — Codex begann erst vier bis sechs Sekunden
+danach zu laufen. Nur bei #100 lief er beim Mergen schon.
+
+Vom Umschalten bis zum Ergebnis vergehen **rund 80 Sekunden** (#99: 83 s, #100:
+77 s; für #95 ist der ready-Zeitpunkt nicht gemessen). Gemergt wurde nach sechs
+bzw. elf.
 
 Das ist der zweite Weg, den Prüfer zu verlieren, vom Ende dieses Abschnitts —
-und er ist hier nicht Theorie: Von den zwei PRs, auf denen überhaupt ein Review
+und er ist hier nicht Theorie: Von den drei PRs, auf denen überhaupt ein Review
 lief, hat **keiner** ihn abgewartet. (Die anderen zwei sagen dazu nichts: #90
 bekam keinen Kommentar, #92 die Kontingent-Meldung — da war kein Review, den man
 hätte abwarten können.) Gut ausgegangen ist es, weil nichts gefunden wurde; ein
 Befund wäre auf `main` gelandet und hätte einen Folge-PR gebraucht.
+
+**#100 ist dabei der Beleg gegen die eigene Absicht.** Es ist der PR, der diesen
+Abschnitt eingeführt hat — und elf Sekunden nach «ready» gemergt worden, während
+sein eigener Review seit fünf Sekunden lief. Eine Minute vorher stand in der
+Lagemeldung, hier liesse es sich vermeiden. Dreimal in Folge, und beim dritten
+Mal auf dem PR, der die Regel einführt: Sie wird nicht dadurch befolgt, dass man
+sie aufschreibt.
 
 Und ein befundloser Lauf ist kein Freispruch. Am 23.8. lief derselbe Text durch
 42 Reviews: 36 meldeten denselben P2-Befund, 6 die Befundlos-Meldung — gleiche
