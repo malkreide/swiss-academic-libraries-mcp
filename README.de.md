@@ -331,13 +331,30 @@ aus der jeweils anderen Aera wird abgewiesen.
 Beide Revisionen sind in
 [`tests/test_protocol_version.py`](tests/test_protocol_version.py) gepinnt und
 werden gegen das installierte SDK geprueft; ein Dependabot-Bump von `mcp` kann
-also keine der beiden still verschieben. Dieser Server baut keine ASGI-App, durch die sich ein `initialize`
-schicken liesse; das Gate sichert deshalb die SDK-Konstanten statt einer
-gemessenen Antwort — die schwaechere Form, benannt statt verschwiegen.
+also keine der beiden still verschieben. Zu beachten:
+`LATEST_PROTOCOL_VERSION` im SDK ist ein Alias auf die **moderne** Aera, nicht
+auf die Handshake-Aera — wer nur dagegen pinnt, laesst genau die Aera frei
+wandern, die heutige Clients tatsaechlich aushandeln.
 
-Zu beachten: `LATEST_PROTOCOL_VERSION` im SDK ist ein Alias auf die **moderne**
-Aera, nicht auf die Handshake-Aera — wer nur dagegen pinnt, laesst genau die
-Aera frei wandern, die heutige Clients tatsaechlich aushandeln.
+**Gemessen, nicht nur gepinnt.** Dasselbe Gate oeffnet beide Aeren in-process
+gegen genau das `MCPServer`-Objekt, das `main()` ausliefert, und liest die
+Antworten vom Draht: Die moderne Verbindung handelt `2026-07-28` aus, die
+Legacy-Verbindung deckelt bei `2025-11-25`, und jede der sechs Spec-Methoden,
+die dieser Server bedient (`tools/list`, `resources/list`, `prompts/list`,
+`resources/read`, `prompts/get`, `tools/call`), traegt den modernen Envelope.
+Hier stand zuvor, ein gemessener Test sei nicht moeglich, weil das Repo keine
+ASGI-App baue. Gebraucht wurde nie eine.
+
+**Server-Identitaet auf einer modernen Verbindung.** `2026-07-28` kennt kein
+`initialize` mehr, in dem `serverInfo` einmal stuende — das SDK stempelt den
+Block in das `_meta` **jeder** Antwort (Spec #3002). Dieser Server fuellt ihn
+deshalb aus den eigenen Paket-Metadaten: `version`, `description` und
+`websiteUrl` kommen ueber `importlib.metadata`, nie aus Literalen, und koennen
+damit nicht von `pyproject.toml` wegdriften. Das SDK setzt nichts Eigenes ein —
+bevor das verdrahtet war, lautete der Stempel in jeder einzelnen Antwort
+`{"name": "…", "version": ""}`, waehrend beide Versions-Pins oben gruen blieben.
+Das ist die Luecke, die ein Konstanten-Pin nicht sieht, und der Grund, warum das
+Gate jetzt misst.
 
 **Update-Politik.** Faellt das Gate, die Konstante nicht blind nachziehen: erst
 das Spec-Changelog zwischen den beiden Revisionen lesen, pruefen, ob sich der
