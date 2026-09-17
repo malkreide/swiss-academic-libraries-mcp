@@ -25,11 +25,13 @@ Der vollständige Verlauf auf #110, dem PR, der diese Notiz brachte:
 |---|---|
 | 19:01:51 | als Draft angelegt |
 | 19:02:00 | `To use Codex here, create an environment for this repo.` |
+| 19:06:38 | auf ready umgeschaltet |
 | 19:06:42 | gemergt |
 | 19:06:45 | Review startet auf `eb8338a`, Auslöser `Draft marked ready` |
 | 19:06:50 | Summary-Tabelle, `🔄 Running` |
+| 19:07:55 | `✅ Completed`, `eb8338a`, ohne Befund |
 
-Vier Minuten nach der Meldung lief ein Review an. Die Meldung beschrieb einen
+Vier Minuten nach der Meldung lief ein Review an, und er lief sauber durch. Die Meldung beschrieb einen
 Versuch, keinen Zustand.
 
 Warum sie kam, ist **ungemessen**; zwei Erklärungen passen gleich gut:

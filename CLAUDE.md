@@ -340,9 +340,11 @@ kein Beleg, sondern ein nicht durchgeführter Test.
 
 **«Beim Draft gibt es überhaupt nichts» stand hier und ist falsch.** Am
 17.9.2026 bekam #110 als **Draft** die Environment-Meldung, neun Sekunden nach
-dem Anlegen (19:01:51 → 19:02:00); ein `ready`-Ereignis gab es zu diesem
-Zeitpunkt nicht, belegt durch die Ereigniszustellung bis 19:04:53. Die
-Environment-Prüfung läuft also auch auf Drafts und meldet ihren Fehlschlag.
+dem Anlegen (19:01:51 → 19:02:00). Auf ready umgeschaltet wurde erst
+**19:06:38** — vier Minuten und 38 Sekunden später. Der Draft-Zustand zur
+Meldung ist damit nicht aus einem fehlenden Ereignis geschlossen, sondern durch
+den Zeitstempel des tatsächlichen Umschaltens belegt. Die Environment-Prüfung
+läuft also auch auf Drafts und meldet ihren Fehlschlag.
 
 Für die Reihenfolge weiter oben heisst das: Sie ist Kontingent → Environment →
 Draft, nicht Draft zuerst. Läge der Draft-Zweig vorn, hätte #110 geschwiegen.
@@ -670,9 +672,11 @@ auf #110 gemessen, in dieser Reihenfolge:
 |---|---|
 | 19:01:51 | #110 als Draft angelegt |
 | 19:02:00 | Environment-Meldung |
+| 19:06:38 | auf ready umgeschaltet |
 | 19:06:42 | gemergt |
 | 19:06:45 | Review startet auf `eb8338a`, Auslöser `Draft marked ready` |
 | 19:06:50 | Summary-Tabelle, `🔄 Running` |
+| 19:07:55 | `✅ Completed`, `eb8338a`, ohne Befund |
 
 **Vier Minuten nach der Meldung lief ein Review an.** Aus der Meldung war in
 der Lagemeldung geschlossen worden, Codex reviewe dieses Repo nicht mehr — und
