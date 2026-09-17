@@ -529,9 +529,16 @@ wie der Code: Nichts ist rot, weil nichts geprüft wird, worauf es ankommt.
 
 ## Dieses Repo
 
-**ruff ist auf `0.16.6` gepinnt** — im `dev`-Extra von `pyproject.toml` und,
+**ruff ist auf `0.16.7` gepinnt** — im `dev`-Extra von `pyproject.toml` und,
 weil pre-commit `pyproject.toml` nicht lesen kann, ein zweites Mal als
-`rev: v0.16.6` in `.pre-commit-config.yaml`. Beide werden zusammen hochgezogen.
+`rev: v0.16.7` in `.pre-commit-config.yaml`. Beide werden zusammen hochgezogen.
+
+«Zusammen» ist der ganze Satz, und am 17.9.2026 ist er einmal nicht eingehalten
+worden: Dependabot-PR #105 zog `pyproject.toml` auf `0.16.7` und liess die
+anderen drei Stellen stehen. `check_gate_consistency.py` meldete das, `lint` und
+`test (3.11)` standen seit 04:54 UTC auf `failure` — gemergt wurde um 18:00:04
+trotzdem, und danach war der Default-Branch rot. Ein Dependabot-PR auf ruff ist
+deshalb nie ein Ein-Zeilen-PR: er braucht die drei Nachzüge im selben Commit.
 
 `.github/workflows/ci.yml` pinnt **nicht** mehr selbst. Vorher tat es das an
 zwei Stellen, und `[tool.hatch.envs.default]` zählte seine Abhängigkeiten
