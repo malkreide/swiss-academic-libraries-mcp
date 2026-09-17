@@ -61,6 +61,38 @@ PR ohne jeden Check ist selten ein Repo ohne CI, meistens ein
 Merge-Konflikt: GitHub berechnet dafür keinen Merge-Commit und startet nichts.
 Ein Codex-Review auf einem PR wird beantwortet oder behoben, nie ignoriert.
 
+**`get_status` sagt in diesem Portfolio nichts über die CI — und sagt es im
+Wortlaut «pending».** Am 17.9.2026 auf zwei Commits gemessen, beide mit fünf
+grün abgeschlossenen Checks:
+
+```
+{"state": "pending", "sha": "ec5bc0a…", "total_count": 0, "statuses": []}
+{"state": "pending", "sha": "3dfe64e…", "total_count": 0, "statuses": []}
+```
+
+`ec5bc0a` war zum Abfragezeitpunkt seit über zwanzig Minuten fertig, `3dfe64e`
+längst gemergt. Kein Transient also: zweimal derselbe Wert, beide Male auf einem
+abgeschlossenen Commit. `total_count: 0` heisst, dass es **keine
+Legacy-Commit-Statuses gibt** — und `pending` steht daneben, obwohl es nichts
+gibt, worauf gewartet wird. Dieselben Commits liefern über `get_check_runs`
+fünf Einträge auf `success`; dort steht die Auskunft, die man sucht.
+
+Die Falle ist die Wortwahl: `pending` liest sich als «CI läuft noch». Wer
+darauf wartet, wartet auf etwas, das nie kommt — und wer es als «noch nicht
+grün» einordnet, hält einen fertigen PR für unfertig. Das ist die Umkehrung der
+`comments: 1`-Falle weiter unten: dort trägt eine Zahl drei Bedeutungen, hier
+trägt ein Wort eine, die es nicht hat.
+
+Was die Messung **nicht** hergibt, und das ist hier die halbe Geschichte:
+
+- **Warum** der Endpunkt `pending` sagt. Dass es der Vorgabewert für «keine
+  Statuses» sei, ist die naheliegende Erklärung und bleibt eine Vermutung —
+  die API-Referenz wurde nicht nachgelesen.
+- Wie er sich verhält, wo Legacy-Statuses wirklich benutzt werden. In diesem
+  Repo tut das keines; die übrigen Repos des Portfolios wurden nicht geprüft.
+- Ob `get_check_runs` die einzige verlässliche Quelle ist. Geprüft ist, dass sie
+  *eine* ist — andere Endpunkte wurden nicht gegengehalten.
+
 **Ein 4xx ist kein Nein.** Am 29.8.2026 antwortete `past-publications` in
 `swiss-procurement-mcp` auf jede Publikation mit Losen mit HTTP 400. Daraus war
 geschlossen worden, die Quelle verweigere diese Auskunft; der Befund stand
@@ -341,9 +373,9 @@ Sechs Eigenheiten, jede eine eigene Falle:
 - **Die Commit-Angabe ist die halbe Aussage.** Geprüft ist der genannte Stand,
   nicht der Branch. Nach einem weiteren Push belegt dieselbe Tabelle nichts
   mehr über den Kopf.
-- **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in allen sechs
+- **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in allen sieben
   belegten Fällen leer; der Beleg steht allein in `get_comments`.
-- **Die 👍-Reaktion bleibt aus.** In allen sechs Fällen `reactions.total_count: 0`,
+- **Die 👍-Reaktion bleibt aus.** In allen sieben Fällen `reactions.total_count: 0`,
   obwohl der Infokasten sie weiter zusagt. Das ist keine neue Erkenntnis,
   sondern dieselbe wie am 23.8. — der Kasten ist keine Quelle, zum zweiten Mal.
 - **Ein Push löst KEINEN neuen Lauf aus.** Das ist die Eigenheit, die aus der
@@ -369,7 +401,7 @@ Sechs Eigenheiten, jede eine eigene Falle:
   Sie nennt jetzt also **auch** den geprüften Stand. Das ist neu gegenüber der
   Fassung vom 23.8. und der Grund, warum der Satz weiter oben fallen musste.
 
-Belegt in diesem Repo an acht Datenpunkten:
+Belegt in diesem Repo an neun Datenpunkten:
 
 | PR | Zeit (UTC) | Codex-Kommentar |
 |---|---|---|
@@ -381,6 +413,7 @@ Belegt in diesem Repo an acht Datenpunkten:
 | #101 | 15.9.2026 13:33:12 → 13:35:46 | Summary-Tabelle **und** Befundlos-Meldung, `ebb32ad` |
 | #106 | 17.9.2026 17:59:31 → 18:00:44 | Summary-Tabelle, `59198a9` |
 | #107 | 17.9.2026 18:20:16 → 18:21:26 | Summary-Tabelle, `3dfe64e` |
+| #108 | 17.9.2026 18:49:41 → 18:51:04 | Summary-Tabelle, `ec5bc0a` |
 
 **Das Format ist also nicht neu.** Beim ersten Hinsehen am 14.9. sah es danach
 aus; #95 vom 30.8. widerlegt das. Es lief schon, als dieser Abschnitt zuletzt
@@ -391,9 +424,9 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
 
 - Ob die Summary-Tabelle die Befundlos-Meldung **ersetzt** oder neben ihr steht.
   Am 15.9. auf #101 **beantwortet: nebeneinander.** Offen bleibt, wovon es
-  abhängt — bei #95/#99/#100/#106/#107 (Auslöser `Draft marked ready`) kam nur
-  die Tabelle, bei #101 (`Manual request`) beides. Die Korrelation steht damit
-  fünf zu eins.
+  abhängt — bei #95/#99/#100/#106/#107/#108 (Auslöser `Draft marked ready`) kam
+  nur die Tabelle, bei #101 (`Manual request`) beides. Die Korrelation steht
+  damit sechs zu eins.
 
   **Die Zeit-Erklärung ist widerlegt, jedenfalls in ihrer einfachen Form.** Hier
   stand, es könne ebenso der Zeitpunkt sein — ein Rollout, ab dem beide
@@ -411,11 +444,11 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   gab es in diesem Repo keinen solchen Fall.
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
-  wurde deshalb nicht gefahren. **Acht Datenpunkte aus einem Repo sind kein
+  wurde deshalb nicht gefahren. **Neun Datenpunkte aus einem Repo sind kein
   Portfolio-Befund** — wer daraus einen macht, wiederholt den Fehler, gegen den
   der Dependabot-Absatz weiter oben geschrieben ist.
 
-**Und derselbe Merge-vor-Review, fünfmal in sechs Gelegenheiten — die Ausnahme
+**Und derselbe Merge-vor-Review, sechsmal in sieben Gelegenheiten — die Ausnahme
 liegt in der Mitte, nicht am Ende.**
 
 | PR | ready | Codex startet | Merge | Review fertig | Merge zu früh um |
@@ -426,6 +459,7 @@ liegt in der Mitte, nicht am Ende.**
 | #101 | 09:21:56 | 13:33:12¹ | **13:59:31** | 13:35:46 | — (24 min danach) |
 | #106 | 17:59:24² | 17:59:30 | 17:59:31 | 18:00:44 | 73 s |
 | #107 | 18:20:05² | 18:20:16³ | 18:20:09 | 18:21:26 | 77 s |
+| #108 | 18:49:30² | 18:49:38 | 18:49:39 | 18:51:04 | 85 s |
 
 ¹ Der zweite Lauf, nach `@codex review`. Der erste lief 09:22:03 bis 09:23:45
 auf dem damaligen Kopf `6fb0c13` und war durch den Merge von `main` überholt.
@@ -433,7 +467,9 @@ auf dem damaligen Kopf `6fb0c13` und war durch den Merge von `main` überholt.
 ² Aus der Webhook-Zustellung, nicht aus der GitHub-API — auf die Sekunde also
 schwächer belegt als die übrigen Spalten dieser Zeile. Die Merge-Zeitpunkte
 dagegen sind hart: `git show -s --format=%cI` auf den Merge-Commits `032a318`
-(#106) und `81fb3a2` (#107).
+(#106), `81fb3a2` (#107) und `f0559c4` (#108). Bei #108 nennt die API
+`merged_at` 18:49:40, der Commit 18:49:39 — eine Sekunde Unterschied, und der
+Commit gilt.
 
 ³ Bei #106 stand die Tabelle beim Nachsehen noch auf `Running` und nannte ihren
 Startzeitpunkt selbst (17:59:30, eine Sekunde vor `created_at`). Bei #107 war
@@ -444,58 +480,62 @@ kann den Start nicht mehr belegen.
 
 **Die Spalten sind nicht chronologisch zu lesen.** Bei #95 und #99 lag der Merge
 sogar vor dem *Start* des Reviews — Codex begann erst vier bis sechs Sekunden
-danach zu laufen. Bei #100 und #106 lief er beim Mergen schon, bei #106 seit
-genau einer Sekunde. Bei #107 lag der Merge wieder vor dem Kommentar. Nur bei
-#101 stimmt die Reihenfolge, und dort steht sie in der Tabelle ausserhalb der
-Spalten.
+danach zu laufen. Bei #100, #106 und #108 lief er beim Mergen schon — bei #106
+seit einer, bei #108 seit zwei Sekunden. Bei #107 lag der Merge wieder vor dem
+Kommentar. Nur bei #101 stimmt die Reihenfolge, und dort steht sie in der
+Tabelle ausserhalb der Spalten.
 
-**#106 und #107 sind die engsten Fälle: beim Mergen gab es die Tabelle noch
-nicht.** Bei #106 tragen Kommentar und Merge-Commit dieselbe Sekunde (17:59:31).
-Bei #107 liegt der Merge sogar *sieben Sekunden davor* — 18:20:09 gegen 18:20:16.
-Es gab also nicht bloss kein Ergebnis, sondern überhaupt nichts zu sehen: kein
-Häkchen, keine Tabelle, nicht einmal ein `Running`.
+**Bei #106, #107 und #108 gab es beim Mergen die Tabelle noch nicht.** Bei #106
+tragen Kommentar und Merge-Commit dieselbe Sekunde (17:59:31). Bei #107 liegt
+der Merge *sieben Sekunden davor* (18:20:09 gegen 18:20:16), bei #108 *zwei*
+(18:49:39 gegen 18:49:41). Es gab also nicht bloss kein Ergebnis, sondern
+überhaupt nichts zu sehen: kein Häkchen, keine Tabelle, nicht einmal ein
+`Running`. Dreimal hintereinander — der Merge wandert nicht näher an den
+Kommentar, sondern an das Umschalten.
 
 Das ist keine Entschuldigung, sondern der Grund, warum «kurz nachsehen» als
 Verfahren nicht trägt. Das erste Lebenszeichen überhaupt — die Spalte «Codex
 startet» — kommt **6 bis 11 Sekunden** nach «ready» (#100: 6 s, #106: 6 s,
-#99: 10 s, #107: 11 s). Davor ist nichts da, und ein PR ohne Codex-Kommentar
-sieht genauso aus wie einer ohne Befund. **In den ersten zehn Sekunden ist die
-Abwesenheit des Kommentars kein Signal, sondern ein Messfehler**; das Ergebnis
-darin steht ohnehin erst gut eine Minute später.
+#108: 8 s, #99: 10 s, #107: 11 s). Davor ist nichts da, und ein PR ohne
+Codex-Kommentar sieht genauso aus wie einer ohne Befund. **In den ersten zehn
+Sekunden ist die Abwesenheit des Kommentars kein Signal, sondern ein
+Messfehler**; das Ergebnis darin steht ohnehin erst gut eine Minute später.
 
-Die 6 bis 11 Sekunden sind dabei keine einheitliche Grösse: Bei #106 ist es ein
-gemessener Start, bei #107 die Anlage des Kommentars (Fussnote ³), bei #99/#100
-steht die Herkunft nicht dabei. Als Untergrenze für «zu früh» trägt die Spanne,
-als Messreihe nicht.
+Die 6 bis 11 Sekunden sind dabei keine einheitliche Grösse: Bei #106 und #108
+ist es ein gemessener Start, bei #107 die Anlage des Kommentars (Fussnote ³),
+bei #99/#100 steht die Herkunft nicht dabei. Als Untergrenze für «zu früh»
+trägt die Spanne, als Messreihe nicht.
 
 Vom Umschalten bis zum Ergebnis vergehen **77 bis 109 Sekunden** (#99: 83 s,
-#100: 77 s, #101: 109 s, #106: 80 s, #107: 81 s; für #95 ist der ready-Zeitpunkt
-nicht gemessen). Gemergt wurde bei #99, #100, #106 und #107 nach sechs, elf,
-sieben und vier Sekunden — keine Tendenz, aber #107 ist der kürzeste Abstand der
-Reihe. Hier stand zuerst «rund 80 Sekunden» — bis #101 zeigte, dass die
-Spanne um ein Drittel breiter ist als die zwei Messwerte, aus denen die Rundung
-stammte. #106 und #107 fallen mit 80 und 81 s mitten hinein und verschieben
+#100: 77 s, #101: 109 s, #106: 80 s, #107: 81 s, #108: 94 s; für #95 ist der
+ready-Zeitpunkt nicht gemessen). Gemergt wurde bei #99, #100, #106, #107 und
+#108 nach sechs, elf, sieben, vier und neun Sekunden — keine Tendenz, #107
+bleibt der kürzeste Abstand der Reihe.
+
+Hier stand zuerst «rund 80 Sekunden» — bis #101 zeigte, dass die Spanne um ein
+Drittel breiter ist als die zwei Messwerte, aus denen die Rundung stammte.
+#106, #107 und #108 fallen mit 80, 81 und 94 s mitten hinein und verschieben
 keine Grenze; dass die alte Rundung falsch war, ändert das nicht — sie war es,
 weil sie aus zwei Werten stammte, nicht weil der Mittelwert daneben lag. Wer
 nach 80 Sekunden nachsieht, kann noch `Running` finden.
 
-Fünf Messwerte zwischen 77 und 109 s tragen inzwischen eine brauchbare Regel:
+Sechs Messwerte zwischen 77 und 109 s tragen inzwischen eine brauchbare Regel:
 **nach zwei Minuten nachsehen, nicht nach einer.**
 
 Das ist der zweite Weg, den Prüfer zu verlieren, vom Ende dieses Abschnitts —
-und er ist hier nicht Theorie: Von den sechs PRs, auf denen überhaupt ein Review
-lief, haben **fünf** ihn nicht abgewartet. (Die anderen zwei sagen dazu nichts:
+und er ist hier nicht Theorie: Von den sieben PRs, auf denen überhaupt ein Review
+lief, haben **sechs** ihn nicht abgewartet. (Die anderen zwei sagen dazu nichts:
 #90 bekam keinen Kommentar, #92 die Kontingent-Meldung — da war kein Review, den
 man hätte abwarten können.) Gut ausgegangen ist es jedes Mal, weil nichts
 gefunden wurde; ein Befund wäre auf `main` gelandet und hätte einen Folge-PR
 gebraucht.
 
 **«In Folge» wäre falsch gezählt.** #101 hat abgewartet, und zwar zwischen #100
-und #106 — die Reihe ist also drei, Ausnahme, zwei, nicht fünf hintereinander.
+und #106 — die Reihe ist also drei, Ausnahme, drei, nicht sechs hintereinander.
 Der Unterschied ist nicht kosmetisch: Eine ununterbrochene Reihe liesse sich als
 Gewohnheit lesen, die noch niemand durchbrochen hat. Hier ist sie einmal
 durchbrochen worden, unter Aufwand (#101 kostete zwei Anläufe und einen
-`@codex review`) — und danach fiel das Verfahren zurück, zweimal.
+`@codex review`) — und danach fiel das Verfahren zurück, dreimal in Folge.
 
 **#101 ist die Gegenprobe, und sie kostete zwei Anläufe.** Der erste Review lief
 sauber vor dem Merge durch — dann kam ein Konflikt-Merge dazwischen, und das
@@ -532,6 +572,13 @@ sie aufschreibt. Bei #100 liess sich das noch als Ausrutscher lesen. Zweimal ist
 es keiner, sondern die Auskunft, dass diese Art Aufschreiben die falsche
 Massnahme für dieses Problem ist. Der Absatz darüber nennt die richtige; dass er
 selbst zum Beleg dafür wurde, ist der stärkste Grund, sie umzusetzen.
+
+**Dreimal, mit #108.** Auch der PR, der #107 eintrug, wurde vor seinem Review
+gemergt — neun Sekunden nach «ready», Ergebnis 85 Sekunden später. Die Reihe
+schreibt sich damit selbst fort: Jeder PR, der einen Fall protokolliert, wird
+zum nächsten Fall. Das ist keine Pointe, sondern ein Abbruchkriterium — weitere
+Datenpunkte belegen nichts mehr, was die ersten nicht schon belegen. Was fehlt,
+ist nicht Evidenz, sondern der Branch-Schutz.
 
 **Und der Infokasten widerspricht sich selbst, im selben PR.** Auf #101 standen
 am 15.9. gleichzeitig zwei Fassungen: Die unter der Tabelle nennt
