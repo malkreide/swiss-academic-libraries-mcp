@@ -12,6 +12,33 @@
 
 ---
 
+## Voraussetzung, die am 17.9. um 19:02 wegfiel
+
+Diese ganze Notiz setzt voraus, dass Codex das Repo überhaupt reviewt. Am
+17.9.2026 hörte das mitten in der Session auf:
+
+| Zeit (UTC) | Beobachtung |
+|---|---|
+| 18:57:41 → 18:59:01 | #109: Summary-Tabelle, `✅ Completed` auf `013ae02` |
+| 19:01:52 | #110 angelegt (Draft) |
+| 19:02:00 | #110: `To use Codex here, create an environment for this repo.` |
+
+Zwischen dem letzten gelungenen Review und der Environment-Meldung liegen
+**drei Minuten**. `get_reviews` auf #110 ist leer, es gibt keine Tabelle, nur
+diesen einen Kommentar — der Review ist also nicht langsam, er läuft nicht.
+
+**Solange das gilt, ist jede Regel unten gegenstandslos, die auf Codex
+verweist.** Ein Branch-Schutz, der auf ein Häkchen wartet, das niemand setzt,
+sperrt den Merge dauerhaft; ein Workflow nach Weg A würde korrekt `failure`
+melden und damit dasselbe tun. Erst die Environment anlegen
+(`chatgpt.com/codex/cloud/settings/environments`, **je Repo** — das hält
+`CLAUDE.md` schon fest), dann die Regel.
+
+Was diese Beobachtung nicht hergibt: warum es wegfiel. Gemessen sind zwei
+Zeitpunkte, drei Minuten auseinander; dazwischen hat niemand gemessen.
+
+---
+
 ## Der naheliegende Vorschlag funktioniert nicht
 
 Er lautet: «Required status check auf *Codex Review*, plus *Require branches to
