@@ -12,30 +12,43 @@
 
 ---
 
-## Voraussetzung, die am 17.9. um 19:02 wegfiel
+## Die Environment-Meldung ist kein Urteil über das Repo
 
-Diese ganze Notiz setzt voraus, dass Codex das Repo überhaupt reviewt. Am
-17.9.2026 hörte das mitten in der Session auf:
+Hier stand, die Voraussetzung dieser Notiz sei am 17.9.2026 um 19:02
+weggefallen: Codex reviewe das Repo nicht mehr. **Das war falsch**, und der
+Fehler ist der, vor dem `CLAUDE.md` unter «Wenn etwas rot ist» warnt — aus der
+Meldung geschlossen, statt die Quelle zu fragen.
+
+Der vollständige Verlauf auf #110, dem PR, der diese Notiz brachte:
 
 | Zeit (UTC) | Beobachtung |
 |---|---|
-| 18:57:41 → 18:59:01 | #109: Summary-Tabelle, `✅ Completed` auf `013ae02` |
-| 19:01:52 | #110 angelegt (Draft) |
-| 19:02:00 | #110: `To use Codex here, create an environment for this repo.` |
+| 19:01:51 | als Draft angelegt |
+| 19:02:00 | `To use Codex here, create an environment for this repo.` |
+| 19:06:42 | gemergt |
+| 19:06:45 | Review startet auf `eb8338a`, Auslöser `Draft marked ready` |
+| 19:06:50 | Summary-Tabelle, `🔄 Running` |
 
-Zwischen dem letzten gelungenen Review und der Environment-Meldung liegen
-**drei Minuten**. `get_reviews` auf #110 ist leer, es gibt keine Tabelle, nur
-diesen einen Kommentar — der Review ist also nicht langsam, er läuft nicht.
+Vier Minuten nach der Meldung lief ein Review an. Die Meldung beschrieb einen
+Versuch, keinen Zustand.
 
-**Solange das gilt, ist jede Regel unten gegenstandslos, die auf Codex
-verweist.** Ein Branch-Schutz, der auf ein Häkchen wartet, das niemand setzt,
-sperrt den Merge dauerhaft; ein Workflow nach Weg A würde korrekt `failure`
-melden und damit dasselbe tun. Erst die Environment anlegen
-(`chatgpt.com/codex/cloud/settings/environments`, **je Repo** — das hält
-`CLAUDE.md` schon fest), dann die Regel.
+Warum sie kam, ist **ungemessen**; zwei Erklärungen passen gleich gut:
 
-Was diese Beobachtung nicht hergibt: warum es wegfiel. Gemessen sind zwei
-Zeitpunkte, drei Minuten auseinander; dazwischen hat niemand gemessen.
+- Die Environment fehlte um 19:02 wirklich und wurde dazwischen angelegt — die
+  Meldung nennt die Seite, und sie war weitergegeben worden.
+- Die Meldung auf einem Draft sagt nichts über den Lauf, der erst beim
+  Umschalten auf ready ausgelöst wird.
+
+Zu unterscheiden wären sie nur durch einen Blick auf die Environment-Seite um
+19:02, und den gab es nicht.
+
+**Für diese Notiz bleibt der operative Teil trotzdem stehen:** Bevor ein
+Branch-Schutz auf ein Codex-Häkchen wartet, muss belegt sein, dass Codex
+reviewt — sonst sperrt die Regel den Merge dauerhaft, und ein Workflow nach
+Weg A meldete korrekt `failure` und täte dasselbe. Der Beleg ist aber **ein
+Lauf**, nicht das Fehlen oder Vorhandensein einer Meldung: PR auf ready, zwei
+Minuten warten, Tabelle auf `Completed` mit dem richtigen Commit. Eine
+Environment-Meldung auf einem Draft ist dafür weder Beweis noch Gegenbeweis.
 
 ---
 
