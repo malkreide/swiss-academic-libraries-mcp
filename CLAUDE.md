@@ -565,6 +565,18 @@ die Mechanik, nicht an die Aufmerksamkeit — ein Branch-Schutz, der den Merge
 sperrt, bis das Codex-Häkchen für den aktuellen Kopf steht, wäre die Form, die
 ohne Erinnern trägt.
 
+**Wie dieser Branch-Schutz aussehen müsste, steht seit diesem Commit in
+[`docs/branch-protection.md`](docs/branch-protection.md) — und der
+naheliegende Weg ist nicht dabei.** Ein Required Status Check kann nur
+verlangen, was als Check-Run am Commit hängt; Codex veröffentlicht keinen.
+Gemessen an #101, wo ein vollständiger Review durchlief: fünf Check-Runs, alle
+aus `ci.yml`, keiner mit «Codex» im Namen. Ein Kommentar steht in der
+Auswahlliste der Oberfläche nicht zur Wahl, und ein von Hand eingetragener Name
+sperrt den Merge dauerhaft statt bis zum Review. Was ohne neuen Code wirkt,
+deckt die CI und den veralteten Stand ab (#101), nicht den Merge vier Sekunden
+nach «ready»; dafür braucht es einen eigenen Check-Run aus einem Workflow. Die
+Notiz führt die drei ungeprüften Stellen dieses Bauplans mit.
+
 **Und #107 schliesst den Kreis: Es ist der PR, der den Absatz darüber
 eingeführt hat — gemergt vier Sekunden nach «ready».** Damit ist es zum zweiten
 Mal derselbe Vorgang wie bei #100: Die Regel wird in dem Commit verletzt, der
