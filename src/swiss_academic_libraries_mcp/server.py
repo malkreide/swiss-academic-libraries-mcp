@@ -33,6 +33,7 @@ from mcp.types import INTERNAL_ERROR
 from pydantic import BaseModel, ConfigDict, Field
 
 from swiss_academic_libraries_mcp import intl_metadata, oa_legal
+from swiss_academic_libraries_mcp._version import __homepage__, __summary__, __version__
 from swiss_academic_libraries_mcp.api_client import (
     EMANUSCRIPTA_OAI_URL,
     EPERIODICA_OAI_URL,
@@ -168,8 +169,31 @@ CACHE_HINTS: dict[CacheableMethod, CacheHint] = {
     "server/discover": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
 }
 
+# Die Identitaet des Servers, nicht bloss sein Name. Auf einer Verbindung nach
+# Spec `2026-07-28` gibt es kein `initialize` mehr, in dem `serverInfo` einmal
+# stuende: das SDK stempelt den Block in das `_meta` JEDER Antwort (Spec #3002).
+# Was hier fehlt, fehlt damit nicht einmal, sondern in jeder Antwort.
+#
+# Gemessen, bevor das hier stand: der Stempel lautete
+# `{"name": "swiss_academic_libraries_mcp", "version": ""}` — ein Server ohne
+# Version, ohne Beschreibung, ohne Herkunft. Das SDK setzt nichts Eigenes ein
+# («An unversioned server reports an empty `version`; the SDK never substitutes
+# its own»), es meldet genau das, was hier uebergeben wird.
+#
+# Version, Beschreibung und Homepage kommen aus den Paket-Metadaten, nicht aus
+# Literalen — dieselbe Quelle und derselbe Grund wie bei `__version__`.
+# `title` ist die eine Angabe ohne Vorlage im Paket: ein Anzeigename fuer
+# Oberflaechen, den weder `pyproject.toml` noch `server.json` fuehrt.
+#
+# `icons` bleibt bewusst leer: dieses Repo hat kein Icon. `docs/assets/demo.svg`
+# ist eine Demo-Animation, und sie als Icon auszugeben waere eine Behauptung
+# ueber eine Datei, die sie nicht einloest.
 mcp = MCPServer(
     "swiss_academic_libraries_mcp",
+    title="Swiss Academic Libraries",
+    version=__version__,
+    description=__summary__,
+    website_url=__homepage__,
     cache_hints=CACHE_HINTS,
     instructions=(
         "Schweizer Wissenschaftsbibliotheken: swisscovery (500+ Bibliotheken, SRU), "

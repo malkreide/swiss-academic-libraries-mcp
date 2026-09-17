@@ -28,15 +28,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   aushandeln. Beide sind jetzt einzeln gepinnt, ein Dependabot-Bump von
   `mcp` kann keine davon still verschieben.
 
-  Ohne gemessenen Teil: dieser Server baut keine ASGI-App, durch die sich ein
-  `initialize` schicken liesse. Das Gate haengt deshalb an den SDK-Konstanten —
-  die schwaechere Form, im Docstring benannt statt verschwiegen.
-
   Beide READMEs beschreiben die Aeren; ein Test haelt jede Sprache einzeln
   dagegen — im Portfolio sind EN und DE desselben Repos schon dreimal
   auseinandergelaufen, weil nur eine Fassung nachgezogen wurde.
 
+  Hier stand zunaechst, ein gemessener Teil sei nicht moeglich, weil dieses Repo
+  keine ASGI-App baue — das Gate haenge deshalb an den SDK-Konstanten, der
+  schwaecheren Form. Gebraucht wurde nie eine ASGI-App; der naechste Eintrag
+  loest das ein.
+
+- **Gemessen statt behauptet: beide Aeren werden aufgemacht und abgelesen.**
+  `Client` verbindet sich in-process gegen genau das `MCPServer`-Objekt, das
+  `main()` ausliefert; `mode=` waehlt die Aera. Geprueft wird jetzt an der
+  Antwort: dass eine moderne Verbindung `2026-07-28` aushandelt, eine
+  Legacy-Verbindung bei `2025-11-25` deckelt, und dass jede der sechs
+  Spec-Methoden dieses Servers `resultType` und den `serverInfo`-Stempel traegt.
+
+  Der erste Anlauf mass nichts. Der naheliegende Weg — Antwort typisieren,
+  `model_dump()`, `resultType` pruefen — war gruen, weil das Client-Modell fuer
+  `resultType` den Vorgabewert `"complete"` fuehrt und der Dump ihn hinschreibt,
+  auch wenn der Server nichts geschickt hat. Aufgefallen ist es an einer
+  Legacy-Verbindung, die das Feld nachweislich nicht sendet und trotzdem
+  `"complete"` lieferte. Die Tests lesen deshalb das Roh-Dict; die
+  Legacy-Gegenprobe steht als eigener Test daneben, damit ein Rueckfall auf den
+  typisierten Weg rot wird statt still.
+
 ### Fixed
+
+- **Der Server meldete sich auf jeder modernen Antwort ohne Version.** Auf einer
+  Verbindung nach Spec `2026-07-28` gibt es kein `initialize` mehr, in dem
+  `serverInfo` einmal stuende: das SDK stempelt den Block in das `_meta` **jeder**
+  Antwort (Spec #3002). Gemessen lautete er
+  `{"name": "swiss_academic_libraries_mcp", "version": ""}` — ohne Version, ohne
+  Beschreibung, ohne Herkunft, und zwar in jeder einzelnen Antwort. Das SDK setzt
+  nichts Eigenes ein; es meldet, was `MCPServer(...)` bekommen hat, und es bekam
+  nur den Namen.
+
+  `version`, `description` und `websiteUrl` kommen jetzt aus den Paket-Metadaten
+  (`importlib.metadata`), nicht aus Literalen — dieselbe Quelle und derselbe
+  Grund wie bei `__version__`. Dazu ein `title` als Anzeigename; den fuehrt weder
+  `pyproject.toml` noch `server.json`, er ist die einzige neue Angabe.
+  `icons` bleibt leer: dieses Repo hat kein Icon, und `docs/assets/demo.svg` ist
+  eine Demo-Animation.
+
+  Der Handshake fuellt `serverInfo` aus derselben `Implementation`, die Legacy-Aera
+  gewinnt die Angaben also mit. Ein eigener Test haelt das fest — es sind zwei
+  Pfade durch dasselbe Objekt, und einer liesse sich ohne den anderen verlieren.
+
+  Beide Versions-Pins des Protokoll-Gates waren waehrenddessen gruen. Ein SDK,
+  das `2026-07-28` kennt, sagt nichts darueber, ob dieser Server die Aera
+  vollstaendig bedient.
 
 - **Die Sammlungs-Übersicht meldete ein Zehntel des Bestands als Gesamtzahl.**
   `_oai_list_collections` las genau eine `ListSets`-Seite. OAI-PMH paginiert

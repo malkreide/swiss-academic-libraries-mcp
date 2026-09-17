@@ -329,13 +329,28 @@ other era is refused.
 Both revisions are pinned in
 [`tests/test_protocol_version.py`](tests/test_protocol_version.py) and asserted
 against the installed SDK, so a Dependabot bump of `mcp` cannot move either one
-silently. This server builds no ASGI app to send an `initialize` through, so
-the gate asserts the SDK constants rather than a measured response — the
-weaker form, named rather than left unsaid.
+silently. Note that the SDK's `LATEST_PROTOCOL_VERSION` is an alias for the
+**modern** era, not for the handshake era — pinning against it alone would
+leave the era that current clients actually negotiate free to drift.
 
-Note that the SDK's `LATEST_PROTOCOL_VERSION` is an alias for the **modern**
-era, not for the handshake era — pinning against it alone would leave the era
-that current clients actually negotiate free to drift.
+**Measured, not just pinned.** The same gate opens both eras in-process against
+the very `MCPServer` object `main()` serves, and reads the answers off the wire:
+the modern connection negotiates `2026-07-28`, the legacy one caps at
+`2025-11-25`, and every one of the six spec methods this server answers
+(`tools/list`, `resources/list`, `prompts/list`, `resources/read`,
+`prompts/get`, `tools/call`) carries the modern envelope. An earlier version of
+this section claimed a measured test was impossible here because the repo builds
+no ASGI app. It never needed one.
+
+**Server identity on a modern connection.** `2026-07-28` has no `initialize` in
+which `serverInfo` would be stated once — the SDK stamps it into the `_meta` of
+**every** result (spec #3002). This server therefore fills that block from its
+own package metadata: `version`, `description` and `websiteUrl` are read via
+`importlib.metadata`, never from literals, so they cannot drift away from
+`pyproject.toml`. The SDK substitutes nothing of its own — before this was
+wired, the stamp read `{"name": "…", "version": ""}` on every single response
+while both version pins above stayed green. That is the gap a constant pin
+cannot see, and why the gate now measures.
 
 **Update policy.** When the gate fails, do not edit the constant blindly: read
 the spec changelog between the two revisions, verify the server still behaves,
