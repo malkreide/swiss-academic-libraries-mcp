@@ -303,6 +303,17 @@ ohne dass jemand hineingesehen hat, und am 22.8. noch einmal 43.
   To use Codex here, create an environment for this repo.
   ```
 
+  Das ist die **gerenderte** Fassung. Im Rohtext steht ein Markdown-Link, und
+  zwar über den halben Satz:
+
+  ```
+  To use Codex here, [create an environment for this repo](https://chatgpt.com/codex/cloud/settings/environments).
+  ```
+
+  Wer den Satz oben wörtlich gegen `body` hält, findet ihn nicht. Ein
+  Klassifikator braucht ein Teilstück ohne Klammern —
+  `create an environment for this repo` trägt.
+
 Der vierte kam erst zum Vorschein, als der dritte wegfiel, und das ist kein
 Zufall: Die Prüfungen liegen hintereinander. Dass es diese Reihenfolge ist und
 nicht die umgekehrte, lässt sich an einem einzigen Repo ablesen — in
@@ -324,9 +335,25 @@ ein, den dieser Abschnitt verhindern soll, nur in die andere Richtung.
 sich an der Form: Ein Review **mit** Befund ist ein Review-Objekt
 («💡 Codex Review», mit Commit-Angabe); ein Review **ohne** Befund und die
 beiden Ausfallmeldungen — Kontingent wie Environment — sind gewöhnliche
-Issue-Kommentare und trennen sich nur im Text. Beim Draft gibt es überhaupt
-nichts, weil Codex nicht anläuft; ein kommentarloser Draft ist deshalb kein
-Beleg, sondern ein nicht durchgeführter Test.
+Issue-Kommentare und trennen sich nur im Text. Ein kommentarloser Draft ist
+kein Beleg, sondern ein nicht durchgeführter Test.
+
+**«Beim Draft gibt es überhaupt nichts» stand hier und ist falsch.** Am
+17.9.2026 bekam #110 als **Draft** die Environment-Meldung, neun Sekunden nach
+dem Anlegen (19:01:51 → 19:02:00). Auf ready umgeschaltet wurde erst
+**19:06:38** — vier Minuten und 38 Sekunden später. Der Draft-Zustand zur
+Meldung ist damit nicht aus einem fehlenden Ereignis geschlossen, sondern durch
+den Zeitstempel des tatsächlichen Umschaltens belegt. Die Environment-Prüfung
+läuft also auch auf Drafts und meldet ihren Fehlschlag.
+
+Für die Reihenfolge weiter oben heisst das: Sie ist Kontingent → Environment →
+Draft, nicht Draft zuerst. Läge der Draft-Zweig vorn, hätte #110 geschwiegen.
+Die vier Drafts davor (#106–#109) schwiegen, weil dort nichts zu melden war —
+nicht, weil Drafts grundsätzlich schweigen.
+
+Nicht ausgeschlossen: dass die Meldung aus einem anderen Pfad kommt, der mit
+dieser Kette gar nichts zu tun hat. Zwei Meldungen aus einem Repo schlagen jede
+Vermutung, aber eine einzelne trägt keine Mechanik.
 
 Das sind verschiedene Abfragen — `get_reviews` fürs Objekt, `get_comments` für
 alles andere; wer nur eine nimmt, übersieht den Rest. Genau so ist die
@@ -440,8 +467,10 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   sonst am Tag, eine Zuteilung, die gar nicht am Datum hängt, oder irgendetwas
   Drittes, das mit dem Auslöser einhergeht. Die Korrelation ist stärker
   geworden, die Ursache bleibt unbelegt.
-- Ob Kontingent- und Environment-Meldung weiter Freitext sind. Seit dem 30.8.
-  gab es in diesem Repo keinen solchen Fall.
+- Ob die **Kontingent**-Meldung weiter Freitext ist. Seit dem 30.8. gab es in
+  diesem Repo keinen solchen Fall. Für die **Environment**-Meldung ist die Frage
+  am 17.9. auf #110 beantwortet: ja, Freitext, ein Satz, keine Tabelle, kein
+  HTML-Marker, `created_at == updated_at`, `reactions.total_count: 0`.
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
   wurde deshalb nicht gefahren. **Neun Datenpunkte aus einem Repo sind kein
@@ -635,6 +664,38 @@ von Fehlschlägen belegt eine lange Reihe von Fehlschlägen, nicht ihre Ursache.
 Zeigt das Dashboard freies Kontingent, während Reviews weiter scheitern, ist
 das ein bekannter Fehler bei mehreren verbundenen Konten — dann den
 GitHub-Connector in den Codex-Einstellungen trennen und neu verbinden.
+
+**Und eine Environment-Meldung ist kein Urteil über das Repo.** Am 17.9.2026
+auf #110 gemessen, in dieser Reihenfolge:
+
+| Zeit (UTC) | Beobachtung |
+|---|---|
+| 19:01:51 | #110 als Draft angelegt |
+| 19:02:00 | Environment-Meldung |
+| 19:06:38 | auf ready umgeschaltet |
+| 19:06:42 | gemergt |
+| 19:06:45 | Review startet auf `eb8338a`, Auslöser `Draft marked ready` |
+| 19:06:50 | Summary-Tabelle, `🔄 Running` |
+| 19:07:55 | `✅ Completed`, `eb8338a`, ohne Befund |
+
+**Vier Minuten nach der Meldung lief ein Review an.** Aus der Meldung war in
+der Lagemeldung geschlossen worden, Codex reviewe dieses Repo nicht mehr — und
+in `docs/branch-protection.md` stand daraufhin ein Abschnitt, die Voraussetzung
+der Notiz sei weggefallen. Beides war falsch und ist im Folge-Commit korrigiert.
+Der Fehler ist genau der aus «Wenn etwas rot ist»: aus der Fehlermeldung
+geschlossen, statt die Quelle zu fragen. Eine Meldung beschreibt einen Versuch,
+keinen Zustand.
+
+Warum sie kam, ist **ungemessen**, und zwei Erklärungen passen gleich gut: Die
+Environment fehlte um 19:02 wirklich und wurde dazwischen angelegt — die
+Meldung nennt die Seite, und sie war weitergegeben worden. Oder die Meldung auf
+einem Draft sagt nichts über den Lauf, der beim Umschalten ausgelöst wird. Zu
+unterscheiden wären sie nur durch einen Blick auf die Environment-Seite um
+19:02, und den gab es nicht.
+
+Belegt ist ein reviewbares Repo deshalb nicht durch das Fehlen einer Meldung
+und nicht durch ihr Vorhandensein, sondern durch einen Lauf: PR auf ready, zwei
+Minuten warten, Tabelle auf `Completed` mit dem richtigen Commit.
 
 Die Environment legt man unter `chatgpt.com/codex/cloud/settings/environments`
 an, und zwar **je Repo**. Die Meldung sagt es selbst («for this repo»), und am
