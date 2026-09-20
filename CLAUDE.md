@@ -388,15 +388,30 @@ die Tabelle für den einzigen belastbaren Beleg und übersieht den zweiten.
 
 Sechs Eigenheiten, jede eine eigene Falle:
 
-- **Der Status wechselt im selben Kommentar.** Er erscheint als
-  `🔄 **Running**` und wird später auf `✅ **Completed**` überschrieben —
+- **Der Status wechselt im selben Kommentar — aber nicht immer.** Er erscheint
+  als `🔄 **Running**` und wird später auf `✅ **Completed**` überschrieben —
   dieselbe `id`, nur `updated_at` rückt vor. Der Kommentarzähler bleibt dabei
   auf `1`. Zum Absatz oben kommt deshalb hinzu: den Text nicht nur lesen statt
   der Zahl, sondern **erneut** lesen. Wer einmal nachsah und `Running` fand,
   hält einen Beleg in der Hand, der inzwischen ein anderer ist — und
   `Running` ist keiner. Am 17.9.2026 auf #106 noch einmal so: Kommentar
   `5718954242`, `created_at` 17:59:31 mit `Running`, `updated_at` 18:00:45 mit
-  `Completed` — eine `id`, zwei Aussagen.
+  `Completed` — eine `id`, zwei Aussagen. Am 20.9.2026 auf #113 wieder so:
+  Kommentar `5750950387`, 16:07:11 `Running`, 16:08:53 `Completed`.
+
+  **«Erscheint als Running» stand hier als Mechanik und ist keine.** Am
+  20.9.2026 trug die Tabelle auf #112 beim Anlegen bereits `Completed`, und
+  `created_at == updated_at == 09:01:36` belegt, dass sie nie überschrieben
+  wurde — der Lauf war 09:01:35.098 fertig, eine Sekunde vor dem Kommentar.
+  Die Zwischenstufe gibt es also nur, wenn beim Anlegen noch etwas läuft; ob
+  sie erscheint, hängt am Zufall der Reihenfolge, nicht am Verfahren.
+
+  Für einen Branch-Schutz nach Weg A ändert das nichts — er wartet ohnehin auf
+  `Completed`. Für die Beweisführung schon: Wer `Running` als notwendige
+  Vorstufe annimmt, hält einen fertigen Lauf für einen nicht gestarteten und
+  wartet auf eine Bearbeitung, die nie kommt. Die Aufforderung oben, **erneut**
+  zu lesen, bleibt trotzdem richtig; sie ist nur nicht mehr an ein `Running`
+  gebunden, das man vorher gesehen haben müsste.
 - **Die Commit-Angabe ist die halbe Aussage.** Geprüft ist der genannte Stand,
   nicht der Branch. Nach einem weiteren Push belegt dieselbe Tabelle nichts
   mehr über den Kopf.
@@ -409,7 +424,8 @@ Sechs Eigenheiten, jede eine eigene Falle:
   Commit-Angabe darüber eine Falle macht: Nach einem Push steht die Tabelle
   weiter auf dem alten Commit, und es kommt nichts nach. Gemessen am 15.9.2026
   auf PR #101 — Push um 13:26:06, sechs Minuten später unverändert `6fb0c13`,
-  bei 77 bis 109 Sekunden Laufzeit. Ein Kommentar `@codex review` löst dagegen
+  bei rund zwei Minuten Laufzeit (zur Spanne selbst siehe unten, sie trägt
+  nicht mehr). Ein Kommentar `@codex review` löst dagegen
   aus: 13:32:53 gepostet, 13:33:12 lief die Tabelle auf `ebb32ad` an, mit einem
   fünften Auslöserwert — `Manual request` statt `Draft marked ready`. **Wer nach
   einem Push mergt, mergt mit einem Häkchen für einen Commit, den es nicht mehr
@@ -428,7 +444,7 @@ Sechs Eigenheiten, jede eine eigene Falle:
   Sie nennt jetzt also **auch** den geprüften Stand. Das ist neu gegenüber der
   Fassung vom 23.8. und der Grund, warum der Satz weiter oben fallen musste.
 
-Belegt in diesem Repo an neun Datenpunkten:
+Belegt in diesem Repo an elf Datenpunkten:
 
 | PR | Zeit (UTC) | Codex-Kommentar |
 |---|---|---|
@@ -441,6 +457,14 @@ Belegt in diesem Repo an neun Datenpunkten:
 | #106 | 17.9.2026 17:59:31 → 18:00:44 | Summary-Tabelle, `59198a9` |
 | #107 | 17.9.2026 18:20:16 → 18:21:26 | Summary-Tabelle, `3dfe64e` |
 | #108 | 17.9.2026 18:49:41 → 18:51:04 | Summary-Tabelle, `ec5bc0a` |
+| #112 | 20.9.2026 09:01:36 | Summary-Tabelle, `ab8ce98` — **direkt als `Completed` angelegt** |
+| #113 | 20.9.2026 16:07:11 → 16:08:53 | Summary-Tabelle, `b89f20a` |
+
+Die zwei vom 20.9. stehen hier wegen der **Form**, nicht als weitere Striche in
+der Merge-vor-Review-Liste: #112 ist der erste Fall ohne `Running`-Zwischenstufe,
+#113 der erste ausserhalb der Laufzeit-Spanne. Beide wurden ebenfalls vor ihrem
+Ergebnis gemergt (um 58 und 39 Sekunden); nach dem Abbruchkriterium aus #108
+ist das nicht mehr nachzutragen, und es ist unten auch nicht nachgetragen.
 
 **Das Format ist also nicht neu.** Beim ersten Hinsehen am 14.9. sah es danach
 aus; #95 vom 30.8. widerlegt das. Es lief schon, als dieser Abschnitt zuletzt
@@ -535,9 +559,9 @@ ist es ein gemessener Start, bei #107 die Anlage des Kommentars (Fussnote ³),
 bei #99/#100 steht die Herkunft nicht dabei. Als Untergrenze für «zu früh»
 trägt die Spanne, als Messreihe nicht.
 
-Vom Umschalten bis zum Ergebnis vergehen **77 bis 109 Sekunden** (#99: 83 s,
-#100: 77 s, #101: 109 s, #106: 80 s, #107: 81 s, #108: 94 s; für #95 ist der
-ready-Zeitpunkt nicht gemessen). Gemergt wurde bei #99, #100, #106, #107 und
+Vom Umschalten bis zum Ergebnis vergingen bei den ersten sechs Messungen
+**77 bis 109 Sekunden** (#99: 83 s, #100: 77 s, #101: 109 s, #106: 80 s,
+#107: 81 s, #108: 94 s; für #95 ist der ready-Zeitpunkt nicht gemessen). Gemergt wurde bei #99, #100, #106, #107 und
 #108 nach sechs, elf, sieben, vier und neun Sekunden — keine Tendenz, #107
 bleibt der kürzeste Abstand der Reihe.
 
@@ -548,8 +572,29 @@ keine Grenze; dass die alte Rundung falsch war, ändert das nicht — sie war es
 weil sie aus zwei Werten stammte, nicht weil der Mittelwert daneben lag. Wer
 nach 80 Sekunden nachsieht, kann noch `Running` finden.
 
-Sechs Messwerte zwischen 77 und 109 s tragen inzwischen eine brauchbare Regel:
-**nach zwei Minuten nachsehen, nicht nach einer.**
+**Am 20.9.2026 fiel die Spanne nach beiden Seiten.** #112 brauchte **60 s**
+(ready 09:00:35 → `Completed` 09:01:35), #113 **114 s** (ready 16:06:59 →
+`Completed` 16:08:53). Zwei Läufe an einem Tag, zwei Richtungen, beide
+ausserhalb. Damit ist derselbe Fehler ein zweites Mal passiert, nur mit sechs
+Werten statt zweien: Die Spanne beobachteter Läufe ist die Spanne beobachteter
+Läufe und keine Vorhersage.
+
+**Die neuen Werte sind dabei schwächer belegt, als sie aussehen**, und das ist
+der Teil, der leicht untergeht. Beide ready-Zeitpunkte stammen aus der
+Webhook-Zustellung, nicht aus der GitHub-API — derselbe Vorbehalt wie in
+Fussnote ². Auf Codex' eigener Uhr, die nur #113 hergibt, liegen zwischen
+`Running since` 16:07:06.790 und `Completed` 16:08:53.234 **106 Sekunden**, und
+die lägen innerhalb der alten Spanne. Belegt ist also, dass die Spanne als
+Vorhersage nicht trägt; **nicht** belegt ist eine neue Spanne von 60 bis 114 s.
+Wer die aufschreibt, macht den Fehler zum dritten Mal.
+
+Die Regel wird davon nicht breiter, sondern hinfällig: **nach zwei Minuten
+nachsehen** hätte bei #113 nicht gereicht. Was trägt, ist kein Zeitwert,
+sondern der Zustand — auf `Completed` warten und den genannten Commit gegen den
+aktuellen Kopf halten. Eine Uhr ersetzt das nicht. Ein Branch-Schutz, der auf
+den Zustand wartet statt auf eine Frist, braucht sie gar nicht: Das ist das
+dritte Mal in diesem Abschnitt, dass die Messung auf dieselbe Massnahme
+hinausläuft.
 
 Das ist der zweite Weg, den Prüfer zu verlieren, vom Ende dieses Abschnitts —
 und er ist hier nicht Theorie: Von den sieben PRs, auf denen überhaupt ein Review
