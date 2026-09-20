@@ -738,9 +738,62 @@ einem Draft sagt nichts über den Lauf, der beim Umschalten ausgelöst wird. Zu
 unterscheiden wären sie nur durch einen Blick auf die Environment-Seite um
 19:02, und den gab es nicht.
 
+**Ein zweiter Fall verengt das, ohne es zu entscheiden.** Am 15.9.2026 auf #103,
+nachgemessen am 20.9. an den `created_at` der Kommentare:
+
+| Zeit (UTC) | Beobachtung |
+|---|---|
+| 14:22:27 | #103 als Draft angelegt |
+| 14:22:38 | Environment-Meldung |
+| 14:23:56 | `@codex review` als Kommentar — der Lauf kam nicht von selbst |
+| 14:24:10 | Review startet auf `9381e6d`, Auslöser `Manual request` |
+| 14:27:41 | Befundlos-Meldung, `9381e6d356`, ohne Befund |
+| 17:48:27 | erst jetzt auf ready umgeschaltet |
+
+Der PR blieb dabei **über drei Stunden Draft**. Die zweite Erklärung oben ist
+damit zu eng gefasst: Sie spricht vom Lauf, «der beim Umschalten ausgelöst
+wird» — hier gab es kein Umschalten. Allgemeiner trägt sie weiter: Die Meldung
+auf einem Draft sagt nichts über die Reviewbarkeit, gleich welcher Auslöser
+folgt.
+
+Die erste Erklärung ist **nicht** ausgeschlossen — auch in 92 Sekunden kann
+jemand eine Environment anlegen, und auf die Seite gesehen hat wieder niemand.
+Unwahrscheinlicher ist sie, mehr steht hier nicht.
+
+Praktisch wichtiger: **`@codex review` löst auch auf einem Draft aus.** Für die
+Reihenfolge Kontingent → Environment → Draft heisst das, dass der Draft-Zweig
+den manuellen Aufruf nicht abfängt — warum, ist ungemessen.
+
 Belegt ist ein reviewbares Repo deshalb nicht durch das Fehlen einer Meldung
-und nicht durch ihr Vorhandensein, sondern durch einen Lauf: PR auf ready, zwei
-Minuten warten, Tabelle auf `Completed` mit dem richtigen Commit.
+und nicht durch ihr Vorhandensein, sondern durch einen Lauf. Und dafür braucht
+es **kein** ready: `@codex review` auf dem Draft, ein paar Minuten warten,
+Ergebnis lesen. Wer erst freigibt, um zu prüfen, ob überhaupt geprüft wird, hat
+den PR schon aus der Hand gegeben.
+
+**Und genau dieser Nachweis war fünf Tage später verschwunden.** Die
+Summary-Tabelle auf #103 trägt heute `Completed` um **17:49:34** mit dem
+Auslöser **`Draft marked ready`** — `created_at` 14:24:14, `updated_at`
+17:49:37. Der `ready`-Lauf hat den Manual-Lauf überschrieben, auf demselben
+Commit, und mit ihm den Auslöserwert.
+
+Die Eigenheit weiter oben sagt, der *Status* wechsle im selben Kommentar. Das
+ist die halbe Wahrheit — **jede Zelle wechselt**, und die drei Fälle belegen je
+eine andere:
+
+| gewechselt | belegt an |
+|---|---|
+| Status `Running` → `Completed` | #106, #113 |
+| Commit `6fb0c13` → `ebb32ad` | #101 (Lauf nach Konflikt-Merge) |
+| Auslöser `Manual request` → `Draft marked ready` | #103 (Commit blieb `9381e6d`) |
+
+Die Tabelle ist also ein Live-Zustand, kein Protokoll: Sie zeigt den letzten
+Lauf und nichts davor. Wer sie als Beleg zitiert, zitiert etwas, das sich
+später anders liest — und bei #103 heisst «später» derselbe Tag.
+
+Was überlebt, ist die Befundlos-Meldung: eigener Kommentar, `created_at ==
+updated_at`, mit ihrem eigenen `Reviewed commit`. Für die Frage «wurde dieser
+Stand geprüft» ist sie damit die haltbarere Quelle — nicht die
+aussagekräftigere, aber die, die in einer Woche noch dasselbe sagt.
 
 Die Environment legt man unter `chatgpt.com/codex/cloud/settings/environments`
 an, und zwar **je Repo**. Die Meldung sagt es selbst («for this repo»), und am
