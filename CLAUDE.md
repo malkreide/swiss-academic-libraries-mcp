@@ -296,7 +296,12 @@ ohne dass jemand hineingesehen hat, und am 22.8. noch einmal 43.
   Reaktion («otherwise it will react with 👍») — am 23.8. kam in sechs Repos
   die Meldung und in keinem die Reaktion. Der Kasten ist keine Quelle.
 - **Der PR ist ein Draft** — darauf läuft Codex nicht an.
-- **Das Kontingent ist weg** — dann schreibt er die Meldung oben.
+- **Das Kontingent ist weg** — dann schreibt er die Meldung oben. Der Wortlaut
+  hat sich seither geändert, und es gibt ihn in zwei Fassungen: einmal mit,
+  einmal ohne «for code reviews», dazu ein zweiter Satz mit Markdown-Link.
+  Gemessen am 20.9.2026, weiter unten unter «Was die Messung nicht hergibt».
+  Wer hier abschreibt, baut einen Klassifikator, der die halbe Wirklichkeit
+  trifft.
 - **Für das Repo fehlt eine Environment** — dann schreibt er:
 
   ```
@@ -612,10 +617,35 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   Ansicht nur «Codex usage dashboard». Wer den sichtbaren Satz gegen `body`
   hält, findet ihn nicht.
 
-  Wie lange die Sperre hier dauerte, ist **ungemessen**. Belegt ist ein
-  Zeitpunkt, 17:14:22 UTC — und nach dem Abschnitt oben ist ein einzelner
-  Zeitpunkt keine Dauer. Derselbe Vormittag hatte zwei vollständige Reviews
-  (#115, #116) und einen ersetzten (#116, Lauf eins).
+  Wie lange die Sperre hier dauerte, ist **ungemessen**. Belegt sind zwei
+  Zeitpunkte, 17:14:22 und 17:16:09 UTC — und nach dem Abschnitt oben ist der
+  Abstand zweier Fehlschläge keine Dauer. Derselbe Vormittag hatte zwei
+  vollständige Reviews (#115, #116) und einen ersetzten (#116, Lauf eins).
+
+  **Der zweite Zeitpunkt ist selbst verschuldet, und daraus folgt die
+  wichtigere Hälfte dieses Absatzes: Der Aufruf feuert aus dem Rohtext, auch
+  aus einer Code-Spanne.** Der Kommentar `5751350774` um 17:15:56 war eine
+  Lagemeldung *über* die Sperre und zitierte den Aufruf in Backticks. Codex
+  antwortete 13 Sekunden später — dieselbe Latenz wie beim echten Aufruf
+  (12 s). Gerendert ist ein Code-Span sichtbar inaktiv; für den Abgleich zählt
+  er trotzdem.
+
+  Das ist die Umkehrung der Falle zwei Absätze höher. Dort fand ein
+  Klassifikator den **sichtbaren** Satz nicht, weil im `body` ein Markdown-Link
+  steht. Hier feuert der `body`, obwohl die Ansicht Zitat signalisiert. Beide
+  Male gilt dasselbe: **Was zählt, ist der Rohtext.** Wer in einem PR-Kommentar
+  über den Auslöser schreibt, löst ihn aus — und verbraucht Kontingent, das
+  gerade knapp ist. In einer Datei wie dieser hier ist das folgenlos; in
+  Kommentar und PR-Text nicht.
+
+  **Und die Meldung hat zwei Fassungen, je nach Weg.** Der Aufruf bekam
+  «usage limits **for code reviews**», das beiläufige Zitat «usage limits»
+  ohne den Zusatz. Ein Klassifikator auf dem vollen ersten Satz der
+  Review-Fassung übersieht die zweite. Woran der Unterschied hängt, ist
+  **ungemessen**: Der Abschnitt weiter unten hält fest, dass Code-Reviews
+  einen eigenen Topf haben — dann wären es zwei Sperren mit je eigenem Text.
+  Ebenso möglich ist derselbe Topf, nur anders gemeldet. Zwei Meldungen aus
+  einem PR zeigen den Unterschied, nicht seinen Grund.
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
   wurde deshalb nicht gefahren. **Neun Datenpunkte aus einem Repo sind kein
