@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Der Registry-Publish lief zweimal und scheiterte beide Male.** Das Release
+  `v1.3.0` ging sauber auf PyPI und kam nicht in die MCP Registry. Beide Läufe
+  endeten im selben HTTP 400:
+
+  ```
+  registry validation failed for package 0 (swiss-academic-libraries-mcp):
+  PyPI package '…' exists, but version '1.3.0' was not found (status: 404).
+  ```
+
+  Zwei Fehler, die einzeln harmlos aussehen und zusammen jedes Release treffen.
+
+  **Erstens: es gab zwei Registry-Publishes.** `publish-mcp-registry.yml` lief
+  selbst auf `release: published`, parallel zum Job `publish-mcp` in
+  `publish.yml`. Der eigenständige startete um 15:58:41 — da lud PyPI noch. Er
+  hatte keine Reihenfolge-Bedingung und konnte gar nicht gelingen. Er trug
+  ausserdem die Versions-Synchronisierung aus dem Tag nicht mit, die der andere
+  hat. Die Registry-Schritte stehen jetzt nur noch an einer Stelle;
+  `publish.yml` ruft sie per `workflow_call` auf, `workflow_dispatch` bleibt als
+  Weg, ein Release von Hand nachzutragen.
+
+  **Zweitens: `needs:` ordnet Jobs, es macht keine Version abfragbar.** Der
+  richtig verkettete Job lief um 15:59:26, nach grünem PyPI-Upload — und bekam
+  denselben 404. Die Registry validiert gegen die öffentliche PyPI-API, und die
+  hinkt dem Upload nach. Ein Schritt wartet jetzt darauf, dass genau dieser
+  Endpunkt 200 liefert: bis zu 30 Versuche im Abstand von 10 Sekunden, danach
+  ein Abbruch mit Begründung statt eines sicheren 400.
+
+  Paketname und Version liest der Schritt aus `server.json`, nach der
+  Tag-Synchronisierung — also aus der Datei, die gleich registriert wird. Ein
+  Literal im Workflow wäre die zweite Stelle, an der die Nummer steht.
+
+  Gegenprobe: derselbe Aufruf liefert für `1.3.0` und `1.2.0` HTTP 200, für
+  `99.99.99` HTTP 404. Die Schleife unterscheidet also tatsächlich, statt nur zu
+  warten.
+
+  **Was das nicht erklärt:** warum `1.2.0` am 2026-08-02 durchging. Der
+  Registry-Eintrag entstand rund fünf Minuten nach dem Release — genug Vorsprung,
+  aber ob dort dieselbe Verkettung lief oder jemand von Hand nachhalf, geht aus
+  den Läufen nicht hervor und wurde nicht nachgemessen. Dass es einmal
+  funktionierte, hat die Lücke verdeckt.
+
 ## [1.3.0] - 2026-09-20
 
 Diese Auslieferung bringt zwei Dinge zusammen, die nichts miteinander zu tun

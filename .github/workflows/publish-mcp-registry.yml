@@ -1,16 +1,21 @@
 name: Publish to MCP Registry
 
 # Listet den Server in der offiziellen MCP Registry (registry.modelcontextprotocol.io).
-# Voraussetzungen (erfüllt): server.json im Repo-Root, `mcp-name`-Kommentar im README,
-# PyPI-Paket veröffentlicht. Authentifizierung via GitHub OIDC — kein Secret nötig,
-# die Namespace-Ownership `io.github.malkreide/*` wird über die OIDC-Identität belegt.
+# Voraussetzungen: server.json im Repo-Root, `mcp-name`-Kommentar im README, und das
+# PyPI-Paket muss DORT BEREITS ABFRAGBAR sein. Authentifizierung via GitHub OIDC —
+# kein Secret nötig, die Namespace-Ownership `io.github.malkreide/*` wird über die
+# OIDC-Identität belegt.
 #
-# Läuft automatisch bei jedem veröffentlichten GitHub-Release und kann für ein bereits
-# veröffentlichtes Release manuell via "Run workflow" (workflow_dispatch) angestossen werden.
+# Zwei Einstiege, EINE Implementierung:
+#   - `workflow_call` aus `publish.yml`, nach dem PyPI-Upload. Das ist der Normalfall.
+#   - `workflow_dispatch` von Hand, um ein bereits veröffentlichtes Release nachzutragen.
+#
+# Dieser Workflow läuft bewusst NICHT selbst auf `release: published`. Bis zum
+# 20.9.2026 tat er das, parallel zu `publish.yml` — zwei Läufe registrierten
+# dasselbe, und der hier startete, bevor PyPI überhaupt fertig war.
 
 on:
-  release:
-    types: [published]
+  workflow_call:
   workflow_dispatch:
 
 jobs:
@@ -23,6 +28,43 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # Nur im Tag-Kontext: dort ist der Tag die Wahrheit. Bei `workflow_dispatch`
+      # von einem Branch wäre `GITHUB_REF_NAME` ein Branch-Name, und die Zeile
+      # schriebe ihn als Versionsnummer in server.json.
+      - name: server.json auf den Release-Tag synchronisieren
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' \
+            server.json > server.tmp && mv server.tmp server.json
+
+      # Die Registry validiert gegen die öffentliche PyPI-API, und die hinkt dem
+      # Upload nach. Am 20.9.2026 quittierte sie `1.3.0` mit 404, obwohl der
+      # Upload-Job bereits grün war — der Publish endete in einem 400. `needs:`
+      # ordnet die Jobs, es macht die Version nicht abfragbar.
+      #
+      # Gefragt wird genau der Endpunkt, den die Registry prüft, und mit den Werten
+      # aus server.json — also dem, was gleich registriert wird. Kein zweiter Ort,
+      # an dem Paketname oder Version stehen.
+      - name: Warten, bis PyPI die Version ausliefert
+        run: |
+          PKG=$(jq -r '.packages[0].identifier' server.json)
+          VERSION=$(jq -r '.packages[0].version' server.json)
+          echo "Erwarte $PKG $VERSION auf PyPI"
+          for i in $(seq 1 30); do
+            CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
+              "https://pypi.org/pypi/${PKG}/${VERSION}/json" || echo 000)
+            if [ "$CODE" = "200" ]; then
+              echo "PyPI führt $PKG $VERSION (nach $(( (i - 1) * 10 )) s)"
+              exit 0
+            fi
+            echo "Versuch $i/30: PyPI antwortet $CODE — 10 s warten"
+            sleep 10
+          done
+          echo "::error::PyPI führt $PKG $VERSION auch nach 5 Minuten nicht." \
+               "Ein Publish jetzt wäre ein sicherer 400. Erst den PyPI-Upload prüfen."
+          exit 1
 
       - name: Install mcp-publisher
         run: |
