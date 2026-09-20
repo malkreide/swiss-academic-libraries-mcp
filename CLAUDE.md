@@ -417,9 +417,29 @@ Sechs Eigenheiten, jede eine eigene Falle:
   mehr über den Kopf.
 - **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in allen sieben
   belegten Fällen leer; der Beleg steht allein in `get_comments`.
-- **Die 👍-Reaktion bleibt aus.** In allen sieben Fällen `reactions.total_count: 0`,
-  obwohl der Infokasten sie weiter zusagt. Das ist keine neue Erkenntnis,
-  sondern dieselbe wie am 23.8. — der Kasten ist keine Quelle, zum zweiten Mal.
+- **Die 👍-Reaktion bleibt aus — die 👀 dagegen gibt es, sie ist nur flüchtig.**
+  Für 👍 gilt unverändert `reactions.total_count: 0` in allen sieben Fällen,
+  obwohl der Infokasten sie zusagt; das ist dieselbe Erkenntnis wie am 23.8.
+
+  Für die 👀 stimmt der Kasten, und zwar wörtlich: «reacts with 👀 **while** any
+  review is running». Am 20.9.2026 auf #115 gemessen, am auslösenden Kommentar
+  `5751067831` — **nicht** am PR:
+
+  | Abfrage (UTC) | Lauf | `reactions` |
+  |---|---|---|
+  | 16:26:28 | läuft seit 16:26:24 | `{"eyes": 1}` |
+  | 16:32:40 | fertig seit 16:28:32 | `{"total_count": 0}` |
+
+  Sie wird also nach dem Lauf wieder **entfernt**. Wer erst das Ergebnis
+  abwartet und dann die Reaktionen liest — das naheliegende Vorgehen — misst
+  zuverlässig eine Null und hält den Kasten für falsch. Das ist vermutlich der
+  Grund, warum sie in sieben dokumentierten Fällen nie auftauchte: nicht, weil
+  sie fehlte, sondern weil niemand währenddessen hinsah.
+
+  «Der Kasten ist keine Quelle» bleibt richtig, aber nicht pauschal: Er ist an
+  den Stellen falsch, an denen er geprüft und widerlegt wurde, und nicht überall
+  sonst. Eine Aussage, die man nur zum falschen Zeitpunkt misst, ist nicht
+  widerlegt — sie ist ungemessen.
 - **Ein Push löst KEINEN neuen Lauf aus.** Das ist die Eigenheit, die aus der
   Commit-Angabe darüber eine Falle macht: Nach einem Push steht die Tabelle
   weiter auf dem alten Commit, und es kommt nichts nach. Gemessen am 15.9.2026
@@ -474,10 +494,23 @@ weh tat.
 Was die Messung **nicht** hergibt, und das ist mehr als üblich:
 
 - Ob die Summary-Tabelle die Befundlos-Meldung **ersetzt** oder neben ihr steht.
-  Am 15.9. auf #101 **beantwortet: nebeneinander.** Offen bleibt, wovon es
-  abhängt — bei #95/#99/#100/#106/#107/#108 (Auslöser `Draft marked ready`) kam
-  nur die Tabelle, bei #101 (`Manual request`) beides. Die Korrelation steht
-  damit sechs zu eins.
+  Am 15.9. auf #101 **beantwortet: nebeneinander.** Wovon es abhängt, war lange
+  offen, und der Auslöser sah nach der Antwort aus: bei
+  #95/#99/#100/#106/#107/#108 (`Draft marked ready`) nur die Tabelle, bei #101
+  (`Manual request`) beides — sechs zu eins.
+
+  **Am 20.9.2026 ist diese Erklärung gefallen.** #115 lief mit `Manual request`
+  und brachte **nur die Tabelle**: Lauf `Completed` 16:28:32, und noch eine
+  Stunde später kein zweiter Kommentar. Damit steht es sechs zu eins zu eins,
+  und der Auslöser trägt nicht mehr.
+
+  Das ist innerhalb dieses Abschnitts die zweite Erklärung, die an einem
+  einzelnen Gegenbeispiel zerfällt — die Zeit-Erklärung fiel an #106/#107. Beide
+  Male war die Korrelation sauber, solange nur bestätigende Fälle vorlagen. Was
+  bleibt: Die Befundlos-Meldung kommt manchmal und manchmal nicht, und **kein
+  beobachtetes Merkmal sagt vorher, wann**. Wer sein Häkchen an ihr Erscheinen
+  hängt, hängt es an etwas Unvorhersagbares; die Tabelle auf `Completed` mit dem
+  richtigen Commit kommt in allen Fällen.
 
   **Die Zeit-Erklärung ist widerlegt, jedenfalls in ihrer einfachen Form.** Hier
   stand, es könne ebenso der Zeitpunkt sein — ein Rollout, ab dem beide
@@ -674,6 +707,12 @@ am 15.9. gleichzeitig zwei Fassungen: Die unter der Tabelle nennt
 `@codex address that feedback`. Beide behaupten weiter das 👍, das in keinem der
 vier Fälle kam. Der Kasten ist keine Quelle — zum dritten Mal, und diesmal ist
 der Beleg, dass zwei Exemplare nebeneinander Verschiedenes sagen.
+
+Das gilt für den Kasten als Ganzes, nicht für jede seiner Aussagen: Seine
+👀-Zusage hat sich am 20.9. als richtig erwiesen (Eigenheit vier oben). Ein
+Dokument, das sich selbst widerspricht, ist unbrauchbar als Beleg — jede
+einzelne Zeile darin kann trotzdem zutreffen, und welche, entscheidet die
+Messung.
 
 Und ein befundloser Lauf ist kein Freispruch. Am 23.8. lief derselbe Text durch
 42 Reviews: 36 meldeten denselben P2-Befund, 6 die Befundlos-Meldung — gleiche
