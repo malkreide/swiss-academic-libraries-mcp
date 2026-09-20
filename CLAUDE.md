@@ -466,6 +466,17 @@ Sieben Eigenheiten, jede eine eigene Falle:
   ist nicht verlässlich. Sie taugt als Zeichen, dass gerade etwas läuft, nicht
   als Zeichen, dass nichts mehr läuft.
 
+  **Die Negativkontrolle dazu fiel am selben Tag an, ungeplant.** Auf #117 lief
+  `@codex review` (17:14:10) in die Kontingent-Meldung (17:14:22) — kein Lauf
+  also. Am auslösenden Kommentar `5751340919` blieb `total_count: 0`. Die
+  Reaktion hängt damit am Lauf und nicht am Kommentar: Wo nichts startet,
+  erscheint sie gar nicht. Das ist genau die Positivkontrolle-Logik aus «Wenn
+  etwas rot ist», nur andersherum — ein «keine Reaktion» wird erst dadurch zur
+  Messung, dass eine andere Abfrage eine zeigt.
+
+  Für die Frage, wann sie wieder verschwindet, sagt der Fall **nichts**: Ein
+  Lauf, der nie begann, kann nicht abräumen.
+
   «Der Kasten ist keine Quelle» bleibt richtig, aber nicht pauschal: Er ist an
   den Stellen falsch, an denen er geprüft und widerlegt wurde, und nicht überall
   sonst. Eine Aussage, die man nur zum falschen Zeitpunkt misst, ist nicht
@@ -579,10 +590,32 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   sonst am Tag, eine Zuteilung, die gar nicht am Datum hängt, oder irgendetwas
   Drittes, das mit dem Auslöser einhergeht. Die Korrelation ist stärker
   geworden, die Ursache bleibt unbelegt.
-- Ob die **Kontingent**-Meldung weiter Freitext ist. Seit dem 30.8. gab es in
-  diesem Repo keinen solchen Fall. Für die **Environment**-Meldung ist die Frage
-  am 17.9. auf #110 beantwortet: ja, Freitext, ein Satz, keine Tabelle, kein
-  HTML-Marker, `created_at == updated_at`, `reactions.total_count: 0`.
+- Ob die **Kontingent**-Meldung weiter Freitext ist. Für die
+  **Environment**-Meldung war die Frage am 17.9. auf #110 beantwortet: ja,
+  Freitext, ein Satz, keine Tabelle, kein HTML-Marker, `created_at ==
+  updated_at`, `reactions.total_count: 0`.
+
+  **Für die Kontingent-Meldung am 20.9.2026 auf #117 ebenso beantwortet — mit
+  einer Änderung im Text.** Sie kam 12 Sekunden nach `@codex review`
+  (17:14:10 → 17:14:22), Freitext, `created_at == updated_at`, kein
+  HTML-Marker, `reactions.total_count: 0`. Dazugekommen ist ein zweiter Satz:
+
+  ```
+  You have reached your Codex usage limits for code reviews. You can see your
+  limits in the [Codex usage dashboard](https://chatgpt.com/codex/cloud/settings/usage).
+  ```
+
+  Der **erste Satz ist unverändert** — ein Klassifikator, der auf ihn prüft,
+  trägt weiter. Einer, der den ganzen Text gegen die Fassung vom 21.8. hält,
+  fällt still durch. Und der zweite Satz wiederholt die Falle der
+  Environment-Meldung: Im Rohtext steht ein Markdown-Link, in der gerenderten
+  Ansicht nur «Codex usage dashboard». Wer den sichtbaren Satz gegen `body`
+  hält, findet ihn nicht.
+
+  Wie lange die Sperre hier dauerte, ist **ungemessen**. Belegt ist ein
+  Zeitpunkt, 17:14:22 UTC — und nach dem Abschnitt oben ist ein einzelner
+  Zeitpunkt keine Dauer. Derselbe Vormittag hatte zwei vollständige Reviews
+  (#115, #116) und einen ersetzten (#116, Lauf eins).
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
   wurde deshalb nicht gefahren. **Neun Datenpunkte aus einem Repo sind kein
