@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-20
+
+Diese Auslieferung bringt zwei Dinge zusammen, die nichts miteinander zu tun
+haben ausser dem Zeitpunkt: den Anschluss an die Spec-Aera `2026-07-28` und
+zwei Fehler, die still falsche Antworten erzeugten.
+
+Der folgenreichere davon ist die Sammlungs-Übersicht. Sie meldete ein Zehntel
+des Bestands als Gesamtzahl und liess den Filter danach über diese Reste
+laufen — eine vorhandene Sammlung kam als «Keine Sammlungen gefunden» zurück.
+Kein Fehler, keine Ausnahme, kein Log. Wer `erara_list_collections` bisher
+benutzt hat, hat **10 von 105** Sammlungen gesehen und keinen Hinweis darauf
+bekommen, dass etwas fehlt.
+
+Minor und nicht Patch: Frischehinweise und Server-Identität sind neues
+Verhalten auf dem Draht. Die Tool-Oberfläche bleibt unverändert — dieselben
+16 Tools, 3 Prompts, 3 Resources, gleiche Signaturen.
+
 ### Added
 
 - **Frischehinweise auf den auflistenden Methoden** (SEP-2549, Spec
