@@ -386,7 +386,7 @@ Befundlos-Meldung nicht sage, welchen Stand sie freispricht. Das ist seit dem
 Commit-Angabe (unten, Eigenheit sechs). Wer den Satz noch so im Kopf hat, hält
 die Tabelle für den einzigen belastbaren Beleg und übersieht den zweiten.
 
-Sechs Eigenheiten, jede eine eigene Falle:
+Sieben Eigenheiten, jede eine eigene Falle:
 
 - **Der Status wechselt im selben Kommentar — aber nicht immer.** Er erscheint
   als `🔄 **Running**` und wird später auf `✅ **Completed**` überschrieben —
@@ -417,7 +417,8 @@ Sechs Eigenheiten, jede eine eigene Falle:
   mehr über den Kopf.
 - **Es gibt kein Review-Objekt dazu.** `get_reviews` bleibt in allen sieben
   belegten Fällen leer; der Beleg steht allein in `get_comments`.
-- **Die 👍-Reaktion bleibt aus — die 👀 dagegen gibt es, sie ist nur flüchtig.**
+- **Die 👍-Reaktion bleibt aus — die 👀 gibt es, aber nur solange man
+  währenddessen hinsieht.**
   Für 👍 gilt unverändert `reactions.total_count: 0` in allen sieben Fällen,
   obwohl der Infokasten sie zusagt; das ist dieselbe Erkenntnis wie am 23.8.
 
@@ -430,11 +431,51 @@ Sechs Eigenheiten, jede eine eigene Falle:
   | 16:26:28 | läuft seit 16:26:24 | `{"eyes": 1}` |
   | 16:32:40 | fertig seit 16:28:32 | `{"total_count": 0}` |
 
-  Sie wird also nach dem Lauf wieder **entfernt**. Wer erst das Ergebnis
-  abwartet und dann die Reaktionen liest — das naheliegende Vorgehen — misst
-  zuverlässig eine Null und hält den Kasten für falsch. Das ist vermutlich der
-  Grund, warum sie in sieben dokumentierten Fällen nie auftauchte: nicht, weil
-  sie fehlte, sondern weil niemand währenddessen hinsah.
+  Wer erst das Ergebnis abwartet und dann die Reaktionen liest — das
+  naheliegende Vorgehen — misst hier eine Null und hält den Kasten für falsch.
+  Das ist vermutlich der Grund, warum sie in sieben dokumentierten Fällen nie
+  auftauchte: nicht, weil sie fehlte, sondern weil niemand währenddessen
+  hinsah.
+
+  **«Sie wird nach dem Lauf wieder entfernt» stand hier und war zu breit.**
+  Geschrieben aus genau diesen zwei Abfragen, in einem Abschnitt, der an drei
+  Stellen davor warnt, aus zwei Werten eine Mechanik zu machen. Widerlegt am
+  selben Tag auf #116, am Kommentar `5751156684`:
+
+  | Abfrage (UTC) | Lauf | `reactions` |
+  |---|---|---|
+  | 16:41:43 | noch nicht gestartet (Start 16:41:50) | `{"total_count": 0}` |
+  | 16:41:53 | läuft | `{"eyes": 1}` |
+  | 16:47:40 | fertig seit 16:44:34 | `{"eyes": 1}` |
+  | 17:11:43 | fertig seit 16:44:34 | `{"eyes": 1}` |
+
+  Nach 27 Minuten also unverändert gesetzt. Die erste Zeile ist dabei die, die
+  am meisten kostet: Eine Null **vor** dem Start sieht genauso aus wie eine
+  Null nach dem Ende — dieselbe Messfehler-Falle wie beim fehlenden Kommentar,
+  eine Ebene tiefer.
+
+  Was die Fälle unterscheidet, ist **ungemessen**. Eine Erklärung passt auf
+  beide: Die Reaktion gehört dem Lauf, der sie gesetzt hat, und wird beim
+  Abschluss *dieses* Laufs abgeräumt. Auf #115 lief der Manual-Lauf zu Ende.
+  Auf #116 wurde er um 16:43:32 vom `Draft marked ready`-Lauf ersetzt (siehe
+  Eigenheit sieben) und hat nie abgeschlossen — abgeräumt hat ihn niemand.
+  Das ist eine Vermutung aus je einem Fall; andere passen ebenso, etwa eine
+  Abräumung, die nur beim Auslöser `Manual request` greift.
+
+  Belegt ist deshalb nur: Die 👀 erscheint mit dem Lauf, und ihr Verschwinden
+  ist nicht verlässlich. Sie taugt als Zeichen, dass gerade etwas läuft, nicht
+  als Zeichen, dass nichts mehr läuft.
+
+  **Die Negativkontrolle dazu fiel am selben Tag an, ungeplant.** Auf #117 lief
+  `@codex review` (17:14:10) in die Kontingent-Meldung (17:14:22) — kein Lauf
+  also. Am auslösenden Kommentar `5751340919` blieb `total_count: 0`. Die
+  Reaktion hängt damit am Lauf und nicht am Kommentar: Wo nichts startet,
+  erscheint sie gar nicht. Das ist genau die Positivkontrolle-Logik aus «Wenn
+  etwas rot ist», nur andersherum — ein «keine Reaktion» wird erst dadurch zur
+  Messung, dass eine andere Abfrage eine zeigt.
+
+  Für die Frage, wann sie wieder verschwindet, sagt der Fall **nichts**: Ein
+  Lauf, der nie begann, kann nicht abräumen.
 
   «Der Kasten ist keine Quelle» bleibt richtig, aber nicht pauschal: Er ist an
   den Stellen falsch, an denen er geprüft und widerlegt wurde, und nicht überall
@@ -463,6 +504,31 @@ Sechs Eigenheiten, jede eine eigene Falle:
 
   Sie nennt jetzt also **auch** den geprüften Stand. Das ist neu gegenüber der
   Fassung vom 23.8. und der Grund, warum der Satz weiter oben fallen musste.
+- **Ein zweiter Auslöser ERSETZT einen laufenden Review.** Am 20.9.2026 auf
+  #116 im Lauf gemessen: `@codex review` startete 16:41:50 (`Manual request`),
+  das Umschalten auf ready um 16:43:26 überschrieb den Kommentar
+  `5751157839` um 16:43:34 — und die Uhr rückte mit:
+
+  | Zelle | vorher | nachher |
+  |---|---|---|
+  | `Running since` | 16:41:50.440779 | **16:43:32.342986** |
+  | Auslöser | `Manual request` | `Draft marked ready` |
+  | Commit | `5af3cc9` | `5af3cc9` |
+  | Status | `Running` | `Running` |
+
+  Der erste Lauf war 102 Sekunden alt und hat nie ein Ergebnis abgeliefert.
+  Nach der Überschreibung steht im Kommentar nichts mehr, woraus hervorginge,
+  dass es ihn gab.
+
+  Das schärft den #103-Befund weiter unten an seiner schwächsten Stelle. Dort
+  lagen zwischen den zwei Läufen über drei Stunden, und «die Tabelle zeigt den
+  letzten Lauf» war die harmlose Lesart. Hier ist die Überschreibung *im Lauf*
+  gemessen: Die Tabelle ist nicht bloss kein Protokoll, sie verbirgt, dass ein
+  früherer Lauf überhaupt existierte.
+
+  Was **nicht** gemessen ist: ob der erste Lauf abgebrochen oder still zu Ende
+  geführt wurde. Beides passt zum Beobachteten, und Codex veröffentlicht
+  nichts, woran es sich unterscheiden liesse.
 
 Belegt in diesem Repo an elf Datenpunkten:
 
@@ -524,10 +590,32 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   sonst am Tag, eine Zuteilung, die gar nicht am Datum hängt, oder irgendetwas
   Drittes, das mit dem Auslöser einhergeht. Die Korrelation ist stärker
   geworden, die Ursache bleibt unbelegt.
-- Ob die **Kontingent**-Meldung weiter Freitext ist. Seit dem 30.8. gab es in
-  diesem Repo keinen solchen Fall. Für die **Environment**-Meldung ist die Frage
-  am 17.9. auf #110 beantwortet: ja, Freitext, ein Satz, keine Tabelle, kein
-  HTML-Marker, `created_at == updated_at`, `reactions.total_count: 0`.
+- Ob die **Kontingent**-Meldung weiter Freitext ist. Für die
+  **Environment**-Meldung war die Frage am 17.9. auf #110 beantwortet: ja,
+  Freitext, ein Satz, keine Tabelle, kein HTML-Marker, `created_at ==
+  updated_at`, `reactions.total_count: 0`.
+
+  **Für die Kontingent-Meldung am 20.9.2026 auf #117 ebenso beantwortet — mit
+  einer Änderung im Text.** Sie kam 12 Sekunden nach `@codex review`
+  (17:14:10 → 17:14:22), Freitext, `created_at == updated_at`, kein
+  HTML-Marker, `reactions.total_count: 0`. Dazugekommen ist ein zweiter Satz:
+
+  ```
+  You have reached your Codex usage limits for code reviews. You can see your
+  limits in the [Codex usage dashboard](https://chatgpt.com/codex/cloud/settings/usage).
+  ```
+
+  Der **erste Satz ist unverändert** — ein Klassifikator, der auf ihn prüft,
+  trägt weiter. Einer, der den ganzen Text gegen die Fassung vom 21.8. hält,
+  fällt still durch. Und der zweite Satz wiederholt die Falle der
+  Environment-Meldung: Im Rohtext steht ein Markdown-Link, in der gerenderten
+  Ansicht nur «Codex usage dashboard». Wer den sichtbaren Satz gegen `body`
+  hält, findet ihn nicht.
+
+  Wie lange die Sperre hier dauerte, ist **ungemessen**. Belegt ist ein
+  Zeitpunkt, 17:14:22 UTC — und nach dem Abschnitt oben ist ein einzelner
+  Zeitpunkt keine Dauer. Derselbe Vormittag hatte zwei vollständige Reviews
+  (#115, #116) und einen ersetzten (#116, Lauf eins).
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
   wurde deshalb nicht gefahren. **Neun Datenpunkte aus einem Repo sind kein
@@ -709,7 +797,10 @@ vier Fälle kam. Der Kasten ist keine Quelle — zum dritten Mal, und diesmal is
 der Beleg, dass zwei Exemplare nebeneinander Verschiedenes sagen.
 
 Das gilt für den Kasten als Ganzes, nicht für jede seiner Aussagen: Seine
-👀-Zusage hat sich am 20.9. als richtig erwiesen (Eigenheit vier oben). Ein
+👀-Zusage hat sich am 20.9. als richtig erwiesen, soweit sie reicht: Er sagt,
+die Reaktion komme während des Laufs, und das stimmt — über ihr Verschwinden
+sagt er nichts, und die falsche Aussage darüber stammt von hier, nicht von ihm
+(Eigenheit vier oben). Ein
 Dokument, das sich selbst widerspricht, ist unbrauchbar als Beleg — jede
 einzelne Zeile darin kann trotzdem zutreffen, und welche, entscheidet die
 Messung.
@@ -816,14 +907,20 @@ Auslöser **`Draft marked ready`** — `created_at` 14:24:14, `updated_at`
 Commit, und mit ihm den Auslöserwert.
 
 Die Eigenheit weiter oben sagt, der *Status* wechsle im selben Kommentar. Das
-ist die halbe Wahrheit — **jede Zelle wechselt**, und die drei Fälle belegen je
-eine andere:
+ist die halbe Wahrheit — **jede Zelle wechselt**, und die Fälle belegen je eine
+andere:
 
 | gewechselt | belegt an |
 |---|---|
 | Status `Running` → `Completed` | #106, #113 |
 | Commit `6fb0c13` → `ebb32ad` | #101 (Lauf nach Konflikt-Merge) |
 | Auslöser `Manual request` → `Draft marked ready` | #103 (Commit blieb `9381e6d`) |
+| `Running since` 16:41:50 → 16:43:32 | #116 (Eigenheit sieben, im Lauf gemessen) |
+
+Die vierte Zeile ist die, die den Rest einordnet: Wenn die Startzeit mitwandert,
+ist es nicht derselbe Lauf mit neuer Beschriftung, sondern ein anderer. Bei #103
+war das aus dem Abstand von drei Stunden nur zu vermuten; bei #116 ist es
+gemessen.
 
 Die Tabelle ist also ein Live-Zustand, kein Protokoll: Sie zeigt den letzten
 Lauf und nichts davor. Wer sie als Beleg zitiert, zitiert etwas, das sich
