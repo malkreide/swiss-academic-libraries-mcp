@@ -618,9 +618,10 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   Ansicht nur «Codex usage dashboard». Wer den sichtbaren Satz gegen `body`
   hält, findet ihn nicht.
 
-  Wie lange die Sperre hier dauerte, ist **ungemessen**. Belegt sind zwei
-  Zeitpunkte, 17:14:22 und 17:16:09 UTC — und nach dem Abschnitt oben ist der
-  Abstand zweier Fehlschläge keine Dauer. Derselbe Vormittag hatte zwei
+  Wie lange die Sperre hier dauerte, ist **ungemessen**. Belegt sind vier
+  Zeitpunkte zwischen 17:14:22 und 17:19:34 UTC — und nach dem Abschnitt oben
+  ist der Abstand zweier Fehlschläge keine Dauer, gleich wie viele dazwischen
+  liegen. Derselbe Vormittag hatte zwei
   vollständige Reviews (#115, #116) und einen ersetzten (#116, Lauf eins).
 
   **Der zweite Zeitpunkt ist selbst verschuldet, und daraus folgt die
@@ -638,19 +639,20 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   Kontingent, das gerade knapp ist. In einer Datei wie dieser hier ist das
   folgenlos; in Kommentar und PR-Text nicht.
 
-  **Was dieser Weckruf ausgelöst hätte, ist dagegen offen** — und die dritte
-  Meldung ist der Grund, das vorsichtiger zu formulieren, als es sich anbietet.
-  Drei Auslöser an diesem Nachmittag, drei Antworten:
+  **Was dieser Weckruf ausgelöst hätte, ist dagegen offen** — und die Meldungen
+  danach sind der Grund, das vorsichtiger zu formulieren, als es sich anbietet.
+  Vier Auslöser in sechs Minuten, über zwei PRs:
 
-  | Auslöser | ausgelöst | Meldung | Latenz | Text |
-  |---|---|---|---|---|
-  | Aufruf als eigener Kommentar | 17:14:10 | 17:14:22 | 12 s | «… limits **for code reviews**» |
-  | Zitat im Fliesstext | 17:15:56 | 17:16:09 | 13 s | «… limits», **ohne** Zusatz |
-  | `Draft marked ready` | 17:16:53 | 17:16:55 | 2 s | «… limits **for code reviews**» |
+  | Auslöser | PR | ausgelöst | Meldung | Latenz | Text |
+  |---|---|---|---|---|---|
+  | Aufruf als eigener Kommentar | #117 | 17:14:10 | 17:14:22 | 12 s | «… limits **for code reviews**» |
+  | Zitat im Fliesstext | #117 | 17:15:56 | 17:16:09 | 13 s | «… limits», **ohne** Zusatz |
+  | `Draft marked ready` | #117 | 17:16:53 | 17:16:55 | 2 s | «… limits **for code reviews**» |
+  | `Draft marked ready` | #118 | 17:19:30 | 17:19:34 | 4 s | «… limits **for code reviews**» |
 
-  **Beide Wege, die sicher einen Review anfordern, nennen den Review-Topf; nur
-  das Zitat nicht.** Das legt nahe, dass die beiläufige Erwähnung gar keinen
-  Review anforderte, sondern etwas anderes, das an einer anderen Sperre
+  **Alle drei Wege, die sicher einen Review anfordern, nennen den Review-Topf;
+  nur das Zitat nicht.** Das legt nahe, dass die beiläufige Erwähnung gar
+  keinen Review anforderte, sondern etwas anderes, das an einer anderen Sperre
   scheiterte. Belegt ist deshalb nur, dass der Rohtext abgeglichen wird und
   eine Antwort auslöst — **nicht**, dass ein Review gelaufen wäre. Hier stand
   zuerst «der Auslöser feuert»; das behauptete mehr, als die Meldung hergibt.
@@ -659,13 +661,15 @@ Was die Messung **nicht** hergibt, und das ist mehr als üblich:
   Der Abschnitt weiter unten hält fest, dass Code-Reviews einen eigenen Topf
   haben — dann wären es zwei Sperren mit je eigenem Text, und die Tabelle
   ordnet sich sauber. Ebenso möglich ist derselbe Topf, nur anders gemeldet.
-  Drei Meldungen aus einem PR zeigen den Unterschied, nicht seinen Grund. Für
-  einen Klassifikator zählt praktisch nur: **beide Fassungen treffen**, sonst
-  geht die eine als «kein Kommentar» durch.
+  Vier Meldungen zeigen den Unterschied, nicht seinen Grund; drei zu eins ist
+  eine Häufigkeit und keine Mechanik — die Auslöser-Korrelation weiter oben
+  stand sechs zu eins und ist trotzdem gefallen.
 
   Die Latenzen stehen in der Tabelle, weil sie dort ohne Aufwand ablesbar
-  sind — eine Messreihe sind sie nicht. Je ein Wert pro Weg, und 2 gegen 12
-  Sekunden ist ein Unterschied, über den zwei Beobachtungen nichts aussagen.
+  sind — eine Messreihe sind sie nicht. Der ready-Weg hat zwei Werte (2 s und
+  4 s), der Kommentar-Weg zwei (12 s und 13 s). Das sieht nach zwei sauber
+  getrennten Gruppen aus und ist genau die Form, in der hier schon zweimal aus
+  zwei Messwerten eine Regel wurde, die fiel.
 - Wie es portfolioweit aussieht. Die Session war auf dieses eine Repo begrenzt;
   die `search_pull_requests`-Abfrage oben hätte darüber hinausgegriffen und
   wurde deshalb nicht gefahren. **Neun Datenpunkte aus einem Repo sind kein
