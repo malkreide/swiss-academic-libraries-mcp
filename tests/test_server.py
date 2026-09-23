@@ -8,6 +8,7 @@ Kategorien:
 
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from swiss_academic_libraries_mcp.api_client import (
@@ -525,6 +526,79 @@ class TestMcpError:
         assert isinstance(err, MCPError)
         assert "swisscovery_search" in err.error.message
         assert "boom" in err.error.message
+
+
+# ─── HTTP 403: Absage statt Störung ───────────────────────────────────────────
+
+
+def _status_error(status: int, url: str) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", url)
+    response = httpx.Response(status, request=request)
+    return httpx.HTTPStatusError(f"HTTP {status}", request=request, response=response)
+
+
+class TestHandleApiError403:
+    """Ein 403 bekam bis zum 23.9.2026 nur «API-Fehler (HTTP 403).».
+
+    Damit wusste das Modell weder, dass eine Wiederholung nichts bringt, noch
+    wohin es ausweichen kann. Anlass war e-rara, das seit dem 14.9.2026 jede
+    Anfrage aus Rechenzentrumsnetzen mit 403 beantwortet.
+    """
+
+    ERARA = "https://www.e-rara.ch/oai?verb=ListSets"
+    EPERIODICA = "https://www.e-periodica.ch/oai/dataprovider?verb=ListSets"
+
+    def test_nennt_status_und_quelle(self) -> None:
+        from swiss_academic_libraries_mcp.api_client import handle_api_error
+
+        msg = handle_api_error(_status_error(403, self.ERARA), "erara_list_collections")
+        assert msg.startswith("Fehler bei erara_list_collections: Zugriff verweigert (HTTP 403)")
+        assert "www.e-rara.ch" in msg
+
+    def test_gibt_keinen_wiederholungsrat(self) -> None:
+        """Positiv geprüft, nicht nur über das Fehlen der alten Floskeln."""
+        from swiss_academic_libraries_mcp.api_client import handle_api_error
+
+        msg = handle_api_error(_status_error(403, self.ERARA), "erara_list_records")
+        assert "Ein erneuter Versuch ändert daran nichts" in msg
+        assert "Bitte erneut versuchen" not in msg
+        assert "Bitte kurz warten" not in msg
+
+    def test_nennt_browser_als_ausweg(self) -> None:
+        from swiss_academic_libraries_mcp.api_client import handle_api_error
+
+        msg = handle_api_error(_status_error(403, self.EPERIODICA), "eperiodica_list_records")
+        assert "https://www.e-periodica.ch" in msg
+        # Nur der Ursprung, nicht die OAI-Anfrage: Die gäbe im Browser XML.
+        assert "verb=" not in msg
+
+    def test_erara_nennt_swisscovery(self) -> None:
+        from swiss_academic_libraries_mcp.api_client import handle_api_error
+
+        msg = handle_api_error(_status_error(403, self.ERARA), "erara_list_records")
+        assert "swisscovery_search" in msg
+        assert "10.3931/e-rara-" in msg
+
+    def test_ungemessene_quelle_ohne_swisscovery(self) -> None:
+        """Für e-periodica ist der Ausweg nicht geprüft — also nicht behauptet."""
+        from swiss_academic_libraries_mcp.api_client import handle_api_error
+
+        msg = handle_api_error(_status_error(403, self.EPERIODICA), "eperiodica_list_records")
+        assert "Zugriff verweigert (HTTP 403)" in msg
+        assert "swisscovery" not in msg
+
+    def test_anderer_4xx_bleibt_generisch(self) -> None:
+        from swiss_academic_libraries_mcp.api_client import handle_api_error
+
+        msg = handle_api_error(_status_error(404, self.ERARA), "erara_get_record")
+        assert msg == "Fehler bei erara_get_record: API-Fehler (HTTP 404)."
+
+    def test_erreicht_das_tool(self) -> None:
+        """Der Weg, den jedes Tool nimmt: `_to_mcp_error` trägt die Meldung durch."""
+        from swiss_academic_libraries_mcp.server import _to_mcp_error
+
+        err = _to_mcp_error(_status_error(403, self.ERARA), "erara_list_collections")
+        assert "Zugriff verweigert (HTTP 403)" in err.error.message
 
 
 # ─── Data disclaimer (F-08) ───────────────────────────────────────────────────

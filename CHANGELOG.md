@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **HTTP 403 hat eine eigene Fehlermeldung.** Bisher kam nur
+  «API-Fehler (HTTP 403).» — das Modell erfuhr weder, dass eine Wiederholung
+  nichts bringt, noch wohin es ausweichen kann. Jetzt nennt die Meldung die
+  sperrende Quelle, gibt ausdrücklich keinen Wiederholungsrat und verweist auf
+  die Website im Browser; für e-rara zusätzlich auf `swisscovery_search`, das
+  e-rara-Digitalisate mit DOI-Link führt (am 23.9.2026 gemessen). Für andere
+  Quellen ist dieser Ausweg nicht geprüft und wird deshalb nicht behauptet.
+  Anlass: e-rara beantwortet seit dem 14.9.2026 jede Anfrage aus
+  Rechenzentrumsnetzen mit 403 (#98). Die Einordnung der Live-Tests ändert
+  sich nicht — ein 403 bleibt `finding`, und ein Test hält fest, dass die neue
+  Meldung keines der Ausfall-Muster des Klassifikators trifft.
+
 ### Fixed
 
 - **Der Registry-Publish lief zweimal und scheiterte beide Male.** Das Release
