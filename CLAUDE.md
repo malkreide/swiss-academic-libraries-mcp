@@ -469,8 +469,11 @@ Sieben Eigenheiten, jede eine eigene Falle:
   Abräumung, die nur beim Auslöser `Manual request` greift.
 
   Belegt ist deshalb nur: Die 👀 erscheint mit dem Lauf, und ihr Verschwinden
-  ist nicht verlässlich. Sie taugt als Zeichen, dass gerade etwas läuft, nicht
-  als Zeichen, dass nichts mehr läuft.
+  ist nicht verlässlich. Hier stand zuerst, sie tauge als Zeichen, dass gerade
+  etwas läuft — die Tabelle darüber widerlegt das selbst: Um 16:47:40 und
+  17:11:43 stand die 👀, und es lief nichts. Tragfähig ist nur: **Die 👀 zeigt,
+  dass ein Lauf begonnen hat, nicht, dass er noch läuft.** Ob er läuft, sagt
+  allein der Status in der Tabelle.
 
   **Die Negativkontrolle dazu fiel am selben Tag an, ungeplant.** Auf #117 lief
   `@codex review` (17:14:10) in die Kontingent-Meldung (17:14:22) — kein Lauf
@@ -482,6 +485,33 @@ Sieben Eigenheiten, jede eine eigene Falle:
 
   Für die Frage, wann sie wieder verschwindet, sagt der Fall **nichts**: Ein
   Lauf, der nie begann, kann nicht abräumen.
+
+  **Die Gegenprobe ist am 23.9.2026 auf #120 gemessen, und sie entscheidet
+  weniger, als es aussieht.** Gemessen wurde ein Manual-Lauf, der nicht ersetzt
+  wurde: Der PR blieb Draft, bis der Lauf längst fertig war (ready erst um
+  16:31:57). Am auslösenden Kommentar `5788580026`:
+
+  | Abfrage (UTC) | Lauf | `reactions` |
+  |---|---|---|
+  | 03:42:47 | läuft seit 03:42:35 | `{"eyes": 1}` |
+  | 03:59:10 | fertig seit 03:45:02 | `{"total_count": 0}` |
+
+  Abgeräumt, wie auf #115. Zwei abgeschlossene, nicht ersetzte Manual-Läufe
+  räumten ab, der eine ersetzte (#116) nicht.
+
+  Die zwei Erklärungen weiter oben trennt das **nicht**: «Die Reaktion gehört
+  dem Lauf, der sie gesetzt hat» und «abgeräumt wird nur beim Auslöser
+  `Manual request`» sagen für #115, #116 und #120 dasselbe voraus. Drei Fälle,
+  die zu beiden passen, sind keine Entscheidung zwischen ihnen. Einen Fall, der
+  sie sauber trennt, gibt es mit dem, was GitHub zeigt, womöglich gar nicht:
+  Auch wenn ein zweiter Aufruf einen laufenden Manual-Lauf ersetzt, bliebe die
+  👀 am ersten Kommentar unter beiden stehen, solange das Abräumen am Kommentar
+  des abschliessenden Laufs hängt. Gemessen ist das nicht.
+
+  Praktisch ändert die offene Frage nichts, und darum ist sie hier keine Lücke:
+  Wer wissen will, ob ein Review läuft, liest den Status in der Tabelle. Die 👀
+  beantwortet das nur, solange kein zweiter Auslöser dazwischenkam — und das
+  sieht man ihr nicht an.
 
   «Der Kasten ist keine Quelle» bleibt richtig, aber nicht pauschal: Er ist an
   den Stellen falsch, an denen er geprüft und widerlegt wurde, und nicht überall
