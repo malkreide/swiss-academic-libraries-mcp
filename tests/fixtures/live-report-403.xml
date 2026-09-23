@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="3.531" timestamp="2026-09-23T03:39:45.586517+00:00" hostname="vm"><testcase classname="tests.test_20_scenarios" name="test_09_erara_list_collections" time="1.186"><failure message="mcp.shared.exceptions.MCPError: Fehler bei erara_list_collections: Zugriff verweigert (HTTP 403) durch www.e-rara.ch. Ein erneuter Versuch ändert daran nichts, solange die Quelle sperrt. Im Browser ist sie unter Umständen weiterhin erreichbar: https://www.e-rara.ch — Katalogdaten zu e-rara-Digitalisaten, jeweils mit DOI-Link (10.3931/e-rara-…), liefert auch swisscovery_search, z. B. mit alma.all_for_ui=&quot;e-rara&quot; and alma.all_for_ui=&quot;&lt;Suchbegriff&gt;&quot;.">params = ListCollectionsInput(filter_name=None)
+
+    @mcp.tool(
+        name="erara_list_collections",
+        annotations={
+            "title": "e-rara: Sammlungen auflisten",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        },
+    )
+    async def erara_list_collections(params: ListCollectionsInput) -&gt; str:
+        """
+        Listet alle in e-rara vertretenen Bibliotheken und Sammlungen auf.
+    
+        Die Set-Bezeichner (spec) können als set_spec in erara_list_records
+        verwendet werden, um die Suche auf eine bestimmte Bibliothek einzuschränken.
+    
+        Args:
+            params (ListCollectionsInput): Input mit:
+                - filter_name (str): Filter nach Bibliotheksname (optional)
+    
+        Returns:
+            str: Tabellarische Übersicht aller Sammlungen mit Set-Bezeichner und Name.
+        """
+        try:
+&gt;           sets = await _oai_list_collections(ERARA_OAI_URL, params.filter_name)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+src/swiss_academic_libraries_mcp/server.py:1000: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/swiss_academic_libraries_mcp/server.py:518: in _oai_list_collections
+    page = parse_oai_sets_page(await http_get(base_url, params))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/swiss_academic_libraries_mcp/api_client.py:309: in http_get
+    response.raise_for_status()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;Response [403 Forbidden]&gt;
+
+    def raise_for_status(self) -&gt; Response:
+        """
+        Raise the `HTTPStatusError` if one occurred.
+        """
+        request = self._request
+        if request is None:
+            raise RuntimeError(
+                "Cannot call `raise_for_status` as the request "
+                "instance has not been set on this response."
+            )
+    
+        if self.is_success:
+            return self
+    
+        if self.has_redirect_location:
+            message = (
+                "{error_type} '{0.status_code} {0.reason_phrase}' for url '{0.url}'\n"
+                "Redirect location: '{0.headers[location]}'\n"
+                "For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/{0.status_code}"
+            )
+        else:
+            message = (
+                "{error_type} '{0.status_code} {0.reason_phrase}' for url '{0.url}'\n"
+                "For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/{0.status_code}"
+            )
+    
+        status_class = self.status_code // 100
+        error_types = {
+            1: "Informational response",
+            3: "Redirect response",
+            4: "Client error",
+            5: "Server error",
+        }
+        error_type = error_types.get(status_class, "Invalid status code")
+        message = message.format(self, error_type=error_type)
+&gt;       raise HTTPStatusError(message, request=request, response=self)
+E       httpx.HTTPStatusError: Client error '403 Forbidden' for url 'https://www.e-rara.ch/oai?verb=ListSets'
+E       For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403
+
+/tmp/claude-0/venv2/lib/python3.11/site-packages/httpx/_models.py:829: HTTPStatusError
+
+The above exception was the direct cause of the following exception:
+
+    @pytest.mark.quelle("e-rara")
+    async def test_09_erara_list_collections():
+        """Szenario 9: Alle e-rara Sammlungen/Bibliotheken auflisten."""
+        t = time.time()
+&gt;       result = await erara_list_collections(ListCollectionsInput())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_20_scenarios.py:329: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+params = ListCollectionsInput(filter_name=None)
+
+    @mcp.tool(
+        name="erara_list_collections",
+        annotations={
+            "title": "e-rara: Sammlungen auflisten",
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": True,
+        },
+    )
+    async def erara_list_collections(params: ListCollectionsInput) -&gt; str:
+        """
+        Listet alle in e-rara vertretenen Bibliotheken und Sammlungen auf.
+    
+        Die Set-Bezeichner (spec) können als set_spec in erara_list_records
+        verwendet werden, um die Suche auf eine bestimmte Bibliothek einzuschränken.
+    
+        Args:
+            params (ListCollectionsInput): Input mit:
+                - filter_name (str): Filter nach Bibliotheksname (optional)
+    
+        Returns:
+            str: Tabellarische Übersicht aller Sammlungen mit Set-Bezeichner und Name.
+        """
+        try:
+            sets = await _oai_list_collections(ERARA_OAI_URL, params.filter_name)
+        except Exception as e:
+&gt;           raise _to_mcp_error(e, "erara_list_collections") from e
+E           mcp.shared.exceptions.MCPError: Fehler bei erara_list_collections: Zugriff verweigert (HTTP 403) durch www.e-rara.ch. Ein erneuter Versuch ändert daran nichts, solange die Quelle sperrt. Im Browser ist sie unter Umständen weiterhin erreichbar: https://www.e-rara.ch — Katalogdaten zu e-rara-Digitalisaten, jeweils mit DOI-Link (10.3931/e-rara-…), liefert auch swisscovery_search, z. B. mit alma.all_for_ui="e-rara" and alma.all_for_ui="&lt;Suchbegriff&gt;".
+
+src/swiss_academic_libraries_mcp/server.py:1002: MCPError</failure></testcase></testsuite></testsuites>

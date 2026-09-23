@@ -413,6 +413,42 @@ async def http_get_with_retry(
     raise last_error
 
 
+# Ausweg je Quelle, wenn sie mit 403 sperrt. Nur eingetragen, was gemessen ist:
+# Am 23.9.2026 lieferte swisscovery auf `alma.all_for_ui="e-rara"` 123'785
+# Treffer, die ersten fünf alle mit DOI-Link `10.3931/e-rara-…`. Für
+# e-periodica und e-manuscripta ist das nicht geprüft und steht deshalb nicht da.
+_AUSWEG_BEI_403: dict[str, str] = {
+    "www.e-rara.ch": (
+        "Katalogdaten zu e-rara-Digitalisaten, jeweils mit DOI-Link "
+        "(10.3931/e-rara-…), liefert auch swisscovery_search, z. B. mit "
+        'alma.all_for_ui="e-rara" and alma.all_for_ui="<Suchbegriff>".'
+    ),
+}
+
+
+def _zugriff_verweigert(e: httpx.HTTPStatusError, prefix: str) -> str:
+    """Meldung für HTTP 403: Status und Quelle nennen, keinen Wiederholungsrat.
+
+    Ein 403 ist keine Überlastung wie 429 oder 503, sondern eine Absage — eine
+    Wiederholung trifft dieselbe Sperre (`http_get_with_retry` wiederholt ihn
+    deshalb auch nicht). Welche Absage, bleibt offen: eine Sperre automatisierter
+    Zugriffe ebenso wie eine neu verlangte Anmeldung. Die Meldung behauptet
+    darum keine Ursache, sondern nennt, was dem Modell weiterhilft.
+
+    Keines der `UPSTREAM_MUSTER` aus `scripts/classify_live_run.py` darf hier
+    vorkommen: Ein 403 bleibt dort absichtlich `finding`, und ein Teilstring
+    genügt, um ihn still zu `upstream` zu machen. Das hält ein Test fest.
+    """
+    url = e.request.url
+    meldung = (
+        f"{prefix}Zugriff verweigert (HTTP 403) durch {url.host}. "
+        "Ein erneuter Versuch ändert daran nichts, solange die Quelle sperrt. "
+        f"Im Browser ist sie unter Umständen weiterhin erreichbar: {url.scheme}://{url.host}"
+    )
+    ausweg = _AUSWEG_BEI_403.get(url.host)
+    return f"{meldung} — {ausweg}" if ausweg else meldung
+
+
 def handle_api_error(e: Exception, context: str = "") -> str:
     """Einheitliche, aktionsorientierte Fehlermeldung für alle Tools."""
     prefix = f"Fehler bei {context}: " if context else "Fehler: "
@@ -420,6 +456,8 @@ def handle_api_error(e: Exception, context: str = "") -> str:
         code = e.response.status_code
         if code == 400:
             return f"{prefix}Ungültige Anfrage (400). Bitte Query-Syntax prüfen."
+        if code == 403:
+            return _zugriff_verweigert(e, prefix)
         if code == 429:
             return f"{prefix}Rate-Limit erreicht (429). Bitte kurz warten."
         if code == 503:

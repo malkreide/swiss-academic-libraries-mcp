@@ -1148,6 +1148,15 @@ der Zustand, dessen Fehlermodus das Wegerklären ist. Der Timeout dagegen war
 eine echte Lücke, und die unangenehme Sorte: der einzige Timeout, den dieses
 Repo selbst erzeugt, war der einzige, den der Wächter nicht kannte.
 
+Seit dem 23.9.2026 hat der 403 in `handle_api_error` eine eigene, längere
+Meldung — ohne Wiederholungsrat, mit Ausweg. Länger heisst hier riskanter:
+`_ist_ausfall` prüft Teilstrings, und ein beiläufiges Ausfall-Muster in diesem
+Text machte jede Sperre still zu `upstream`. Das hält `test_403_bleibt_finding`
+fest, gebaut aus der **echten** Funktion. Die Aufzeichnung
+`live-report-403.xml` allein könnte es nicht: Sie friert den Text vom
+Aufnahmetag ein und bliebe grün, wenn jemand die Meldung später umformuliert —
+in der Gegenprobe genau so geschehen.
+
 Dass es überhaupt zu belegen war, ist Glück gewesen. `live-report.xml` starb mit
 dem Runner, und die 40 Zeilen `tail` im Issue tragen die Meldungen nicht, die
 der Klassifikator liest; nachweisbar wurde der Befund erst, als der Ausfall sich

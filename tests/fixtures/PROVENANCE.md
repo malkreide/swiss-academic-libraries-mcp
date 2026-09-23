@@ -119,6 +119,14 @@ genau die Unterschiede wegzulassen, wegen derer es drei Fixtures braucht.
 - **Groesse:** 8962 B
 - **SHA-256:** `63d80eeb125482c835d387306201d51d2f221ddaa909b3135ed96e91b709f93d`
 
+## `live-report-403.xml`
+
+- **Quelle:** `pytest -m live --junitxml` ueber `tests/test_20_scenarios.py::test_09_erara_list_collections` gegen das echte `https://www.e-rara.ch/oai?verb=ListSets` — eine einzige Anfrage, 403 wird nicht wiederholt
+- **Aufgezeichnet:** 2026-09-23
+- **Auswahl:** Keine Attrappe, sondern die reale Sperre: e-rara beantwortet seit dem 14.9.2026 jede Anfrage aus Rechenzentrumsnetzen mit 403 (nginx, auch die Startseite, unabhaengig vom User-Agent). Die Aufzeichnung nimmt den Weg ueber ein MCP-Tool und traegt deshalb die eigene 403-Meldung aus `handle_api_error`, die an diesem Tag dazukam. Sie belegt, dass weder diese Meldung noch der Traceback darum herum ein Ausfall-Muster des Klassifikators trifft — ein 403 bleibt `finding`
+- **Groesse:** 6469 B
+- **SHA-256:** `99f6b7d8c2028ba1fcfafe7faccc38a3b50eeb6a66b76640d949cde5aefdaa37`
+
 ## `live-report-assertion.xml`
 
 - **Quelle:** `pytest -m live --junitxml` mit einer absichtlich gerissenen Zusicherung

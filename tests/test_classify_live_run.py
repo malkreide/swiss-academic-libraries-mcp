@@ -238,6 +238,31 @@ class UpstreamTest(unittest.TestCase):
         state, _ = self._state(suite(tests=30, failures=2))
         self.assertEqual(state, clr.FINDING)
 
+    def test_403_bleibt_finding(self):
+        """Die 403-Meldung darf keines der Ausfall-Muster enthalten.
+
+        Ein 403 ist absichtlich kein `upstream`: Er kann auch eine neu verlangte
+        Anmeldung sein, und das waere ein Vertragsbruch. Seit dem 23.9.2026 hat er
+        eine eigene, laengere Meldung — und `_ist_ausfall` prueft Teilstrings.
+        Ein beilaeufiges «voruebergehend nicht verfuegbar (503)» darin genuegte, um
+        jede Sperre still wegzuerklaeren.
+
+        Gebaut aus der echten Funktion, nicht aus einer Abschrift: Eine
+        aufgezeichnete Meldung friert den Text vom Aufnahmetag ein und saehe
+        eine spaetere Umformulierung nicht.
+        """
+        import httpx
+
+        from swiss_academic_libraries_mcp.api_client import handle_api_error
+
+        request = httpx.Request("GET", "https://www.e-rara.ch/oai?verb=ListSets")
+        fehler = httpx.HTTPStatusError(
+            "HTTP 403", request=request, response=httpx.Response(403, request=request)
+        )
+        meldung = "mcp.shared.exceptions.MCPError: " + handle_api_error(fehler, "erara_list_collections")
+        state, _ = self._state(suite_mit_fehlern([meldung], tests=30))
+        self.assertEqual(state, clr.FINDING)
+
     def test_upstream_ist_nicht_clear(self):
         """Damit niemand auf die Idee kommt, den Job dafuer gruen zu machen.
 
@@ -282,6 +307,20 @@ class EchteReportsTest(unittest.TestCase):
         state, reason = clr.classify(pfad)
         self.assertEqual(state, clr.UPSTREAM)
         self.assertIn("nicht geantwortet", reason)
+
+    def test_aufgezeichneter_403_ist_finding(self):
+        """Die echte Sperre, am 23.9.2026 gegen e-rara aufgezeichnet.
+
+        Seit dem 14.9.2026 beantwortet e-rara jede Anfrage aus
+        Rechenzentrumsnetzen mit 403. Die Aufzeichnung traegt die eigene
+        403-Meldung aus `handle_api_error` im Format, das pytest wirklich
+        schreibt — Traceback eingeschlossen, in dem ja ebenfalls kein
+        Ausfall-Muster stehen darf. `test_403_bleibt_finding` oben haelt
+        dasselbe gegen die jeweils aktuelle Meldung.
+        """
+        pfad = Path(__file__).parent / "fixtures" / "live-report-403.xml"
+        state, _ = clr.classify(pfad)
+        self.assertEqual(state, clr.FINDING)
 
     def test_budget_timeout_neben_befund_bleibt_finding(self):
         """Die enge Seite gilt auch fuer das neue Muster.
