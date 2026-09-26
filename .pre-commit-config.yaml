@@ -20,7 +20,7 @@
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.7
+    rev: v0.16.9
     hooks:
       # `files` haelt den Scope deckungsgleich mit der CI, die beide Gates auf
       # `src/ tests/ scripts/` fahrt. Weicht der Hook davon ab, ist er in der

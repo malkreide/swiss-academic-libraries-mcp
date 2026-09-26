@@ -321,9 +321,10 @@ wie der Code: Nichts ist rot, weil nichts geprüft wird, worauf es ankommt.
 
 ## Dieses Repo
 
-**ruff ist auf `0.16.7` gepinnt** — im `dev`-Extra von `pyproject.toml` und,
+**ruff ist exakt gepinnt** — im `dev`-Extra von `pyproject.toml` und,
 weil pre-commit `pyproject.toml` nicht lesen kann, ein zweites Mal als
-`rev: v0.16.7` in `.pre-commit-config.yaml`. Beide werden zusammen hochgezogen.
+`rev:` in `.pre-commit-config.yaml`. Die Version steht an diesen beiden Stellen,
+nicht in diesem Text. Beide werden zusammen hochgezogen.
 
 «Zusammen» ist der ganze Satz, und am 17.9.2026 ist er einmal nicht eingehalten
 worden: Dependabot-PR #105 zog `pyproject.toml` auf `0.16.7` und liess die
