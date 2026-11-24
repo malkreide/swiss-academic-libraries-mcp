@@ -1,8 +1,13 @@
 # Herkunft der Fixtures
 
-**Erzeugt von `scripts/record_fixtures.py`. Nicht von Hand pflegen.**
+**Erzeugt von `scripts/record_fixtures.py` — bis auf den Abschnitt
+zwischen den Markern «HANDGEPFLEGT ANFANG» und «ENDE» am Schluss.**
+Ausserhalb davon nicht von Hand pflegen: Das Skript schreibt es bei
+jedem Lauf neu. Innerhalb davon nur von Hand pflegen: Das Skript
+uebernimmt den Abschnitt unveraendert und bricht ab, wenn die Marker
+fehlen.
 
-Aufgezeichnet am **2026-08-07**.
+Die HTTP-Fixtures sind aufgezeichnet am **2026-08-07**.
 
 Ohne Datum ist «aufgezeichnet» nach zwei Jahren von «ausgedacht» nicht
 mehr zu unterscheiden — die Datei sieht gleich aus.
@@ -103,6 +108,15 @@ genau die Unterschiede wegzulassen, wegen derer es drei Fixtures braucht.
 - **Groesse:** 5126 B
 - **SHA-256:** `ebc94a6e9e337023eff843e34f68787998d2b9be6a9398a02bc345337602c85b`
 
+## Handgepflegt: Live-Reports
+
+Die `live-report-*.xml` stammen aus pytest-Laeufen, nicht aus
+HTTP-Abfragen, und dieses Skript zeichnet sie nicht auf. Jeder Eintrag
+traegt sein eigenes Datum. `live-report-403.xml` laesst sich nicht neu
+aufzeichnen — die Sperre, die es festhaelt, gibt es nicht mehr.
+
+<!-- HANDGEPFLEGT ANFANG -->
+
 ## `live-report-timeout.xml`
 
 - **Quelle:** `pytest -m live --junitxml` gegen eine Attrappe, die die Verbindung annimmt und nie antwortet (127.0.0.1)
@@ -134,3 +148,5 @@ genau die Unterschiede wegzulassen, wegen derer es drei Fixtures braucht.
 - **Auswahl:** Das Gegenstueck: ein Fehlschlag, der KEIN Quellen-Ausfall ist und deshalb `finding` bleiben muss
 - **Groesse:** 825 B
 - **SHA-256:** `9950d15d8c1e7ce4316a607b5e604bd3fd545f170ef9921ba8493f8f9fae41de`
+
+<!-- HANDGEPFLEGT ENDE -->

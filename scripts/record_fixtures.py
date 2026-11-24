@@ -20,6 +20,10 @@ die falsche Antwort — und zwar unauffaellig, weil sie plausibel aussieht.
 (`numberOfRecords`, `completeListSize`, `total-results`) auf dem echten Wert:
 Eine Fixture, die stillschweigend behauptet, der Bestand sei kleiner, waere
 genau der Fehler, gegen den das hier angeht.
+
+**Nicht alles in `PROVENANCE.md` gehoert diesem Skript.** Die Eintraege der
+`live-report-*.xml` stehen zwischen `<!-- HANDGEPFLEGT ANFANG/ENDE -->` und
+werden unveraendert uebernommen (`tests/test_provenance.py`).
 """
 
 from __future__ import annotations
@@ -40,6 +44,10 @@ from swiss_academic_libraries_mcp import api_client, oa_legal  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
 
+# Modul-Alias, damit `tests/test_provenance.py` einen Neulauf gegen eine
+# MockTransport fahren kann, ohne `httpx.Client` im ganzen Prozess zu ersetzen.
+_Client = httpx.Client
+
 NS_OAI = "http://www.openarchives.org/OAI/2.0/"
 NS_SRW = "http://www.loc.gov/zing/srw/"
 NS_ATOM = "http://www.w3.org/2005/Atom"
@@ -52,6 +60,32 @@ OAI_KEEP = 2
 CROSSREF_QUERY = "glacier"
 ARXIV_QUERY = "all:glacier"
 REPOSITORIUM_KEEP = 2
+
+# Was dieses Skript schreibt — und damit, was es in `PROVENANCE.md` selbst
+# belegen kann. Alles andere in `tests/fixtures/` muss im handgepflegten
+# Abschnitt stehen; `_unbelegte_fixtures` haelt beides gegeneinander.
+AUFGEZEICHNET = (
+    "sru_search.xml",
+    "oai_erara_listrecords.xml",
+    "oai_eperiodica_listrecords.xml",
+    "oai_emanuscripta_listrecords.xml",
+    "oai_erara_listsets.xml",
+    "oai_sui_generis_listrecords.xml",
+    "oai_ex_ante_listrecords.xml",
+    "repositorium_rows.json",
+    "crossref_works.json",
+    "arxiv_feed.xml",
+)
+
+# Der Abschnitt zwischen diesen Markern gehoert nicht dem Skript. Darin stehen
+# die `live-report-*.xml`: Die entstehen nicht aus einer HTTP-Abfrage, sondern
+# aus einem pytest-Lauf, teils gegen eine Attrappe, `live-report-403.xml` gegen
+# eine Sperre, die es nicht mehr gibt. Neu aufzeichnen laesst sich diese nicht;
+# ihr Eintrag ist der einzige Beleg ihrer Herkunft. Bis November 2026 schrieb
+# `_write_provenance` die Datei von Grund auf neu — ein Lauf haette diese
+# Eintraege ohne Meldung geloescht.
+HAND_ANFANG = "<!-- HANDGEPFLEGT ANFANG -->"
+HAND_ENDE = "<!-- HANDGEPFLEGT ENDE -->"
 
 
 def _has_control_char(text: str) -> bool:
@@ -103,11 +137,22 @@ def _trim_xml(xml_text: str, keep: int, extras: tuple = ()) -> tuple[str, int, i
 
 def record() -> int:
     FIXTURES.mkdir(parents=True, exist_ok=True)
+    # Vor der ersten Abfrage: Fehlen die Marker oder ist eine Fixture nirgends
+    # belegt, bricht der Lauf ab, bevor er eine einzige Datei ueberschreibt.
+    hand = _read_hand_section(_existing_provenance())
+    unbelegt = _unbelegte_fixtures(FIXTURES, hand)
+    if unbelegt:
+        raise SystemExit(
+            "Fixtures ohne Herkunftseintrag — weder von diesem Skript erzeugt "
+            f"noch im Abschnitt {HAND_ANFANG} … {HAND_ENDE} von PROVENANCE.md: " + ", ".join(unbelegt)
+        )
     recorded_at = datetime.now(UTC).strftime("%Y-%m-%d")
     entries: list[dict] = []
     skipped: list[dict] = []
 
     def write(name: str, text: str, url: str, rule: str) -> None:
+        if name not in AUFGEZEICHNET:
+            raise SystemExit(f"{name} fehlt in AUFGEZEICHNET — dort nachtragen")
         if not text.endswith("\n"):
             text += "\n"
         (FIXTURES / name).write_text(text, encoding="utf-8")
@@ -132,7 +177,7 @@ def record() -> int:
         r.raise_for_status()
         return r
 
-    with httpx.Client(
+    with _Client(
         timeout=120.0,
         follow_redirects=True,
         headers={"User-Agent": api_client.USER_AGENT},
@@ -346,18 +391,67 @@ def record() -> int:
             f"unveraendert, {n_entries} Eintraege; `opensearch:totalResults` unveraendert",
         )
 
-    _write_provenance(recorded_at, entries, skipped)
+    _write_provenance(recorded_at, entries, skipped, hand)
     print(f"\nPROVENANCE.md geschrieben, Aufzeichnungsdatum {recorded_at}")
     return 0
 
 
-def _write_provenance(recorded_at: str, entries: list[dict], skipped: list[dict]) -> None:
+def _existing_provenance() -> str | None:
+    path = FIXTURES / "PROVENANCE.md"
+    return path.read_text(encoding="utf-8") if path.exists() else None
+
+
+def _read_hand_section(text: str | None) -> str:
+    """Liefert den Abschnitt zwischen den Markern, Byte fuer Byte.
+
+    Ohne bestehende Datei gibt es nichts zu bewahren. Gibt es sie, aber ohne
+    beide Marker (oder mit verdrehten), ist das ein Abbruch und kein leerer
+    Abschnitt: Ein Skript, das fehlende Marker als «nichts Handgepflegtes» liest,
+    loescht genau das, wofuer die Marker da sind.
+    """
+    if text is None:
+        return ""
+    if text.count(HAND_ANFANG) != 1 or text.count(HAND_ENDE) != 1:
+        raise SystemExit(
+            f"PROVENANCE.md: Marker {HAND_ANFANG} / {HAND_ENDE} fehlen oder sind "
+            "doppelt — ohne sie wuerde der handgepflegte Abschnitt ueberschrieben"
+        )
+    start = text.index(HAND_ANFANG) + len(HAND_ANFANG)
+    end = text.index(HAND_ENDE)
+    if end < start:
+        raise SystemExit(f"PROVENANCE.md: {HAND_ENDE} steht vor {HAND_ANFANG}")
+    return text[start:end]
+
+
+def _eintraege(section: str) -> set[str]:
+    """Dateinamen, fuer die der Abschnitt eine `## `name``-Ueberschrift hat."""
+    return set(re.findall(r"^## `([^`]+)`$", section, re.M))
+
+
+def _unbelegte_fixtures(fixtures: Path, hand: str) -> list[str]:
+    """Dateien in `fixtures`, fuer die weder das Skript noch die Hand buergt."""
+    belegt = set(AUFGEZEICHNET) | _eintraege(hand)
+    return sorted(
+        p.name
+        for p in fixtures.iterdir()
+        if p.is_file() and p.name != "PROVENANCE.md" and p.name not in belegt
+    )
+
+
+def _render_provenance(recorded_at: str, entries: list[dict], skipped: list[dict], hand: str) -> str:
     lines = [
         "# Herkunft der Fixtures",
         "",
-        "**Erzeugt von `scripts/record_fixtures.py`. Nicht von Hand pflegen.**",
+        # Die Marker hier NICHT woertlich zitieren: Dann staenden sie doppelt
+        # in der Datei, und `_read_hand_section` braeche beim naechsten Lauf ab.
+        "**Erzeugt von `scripts/record_fixtures.py` — bis auf den Abschnitt",
+        "zwischen den Markern «HANDGEPFLEGT ANFANG» und «ENDE» am Schluss.**",
+        "Ausserhalb davon nicht von Hand pflegen: Das Skript schreibt es bei",
+        "jedem Lauf neu. Innerhalb davon nur von Hand pflegen: Das Skript",
+        "uebernimmt den Abschnitt unveraendert und bricht ab, wenn die Marker",
+        "fehlen.",
         "",
-        f"Aufgezeichnet am **{recorded_at}**.",
+        f"Die HTTP-Fixtures sind aufgezeichnet am **{recorded_at}**.",
         "",
         "Ohne Datum ist «aufgezeichnet» nach zwei Jahren von «ausgedacht» nicht",
         "mehr zu unterscheiden — die Datei sieht gleich aus.",
@@ -400,7 +494,22 @@ def _write_provenance(recorded_at: str, entries: list[dict], skipped: list[dict]
             f"- **SHA-256:** `{e['sha256']}`",
             "",
         ]
-    (FIXTURES / "PROVENANCE.md").write_text("\n".join(lines), encoding="utf-8")
+    lines += [
+        "## Handgepflegt: Live-Reports",
+        "",
+        "Die `live-report-*.xml` stammen aus pytest-Laeufen, nicht aus",
+        "HTTP-Abfragen, und dieses Skript zeichnet sie nicht auf. Jeder Eintrag",
+        "traegt sein eigenes Datum. `live-report-403.xml` laesst sich nicht neu",
+        "aufzeichnen — die Sperre, die es festhaelt, gibt es nicht mehr.",
+        "",
+    ]
+    return "\n".join(lines) + "\n" + HAND_ANFANG + hand + HAND_ENDE + "\n"
+
+
+def _write_provenance(recorded_at: str, entries: list[dict], skipped: list[dict], hand: str) -> None:
+    (FIXTURES / "PROVENANCE.md").write_text(
+        _render_provenance(recorded_at, entries, skipped, hand), encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":

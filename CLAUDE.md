@@ -541,9 +541,17 @@ DRIFT-005 ist damit erfüllt; die PR-CI schliesst `-m "not live"` weiterhin aus,
 und das bleibt so. `schedule` greift nur auf dem Default-Branch — Änderungen an
 der Datei wirken erst nach dem Merge, vorher von Hand auslösen.
 
-**Fixtures sind aufgezeichnet, nicht geschrieben.** `tests/fixtures/` stammt aus
-`scripts/record_fixtures.py`, Stand 2026-08-07, dokumentiert in
-`tests/fixtures/PROVENANCE.md`. Nicht von Hand pflegen — neu aufzeichnen und das
-Datum mitführen. Die drei OAI-PMH-Portale (e-rara, e-periodica, e-manuscripta)
+**Fixtures sind aufgezeichnet, nicht geschrieben.** Die HTTP-Fixtures in
+`tests/fixtures/` stammen aus `scripts/record_fixtures.py`, Stand 2026-08-07,
+dokumentiert in `tests/fixtures/PROVENANCE.md`. Nicht von Hand pflegen — neu
+aufzeichnen und das Datum mitführen. Die Ausnahme sind die `live-report-*.xml`:
+Sie stammen aus pytest-Läufen, und ihre Einträge stehen in `PROVENANCE.md`
+zwischen `<!-- HANDGEPFLEGT ANFANG/ENDE -->`. Den Abschnitt übernimmt das Skript
+unverändert; fehlen die Marker oder liegt eine Fixture ohne Eintrag im
+Verzeichnis, bricht es vor der ersten Abfrage ab. Bis zum 24.11.2026 schrieb es
+die Datei von Grund auf neu, und ein Neulauf hätte diese Einträge still
+gelöscht — auch den von `live-report-403.xml`, der sich nicht neu aufzeichnen
+lässt, weil es die Sperre nicht mehr gibt. `tests/test_provenance.py` fährt
+den Neulauf gegen die aufgezeichneten Antworten und hält das fest. Die drei OAI-PMH-Portale (e-rara, e-periodica, e-manuscripta)
 sind einzeln aufgezeichnet; eines stellvertretend zu nehmen lässt genau die
 Unterschiede weg, wegen derer es drei Fixtures gibt.
