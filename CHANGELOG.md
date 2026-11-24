@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Ein Neulauf von `record_fixtures.py` löscht die Live-Report-Herkunft
+  nicht mehr.** `PROVENANCE.md` wurde bisher von Grund auf neu geschrieben,
+  das Skript kennt aber nur die HTTP-Fixtures. Die von Hand nachgetragenen
+  Einträge der vier `live-report-*.xml` wären bei jedem Lauf ohne Meldung
+  verschwunden, darunter der von `live-report-403.xml`, der sich nicht neu
+  aufzeichnen lässt. Sie stehen jetzt zwischen
+  `<!-- HANDGEPFLEGT ANFANG/ENDE -->` und werden unverändert übernommen.
+  Fehlen die Marker oder liegt eine Fixture ohne Eintrag im Verzeichnis,
+  bricht das Skript vor der ersten Abfrage ab. Die Kopfzeile «Nicht von Hand
+  pflegen» nennt die Ausnahme jetzt. `tests/test_provenance.py` fährt den
+  Neulauf gegen eine MockTransport mit den aufgezeichneten Antworten.
+
 - **HTTP 403 hat eine eigene Fehlermeldung.** Bisher kam nur
   «API-Fehler (HTTP 403).» — das Modell erfuhr weder, dass eine Wiederholung
   nichts bringt, noch wohin es ausweichen kann. Jetzt nennt die Meldung die
