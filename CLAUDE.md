@@ -455,6 +455,48 @@ fest, gebaut aus der **echten** Funktion. Die Aufzeichnung
 Aufnahmetag ein und bliebe grün, wenn jemand die Meldung später umformuliert —
 in der Gegenprobe genau so geschehen.
 
+**Beide Sperren haben sich von selbst gelöst — und daraus folgt weniger, als es
+aussieht.** Nach e-rara sperrte im Oktober e-manuscripta, Byte für Byte gleich:
+
+| Quelle | 403 belegt | wieder offen | Beleg der Öffnung |
+|---|---|---|---|
+| e-rara | 14.–23.9.2026 | 27.9.2026 | Messung; Lauf 28.9. grün |
+| e-manuscripta | 12. und 19.10.2026 | 26.10.2026 | Lauf grün, Issue #127 vom Workflow geschlossen |
+
+Die Sperre war beide Male die nginx-Standardseite (`nginx/1.26.3`, 153 Bytes),
+ohne Anmeldeaufforderung, auf OAI-Schnittstelle **und** Startseite; die
+Schwesterportale antworteten derweil normal. Danach zeigten beide dasselbe Bild:
+`/oai` liefert wieder echte Daten, die Webseiten schalten eine Browser-Prüfung
+vor («Verifying your browser»). Für e-manuscripta am 22. und 24.11.2026
+nachgemessen. Beide laufen auf derselben Plattform: `Identify` nennt bei beiden
+`Visual Library Server` als `repositoryName`.
+
+Naheliegend ist ein Bot-Schutz, von dem die OAI-Schnittstelle erst nachträglich
+ausgenommen wurde — der 403 wäre dann die Lücke dazwischen gewesen.
+**Belegt ist das nicht**, ebenso wenig, dass die Ausnahme bleibt. Eine
+Nachfrage dazu ist entworfen; eine Antwort liegt hier nicht vor.
+
+Drei Handgriffe daraus:
+
+- **Den 403 nicht nachträglich zu `upstream` machen.** Zwei Sperren, die sich
+  von selbst lösten, sagen nichts über die dritte. Und `finding` hat sich
+  bewährt, gerade weil es ein Issue öffnet: In #127 standen Diagnose,
+  Messpunkte und Zeitfenster, und daran liess sich die Öffnung prüfen.
+  `upstream` hätte nichts geöffnet, und der Fall hätte keine Akte gehabt.
+- **Ein grüner Lauf nach einem 403 ist ein Befund über die Quelle, keine
+  Erklärung.** Vor dem Abhaken nachmessen, ob `/oai` frei ist und die Webseiten
+  die Prüfung zeigen — also dasselbe Muster. Ein anderes Bild wäre ein anderer
+  Fall.
+- **Eine 200 auf der Startseite heisst nicht «erreichbar».** Die
+  Browser-Prüfung kommt mit HTTP 200 und ohne Inhalt. Wer die Startseite als
+  Positivkontrolle nimmt und nur den Status liest, hält eine Sperre für offen.
+  Den Server betrifft das nicht, er ruft nur `/oai` ab; die Messung schon.
+
+Die Admin-Adressen stehen in der `Identify`-Antwort der Schnittstellen — die
+während einer Sperre genau nicht erreichbar ist. Deshalb hier, Stand
+24.11.2026: `issue-erara@library.ethz.ch`, `issue-emanuscripta@library.ethz.ch`.
+Vor Gebrauch in `Identify` gegenprüfen, sofern die Schnittstelle antwortet.
+
 Dass es überhaupt zu belegen war, ist Glück gewesen. `live-report.xml` starb mit
 dem Runner, und die 40 Zeilen `tail` im Issue tragen die Meldungen nicht, die
 der Klassifikator liest; nachweisbar wurde der Befund erst, als der Ausfall sich
