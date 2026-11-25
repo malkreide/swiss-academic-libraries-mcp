@@ -1,6 +1,6 @@
 # Branch-Schutz für `main`: was heute wirkt
 
-> Stand **2026-11-24**. Alle Angaben zum Ist-Zustand sind an diesem Tag gegen
+> Stand **2026-11-25**. Alle Angaben zum Ist-Zustand sind an diesem Tag gegen
 > das Repo gemessen, nicht aus der GitHub-Dokumentation übernommen; wo etwas
 > ungemessen blieb, steht es als ungemessen dabei. Die erste Fassung vom
 > 2026-09-17 mass `protected: false`; die Regel ist seither gesetzt.
@@ -45,17 +45,31 @@ Settings → Branches, Regel für `main`:
 
 1. **Require status checks to pass before merging**, mit den fünf Namen oben.
    Deckt die CI ab — und nur sie.
-2. **Require branches to be up to date before merging.** Anlass war **#101**:
-   Ein dazwischen liegender `main`-Merge liess das grüne Häkchen auf einen
-   Commit zeigen, den es nicht mehr gab. Gesetzt am 2026-11-24; gemessen wird
-   die Wirkung an dem PR, der diese Fassung bringt.
+2. **Require branches to be up to date before merging — nicht wirksam.**
+   Anlass war **#101**: Ein dazwischen liegender `main`-Merge liess das grüne
+   Häkchen auf einen Commit zeigen, den es nicht mehr gab. Die Option wurde am
+   2026-11-24 als gesetzt gemeldet; die Messung widerspricht:
+
+   | Messung an #132 (UTC) | Rückstand auf `main` | `mergeable_state` |
+   |---|---|---|
+   | 24.11. 19:00:36, Draft, 5/5 grün | 2 Commits | `clean` |
+   | 24.11. 19:00:56–19:01:12, ready, viermal | 2 Commits | `clean` |
+   | 24.11. 19:59:55 und 25.11. 00:01:54 | 2 Commits | `clean` |
+   | 25.11. 06:46:35, **gemergt** | 2 Commits | — |
+
+   Mit wirksamer Option meldet GitHub einen solchen PR als `behind` und sperrt
+   den Merge, bis der Branch aktualisiert ist. Hier ging der Merge mit Rückstand
+   durch (`cd8943c`, Eltern `3fe6136` und `c811ae3`). Ob die Option nicht
+   gespeichert wurde oder an einer anderen Regel hängt, ist von hier nicht
+   lesbar; belegt ist nur, dass sie auf `main` nicht greift.
 3. **Do not allow bypassing the above settings.** Ohne das gilt die Regel für
    Administratoren nicht — und in einem Repo, das eine Person allein betreibt,
    ist das dieselbe Person.
 
 Was diese drei **nicht** leisten: den Merge davor schützen, zu früh zu
-geschehen. Sie verhindern den Merge auf rotem oder veraltetem Stand, nicht den
-Merge vier Sekunden nach «ready».
+geschehen. Wirksam verhindern sie heute nur den Merge auf rotem Stand — den auf
+veraltetem erst, wenn Punkt 2 greift —, und den Merge vier Sekunden nach
+«ready» gar nicht.
 
 ---
 
