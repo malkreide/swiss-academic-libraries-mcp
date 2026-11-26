@@ -3,9 +3,10 @@
 
 WARUM ES DIESEN GATE GIBT
 -------------------------
-Der ruff-Pin steht an vier Stellen, der Gate-Scope an neun. Dass sie
-uebereinstimmen, stand bis hierher nur in CLAUDE.md. Eine Zusicherung, die
-niemand prueft, ist eine Absichtserklaerung: Sie haelt, bis jemand es eilig hat.
+Der ruff-Pin steht an einer Stelle (pyproject.toml) und wird in CLAUDE.md
+zitiert, der Gate-Scope an neun. Dass sie uebereinstimmen, stand bis hierher nur
+in CLAUDE.md. Eine Zusicherung, die niemand prueft, ist eine
+Absichtserklaerung: Sie haelt, bis jemand es eilig hat.
 
 Beide Abweichungen sind unauffaellig, und das ist das Problem:
 
@@ -62,7 +63,14 @@ SRC = "src"
 # nicht auf, sondern nur lokal, und der Gleichstands-Vergleich unten bliebe
 # gruen, weil der CI-Pin ja mit den uebrigen uebereinstimmt. Sein Fehlen wird
 # deshalb eigens geprueft (`_verbotene_pins`), nicht seine Version.
-MIN_PINS = {PYPROJECT: 1, PRE_COMMIT: 1}
+#
+# `.pre-commit-config.yaml` steht seit dem 26.11.2026 ebenfalls nicht mehr
+# darauf. Seine Hooks rufen das ruff der Umgebung auf (`language: system`), und
+# `ruff-pin` prueft dessen Version gegen pyproject.toml. Ein `rev:` auf
+# ruff-pre-commit waere ein zweiter Pin — Dependabot zog bei #105 und #128 nur
+# pyproject.toml hoch, und beide PRs waren deshalb rot. Auch hier wird das
+# Fehlen geprueft (`collect_pre_commit`), nicht der Wert.
+MIN_PINS = {PYPROJECT: 1}
 MIN_SCOPES = {CI: 3, PYPROJECT: 2, PRE_COMMIT: 2, CLAUDE_MD: 2}
 MIN_CI_COMMANDS = 10
 
@@ -134,6 +142,15 @@ REV_RE = re.compile(r"^\s*rev:\s*v?(\d+\.\d+\.\d+)\s*$")
 REPO_RE = re.compile(r"^\s*-\s*repo:\s*(?P<url>\S+)\s*$")
 RUFF_HOOK_REPO = "ruff-pre-commit"
 FILES_RE = re.compile(r"^\s*files:\s*(?P<regex>\S+)\s*$")
+# Ein Hook beginnt mit `- id:`; was danach kommt, gehoert ihm bis zum naechsten.
+HOOK_ID_RE = re.compile(r"^\s*-\s*id:\s*(?P<id>\S+)\s*$")
+HOOK_FIELD_RE = re.compile(r"^\s*(?P<key>entry|language):\s*(?P<value>.+?)\s*$")
+# `ruff` ist die alte Kennung des Check-Hooks in ruff-pre-commit.
+RUFF_HOOK_IDS = frozenset({"ruff", "ruff-check", "ruff-format"})
+# Ein ruff-Hook ruft das ruff der Umgebung auf — und nichts, das eine eigene
+# Version mitbringt (`uvx ruff@…`, `pipx run ruff==…`).
+RUFF_ENTRY_RE = re.compile(r"^ruff\s+(?:check|format)\b")
+PIN_HOOK_SCRIPT = "scripts/check_ruff_pin.py"
 FILES_SHAPE_RE = re.compile(r"^\^\((?P<dirs>[A-Za-z0-9_|-]+)\)/$")
 RUFF_CMD_RE = re.compile(r"\bruff\s+(?:check|format)\b(?P<rest>[^\n]*)")
 MD_VERSION_RE = re.compile(r"`v?(\d+\.\d+\.\d+)`")
@@ -252,24 +269,41 @@ def collect_pyproject(text: str) -> tuple[list[Site], list[Site]]:
 
 
 def collect_pre_commit(text: str) -> tuple[list[Site], list[Site], list[str]]:
-    pins, scopes, problems = [], [], []
-    im_ruff_block = False
+    """Scope der ruff-Hooks, verbotene Pins und die Pruefung des ruff-Pin-Hooks.
+
+    Rueckgabe: (verbotene `rev`-Pins, Scopes, Probleme). Die Pins sind kein
+    Vergleichswert mehr, sondern ein Befund an sich — wie ein CI-Pin.
+    """
+    revs, scopes, problems = [], [], []
+    hooks: list[dict] = []
+    repo_url = ""
     for number, raw in enumerate(text.splitlines(), start=1):
         line = _strip_comment(raw)
 
         if match := REPO_RE.match(line):
-            im_ruff_block = RUFF_HOOK_REPO in match.group("url")
-            continue
-
-        # Alles unterhalb eines fremden `repo:` gehoert nicht zum ruff-Gate —
-        # weder seine Version noch sein Dateifilter.
-        if not im_ruff_block:
+            repo_url = match.group("url")
+            hooks.append({"repo": repo_url, "id": None, "line": number})
             continue
 
         if match := REV_RE.match(line):
-            pins.append(Site(f"{PRE_COMMIT}:{number} rev", match.group(1)))
+            # Nur der ruff-Block: Ein fremdes Hook-Repo hat selbstverstaendlich
+            # seine eigene `rev`, und mit ruff hat sie nichts zu tun.
+            if RUFF_HOOK_REPO in repo_url:
+                revs.append(Site(f"{PRE_COMMIT}:{number} rev", match.group(1)))
+            continue
 
-        if match := FILES_RE.match(line):
+        if match := HOOK_ID_RE.match(line):
+            hooks.append({"repo": repo_url, "id": match.group("id"), "line": number})
+            continue
+
+        hook = hooks[-1] if hooks else None
+        if hook is None or hook["id"] is None:
+            continue
+
+        if match := HOOK_FIELD_RE.match(line):
+            hook[match.group("key")] = (match.group("value").strip("\"'"), number)
+
+        if hook["id"] in RUFF_HOOK_IDS and (match := FILES_RE.match(line)):
             regex = match.group("regex")
             shape = FILES_SHAPE_RE.match(regex)
             if not shape:
@@ -283,7 +317,64 @@ def collect_pre_commit(text: str) -> tuple[list[Site], list[Site], list[str]]:
                 continue
             dirs = frozenset(shape.group("dirs").split("|"))
             scopes.append(Site(f"{PRE_COMMIT}:{number} files", _fmt_scope(dirs)))
-    return pins, scopes, problems
+
+    hooks = [hook for hook in hooks if hook["id"] is not None]
+    ruff_hooks = [hook for hook in hooks if hook["id"] in RUFF_HOOK_IDS]
+    for hook in ruff_hooks:
+        problems += _ruff_hook_probleme(hook)
+    problems += _pin_hook_probleme(hooks, ruff_hooks)
+    return revs, scopes, problems
+
+
+def _ruff_hook_probleme(hook: dict) -> list[str]:
+    """Ein ruff-Hook darf keine eigene ruff-Version mitbringen."""
+    ort = f"{PRE_COMMIT}:{hook['line']} `{hook['id']}`"
+    problems = []
+    language, _ = hook.get("language", (None, None))
+    if language != "system":
+        problems.append(
+            f"{ort}: `language: {language}` statt `system`. Jede andere Sprache "
+            f"installiert ruff in eine eigene Umgebung, mit eigener Version — ein "
+            f"zweiter Pin neben pyproject.toml, den kein Dependabot-PR mitzieht."
+        )
+    entry, _ = hook.get("entry", ("", None))
+    if not RUFF_ENTRY_RE.match(entry):
+        problems.append(
+            f"{ort}: `entry: {entry}` beginnt nicht mit `ruff check` bzw. "
+            f"`ruff format`. Ein Aufruf wie `uvx ruff@…` holt eine eigene Version "
+            f"und umgeht den Pin in pyproject.toml."
+        )
+    return problems
+
+
+def _pin_hook_probleme(hooks: list[dict], ruff_hooks: list[dict]) -> list[str]:
+    """`ruff-pin` muss vorhanden sein und vor den ruff-Hooks stehen.
+
+    Vorhanden: Er ist die einzige Stelle, an der die Version des ruff aus der
+    Umgebung gegen den Pin gehalten wird. Davor: pre-commit faehrt alle Hooks,
+    auch nach einem Fehlschlag (am 26.11.2026 mit einem falschen ruff im PATH
+    nachgestellt). Der Commit scheitert in beiden Reihenfolgen — vorn steht nur
+    die Ursache dort, wo man zu lesen beginnt.
+    """
+    if not ruff_hooks:
+        # Fehlende ruff-Hooks meldet `_too_few` ueber die Scope-Stellen.
+        return []
+    pin_hooks = [hook for hook in hooks if PIN_HOOK_SCRIPT in hook.get("entry", ("", None))[0]]
+    if not pin_hooks:
+        return [
+            f"{PRE_COMMIT}: kein Hook ruft {PIN_HOOK_SCRIPT} auf. Die ruff-Hooks "
+            f"nehmen das ruff der Umgebung — ohne diese Pruefung ist dessen Version "
+            f"eine Annahme, und der Gleichstand mit der CI haengt am Zufall des PATH."
+        ]
+    if pin_hooks[0]["line"] > ruff_hooks[0]["line"]:
+        return [
+            f"{PRE_COMMIT}:{pin_hooks[0]['line']}: der Hook mit {PIN_HOOK_SCRIPT} steht "
+            f"hinter `{ruff_hooks[0]['id']}` (Zeile {ruff_hooks[0]['line']}). pre-commit "
+            f"faehrt die Hooks in Dateireihenfolge und haelt nach einem Fehlschlag "
+            f"nicht an; die Versionsmeldung stuende hinter den Befunden, die ruff mit "
+            f"der falschen Version erzeugt hat — wer von oben liest, sucht im Code."
+        ]
+    return []
 
 
 def collect_claude_md(text: str) -> tuple[list[Site], list[Site]]:
@@ -1223,6 +1314,24 @@ def _verbotene_pins(sites: list[Site]) -> list[str]:
     ]
 
 
+def _zweiter_pin_im_hook(sites: list[Site]) -> list[str]:
+    """Ein `rev:` auf ruff-pre-commit ist ein Befund, unabhaengig vom Wert.
+
+    Dasselbe Muster wie `_verbotene_pins`: Ein zurueckgekehrter Hook-Pin stimmt
+    am Tag seiner Rueckkehr mit pyproject.toml ueberein und faellt keinem
+    Vergleich auf — bis Dependabot pyproject.toml allein hochzieht.
+    """
+    if not sites:
+        return []
+    orte = ", ".join(f"{site.origin} = {site.value}" for site in sites)
+    return [
+        f"{PRE_COMMIT}: pinnt ruff ein zweites Mal ({orte}). Dependabot zieht nur "
+        f"pyproject.toml hoch; jede solche Anhebung waere damit rot, wie #105 und "
+        f"#128. Statt astral-sh/ruff-pre-commit die lokalen Hooks verwenden "
+        f"(`repo: local`, `language: system`)."
+    ]
+
+
 def check(root: Path) -> list[str]:
     """Alle Fundstellen einsammeln und vergleichen. Rueckgabe: Liste der Befunde."""
     ci_text = _read(root, CI)
@@ -1231,14 +1340,15 @@ def check(root: Path) -> list[str]:
 
     ci_pins, ci_scopes = collect_ci(ci_text)
     py_pins, py_scopes = collect_pyproject(_read(root, PYPROJECT))
-    pc_pins, pc_scopes, problems = collect_pre_commit(_read(root, PRE_COMMIT))
+    pc_revs, pc_scopes, problems = collect_pre_commit(_read(root, PRE_COMMIT))
     md_pins, md_scopes = collect_claude_md(md_text)
     problems += compare_gate_block(ci_text, md_text)
 
-    pins = py_pins + pc_pins + md_pins
+    pins = py_pins + md_pins
     scopes = ci_scopes + py_scopes + pc_scopes + md_scopes
 
     problems += _verbotene_pins(ci_pins)
+    problems += _zweiter_pin_im_hook(pc_revs)
     problems += _too_few("Pin", pins, MIN_PINS)
     problems += _too_few("Scope", scopes, MIN_SCOPES)
     problems += _disagreements("ruff-Pin", pins)

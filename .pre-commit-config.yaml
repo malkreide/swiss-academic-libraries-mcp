@@ -1,37 +1,69 @@
 # Lokales Gegenstueck zu den ruff-Gates aus .github/workflows/ci.yml.
 #
-# `rev` ist der Pin: Das Tag v0.16.6 dieses Hook-Repos installiert `ruff==0.16.6`
-# — dieselbe Version wie das `dev`-Extra in pyproject.toml, aus dem die CI-Jobs
-# `test` und `lint` installieren. `ci.yml` pinnt nicht mehr selbst; geprueft wird
-# der Gleichstand von pyproject.toml, dieser `rev`-Zeile und den zwei Stellen im
-# CLAUDE.md-Absatz «Dieses Repo» — scripts/check_gate_consistency.py haelt sie
-# gegeneinander. Wer eine davon hochzieht, zieht alle hoch: Eine andere
-# ruff-Version meldet Abweichungen, die niemand verursacht hat, und kostet die
-# Suche danach. Genau daran ist der Dependabot-Bump auf 0.16.6 zuerst gescheitert,
-# der nur pyproject.toml anfasste.
+# Die ruff-Version steht an genau EINER Stelle: im `dev`-Extra von
+# pyproject.toml, aus dem auch die CI-Jobs `test` und `lint` installieren.
+# Diese Datei pinnt bewusst nicht noch einmal. Bis zum 26.11.2026 stand hier
+# ein `rev:` auf astral-sh/ruff-pre-commit, und weil pre-commit pyproject.toml
+# nicht lesen kann, war das ein zweiter Pin, der von Hand mitgezogen werden
+# musste. Dependabot zog jedes Mal nur pyproject.toml hoch (#105 auf 0.16.7,
+# #128 auf 0.17.3), und jedes Mal war der PR rot.
 #
-# Der Pin wirkt erst nach der Installation im Klon — pre-commit richtet sich
-# nicht von selbst ein:
+# Die Hooks sind deshalb `language: system`: Sie rufen das ruff aus der
+# Umgebung auf, in der pre-commit laeuft. Damit das nicht still irgendein
+# ruff ist, laeuft vorher `ruff-pin` — scripts/check_ruff_pin.py vergleicht
+# jedes erreichbare ruff mit dem Pin in pyproject.toml und laesst den Commit
+# scheitern, wenn es abweicht oder fehlt. pre-commit faehrt die uebrigen Hooks
+# trotzdem weiter; der Hook steht vorn, damit die Ursache zuoberst steht.
+# Ohne ihn waere der Gleichstand mit der CI nur noch eine Annahme;
+# scripts/check_gate_consistency.py meldet, wenn er fehlt, hinter den
+# ruff-Hooks steht oder ein ruff-Hook doch wieder eine eigene Version
+# mitbringt.
 #
-#   pip install pre-commit && pre-commit install
+# Voraussetzung ist die Dev-Umgebung — und wie bisher die Installation im Klon,
+# denn pre-commit richtet sich nicht von selbst ein:
+#
+#   pip install -e ".[dev]" pre-commit && pre-commit install
 #
 # Ohne diesen Schritt liegt die Datei nur herum und die CI bleibt das einzige
-# Gate. `pre-commit run --all-files` faehrt beide Hooks einmal ueber alles.
+# Gate. `pre-commit run --all-files` faehrt alle Hooks einmal ueber alles.
 
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3
+  - repo: local
     hooks:
+      # Zuerst, und unabhaengig davon, welche Dateien der Commit beruehrt: Eine
+      # falsche ruff-Version ist kein Befund ueber den Code, sondern die
+      # Ursache fuer alles, was die Hooks darunter dann melden.
+      - id: ruff-pin
+        name: ruff-Version gegen pyproject.toml pruefen
+        entry: python scripts/check_ruff_pin.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
       # `files` haelt den Scope deckungsgleich mit der CI, die beide Gates auf
       # `src/ tests/ scripts/` fahrt. Weicht der Hook davon ab, ist er in der
       # einen Richtung nutzlos (er laesst durch, was die CI ablehnt) und in der
       # anderen laestig (er blockiert Commits wegen Befunden, die keine Pipeline
       # je meldet). Wer den CI-Scope aendert, aendert diese Regex mit.
+      #
+      # `entry`, `types_or` und `require_serial` entsprechen den gleichnamigen
+      # Hooks aus astral-sh/ruff-pre-commit, damit sich am Verhalten nichts
+      # aendert ausser der Herkunft des Binarys.
       - id: ruff-check
+        name: ruff check
+        entry: ruff check --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
         files: ^(src|tests|scripts)/
 
       # Die CI fahrt hier `ruff format --check`, dieser Hook formatiert direkt.
       # Das Ergebnis ist dasselbe — der Commit bricht in beiden Faellen ab —,
       # nur raeumt die lokale Variante gleich auf, statt es zu verlangen.
       - id: ruff-format
+        name: ruff format
+        entry: ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
         files: ^(src|tests|scripts)/
