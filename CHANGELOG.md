@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **ruff ist nur noch an einer Stelle gepinnt.** Bisher stand die Version in
+  `pyproject.toml` und ein zweites Mal als `rev:` in `.pre-commit-config.yaml`.
+  Dependabot zog nur die erste Stelle hoch, und #105 wie #128 waren deshalb rot.
+  Die pre-commit-Hooks sind jetzt `repo: local` mit `language: system` und rufen
+  das ruff der Dev-Umgebung auf. Ein vorgeschalteter Hook `ruff-pin` prüft
+  dessen Version mit `scripts/check_ruff_pin.py` gegen `pyproject.toml`.
+  `check_gate_consistency.py` meldet einen zurückgekehrten `rev:`-Pin, ruff-Hooks
+  mit eigener Sprache oder eigenem Aufruf sowie einen fehlenden oder
+  nachgestellten `ruff-pin`. Der Hook setzt jetzt `pip install -e ".[dev]"`
+  voraus.
+
 - **Ein Neulauf von `record_fixtures.py` löscht die Live-Report-Herkunft
   nicht mehr.** `PROVENANCE.md` wurde bisher von Grund auf neu geschrieben,
   das Skript kennt aber nur die HTTP-Fixtures. Die von Hand nachgetragenen

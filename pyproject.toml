@@ -53,9 +53,10 @@ dependencies = [
 # Die einzige Stelle mit dem ruff-Pin im Python-Paket. Vorher stand er in
 # `[tool.hatch.envs.default]`, in der `uv pip install`-Zeile der CI und im
 # lint-Job — drei Stellen, von denen keine gemerkt haette, wenn eine abweicht.
-# `.pre-commit-config.yaml` traegt dieselbe Zahl noch einmal, weil pre-commit
-# pyproject.toml nicht lesen kann; `scripts/check_gate_consistency.py` haelt
-# die beiden zusammen und meldet einen zurueckgekehrten CI-Pin.
+# Seit dem 26.11.2026 auch die einzige ueberhaupt: `.pre-commit-config.yaml`
+# ruft das ruff der Umgebung auf und prueft dessen Version mit
+# `scripts/check_ruff_pin.py` gegen diese Zeile. `scripts/check_gate_consistency.py`
+# meldet einen zurueckgekehrten Pin in der CI oder im Hook.
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",

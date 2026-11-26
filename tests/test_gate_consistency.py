@@ -294,17 +294,51 @@ lint = "ruff check {scope}"
 fmt = "ruff format {scope}"
 """
 
-PRE_COMMIT_TEMPLATE = """\
-repos:
-{fremd}\
+PIN_HOOK = """\
+      - id: ruff-pin
+        entry: python scripts/check_ruff_pin.py
+        language: system
+        pass_filenames: false
+        always_run: true
+"""
+
+RUFF_HOOKS = """\
+      - id: ruff-check
+        entry: {entry_check}
+        language: {language}
+        files: {files}
+      - id: ruff-format
+        entry: ruff format --force-exclude
+        language: system
+        files: {files}
+"""
+
+# Die Form bis zum 26.11.2026 — der zweite Pin, der zurueckkehren koennte.
+RUFF_REMOTE_REPO = """\
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v{pin}
+    rev: v{rev}
     hooks:
       - id: ruff-check
         files: {files}
-      - id: ruff-format
-        files: {files}
 """
+
+
+def baue_pre_commit(
+    *,
+    files: str,
+    fremd: str,
+    rev: str | None,
+    language: str,
+    entry_check: str,
+    pin_hook: str,
+) -> str:
+    ruff = RUFF_HOOKS.format(entry_check=entry_check, language=language, files=files)
+    hooks = {"vorn": PIN_HOOK + ruff, "hinten": ruff + PIN_HOOK, "fehlt": ruff}[pin_hook]
+    text = "repos:\n" + fremd + "  - repo: local\n    hooks:\n" + hooks
+    if rev is not None:
+        text += RUFF_REMOTE_REPO.format(rev=rev, files=files)
+    return text
+
 
 # Ein voellig gewoehnlicher zweiter Hook — eigene `rev`, eigener Dateifilter,
 # und mit ruff hat er nichts zu tun.
@@ -319,7 +353,7 @@ FREMDER_HOOK = """\
 CLAUDE_TEMPLATE = """\
 # CLAUDE.md
 
-**ruff ist auf `{pin}` gepinnt** — und als `rev: v{pin}` in der pre-commit-Config.
+**ruff ist auf `{pin}` gepinnt** — zitiert auch als `rev: v{pin}`.
 
 ```bash
 {block}```
@@ -357,9 +391,12 @@ def schreibe_repo(
     ci_scope: str = SCOPE,
     py_pin: str = PIN,
     py_scope: str = SCOPE,
-    pc_pin: str = PIN,
+    pc_rev: str | None = None,
     pc_files: str = "^(src|tests|scripts)/",
     pc_fremder_hook: bool = False,
+    pc_language: str = "system",
+    pc_entry_check: str = "ruff check --force-exclude",
+    pc_pin_hook: str = "vorn",
     md_pin: str = PIN,
     md_scope: str = SCOPE,
     md_block: str | None = None,
@@ -384,9 +421,15 @@ def schreibe_repo(
         PYPROJECT_TEMPLATE.format(pin=py_pin, scope=py_scope), encoding="utf-8"
     )
     fremd = FREMDER_HOOK if pc_fremder_hook else ""
-    (root / ".pre-commit-config.yaml").write_text(
-        PRE_COMMIT_TEMPLATE.format(pin=pc_pin, files=pc_files, fremd=fremd), encoding="utf-8"
+    pre_commit = baue_pre_commit(
+        files=pc_files,
+        fremd=fremd,
+        rev=pc_rev,
+        language=pc_language,
+        entry_check=pc_entry_check,
+        pin_hook=pc_pin_hook,
     )
+    (root / ".pre-commit-config.yaml").write_text(pre_commit, encoding="utf-8")
     block = md_block if md_block is not None else DOC_BLOCK.format(scope=md_scope, modul="api_client")
     (root / "CLAUDE.md").write_text(CLAUDE_TEMPLATE.format(pin=md_pin, block=block), encoding="utf-8")
     paket = root / "src" / "paket"
@@ -468,15 +511,48 @@ class GateKonsistenzTest(unittest.TestCase):
 
         Ein Filter, der den fremden Hook uebergeht, koennte genauso gut den
         ganzen Rest uebergehen — dann waere oben gruen, weil gar nichts mehr
-        geprueft wird. Hier steht der fremde Hook davor UND der ruff-Pin ist
+        geprueft wird. Hier steht der fremde Hook davor UND der ruff-Scope ist
         verstellt: Gemeldet werden muss er trotzdem.
         """
-        problems = self.pruefe(pc_fremder_hook=True, pc_pin="0.16.0")
-        self.assertTrue(problems, "verstellter ruff-Pin blieb hinter dem fremden Hook unsichtbar")
-        self.assertIn("0.16.0", " ".join(problems))
+        problems = self.pruefe(pc_fremder_hook=True, pc_files="^(src|tests)/")
+        self.assertTrue(any("Gate-Scope weicht ab" in p for p in problems), problems)
 
-    def test_pin_weicht_in_pre_commit_ab(self):
-        self.assertTrue(any("ruff-Pin weicht ab" in p for p in self.pruefe(pc_pin="0.17.0")))
+    # --- kein zweiter Pin in pre-commit (seit 26.11.2026) ----------------
+
+    def test_rev_auf_ruff_pre_commit_ist_ein_befund(self):
+        """Der Fall von #105 und #128, von der Gegenseite.
+
+        Ein zurueckgekehrter Hook-Pin stimmt am Tag seiner Rueckkehr mit
+        pyproject.toml ueberein. Gemeldet werden muss er trotzdem — sonst
+        faellt er erst auf, wenn Dependabot pyproject.toml allein hochzieht.
+        """
+        problems = self.pruefe(pc_rev=PIN)
+        self.assertTrue(any("pinnt ruff ein zweites Mal" in p for p in problems), problems)
+
+    def test_rev_eines_fremden_hooks_ist_kein_zweiter_pin(self):
+        """Damit der Befund darueber nicht an jedem `rev:` anschlaegt."""
+        problems = self.pruefe(pc_fremder_hook=True)
+        self.assertFalse(any("pinnt ruff ein zweites Mal" in p for p in problems), problems)
+
+    def test_ruff_hook_mit_eigener_sprache_ist_ein_befund(self):
+        """`language: python` installiert ruff selbst — mit eigener Version."""
+        problems = self.pruefe(pc_language="python")
+        self.assertTrue(any("`language: python` statt `system`" in p for p in problems), problems)
+
+    def test_ruff_hook_mit_eigenem_aufruf_ist_ein_befund(self):
+        """`uvx ruff@…` holt eine eigene Version am Pin vorbei."""
+        problems = self.pruefe(pc_entry_check="uvx ruff@0.15.0 check")
+        self.assertTrue(any("beginnt nicht mit `ruff check`" in p for p in problems), problems)
+
+    def test_fehlender_pin_hook_ist_ein_befund(self):
+        """Ohne ihn nimmt der Hook irgendein ruff aus dem PATH."""
+        problems = self.pruefe(pc_pin_hook="fehlt")
+        self.assertTrue(any("kein Hook ruft scripts/check_ruff_pin.py" in p for p in problems), problems)
+
+    def test_pin_hook_hinter_den_ruff_hooks_ist_ein_befund(self):
+        """Hinten stuende die Ursache unter den Folgebefunden der falschen Version."""
+        problems = self.pruefe(pc_pin_hook="hinten")
+        self.assertTrue(any("steht hinter `ruff-check`" in p for p in problems), problems)
 
     def test_pin_weicht_in_der_doku_ab(self):
         """Die Doku zaehlt mit: Wer sie liest, installiert die Version, die dort steht."""

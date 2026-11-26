@@ -321,17 +321,25 @@ wie der Code: Nichts ist rot, weil nichts geprüft wird, worauf es ankommt.
 
 ## Dieses Repo
 
-**ruff ist exakt gepinnt** — im `dev`-Extra von `pyproject.toml` und,
-weil pre-commit `pyproject.toml` nicht lesen kann, ein zweites Mal als
-`rev:` in `.pre-commit-config.yaml`. Die Version steht an diesen beiden Stellen,
-nicht in diesem Text. Beide werden zusammen hochgezogen.
+**ruff ist exakt gepinnt, an genau einer Stelle** — im `dev`-Extra von
+`pyproject.toml`. Die Version steht dort, nicht in diesem Text.
 
-«Zusammen» ist der ganze Satz, und am 17.9.2026 ist er einmal nicht eingehalten
-worden: Dependabot-PR #105 zog `pyproject.toml` auf `0.16.7` und liess die
-anderen drei Stellen stehen. `check_gate_consistency.py` meldete das, `lint` und
-`test (3.11)` standen seit 04:54 UTC auf `failure` — gemergt wurde um 18:00:04
-trotzdem, und danach war der Default-Branch rot. Ein Dependabot-PR auf ruff ist
-deshalb nie ein Ein-Zeilen-PR: er braucht die drei Nachzüge im selben Commit.
+Bis zum 26.11.2026 stand sie ein zweites Mal als `rev:` in
+`.pre-commit-config.yaml`, weil pre-commit `pyproject.toml` nicht lesen kann.
+Der zweite Pin musste von Hand mitgezogen werden, und Dependabot tat das nie:
+#105 (17.9.2026) und #128 (1.11.2026) zogen nur `pyproject.toml` hoch, und
+beide Male war der PR rot. #105 wurde trotzdem gemergt, danach war der
+Default-Branch rot. Die Regel «beide zusammen hochziehen» hat zweimal nicht
+getragen, deshalb gibt es den zweiten Ort nicht mehr.
+
+Die pre-commit-Hooks sind jetzt `repo: local` mit `language: system`: Sie rufen
+das ruff der Umgebung auf. Der Preis ist, dass der Hook nur in einer
+Dev-Umgebung läuft (`pip install -e ".[dev]"`); pre-commit holt sich ruff nicht
+mehr selbst. Die Versionsgarantie, die vorher der `rev:` gab, gibt jetzt der Hook
+`ruff-pin`, der vorn steht und `scripts/check_ruff_pin.py` fährt. pre-commit hält
+nach seinem Fehlschlag nicht an, die übrigen Hooks laufen mit der falschen
+Version weiter — der Commit scheitert trotzdem, und die Ursache steht zuoberst.
+Ein Dependabot-PR auf ruff ist damit wieder ein Ein-Zeilen-PR.
 
 `.github/workflows/ci.yml` pinnt **nicht** mehr selbst. Vorher tat es das an
 zwei Stellen, und `[tool.hatch.envs.default]` zählte seine Abhängigkeiten
@@ -342,10 +350,13 @@ Hatch-Umgebung zieht das Extra jetzt über `features = ["dev"]`, und im
 `lint`-Job steht `pip install -e ".[dev]"` an der Stelle des früheren Pins —
 dort war er die einzige Installation, der Schritt ist also nicht redundant.
 
-`check_gate_consistency.py` prüft deshalb zweierlei: dass die zwei
-verbleibenden Stellen übereinstimmen, **und** dass `ci.yml` keinen eigenen Pin
-zurückbekommt. Nur das Erste wäre zu schwach — ein zurückgekehrter CI-Pin
-stimmt ja mit den anderen überein und hebelt sie trotzdem aus. Der Hook greift erst nach `pre-commit install`
+`check_gate_consistency.py` prüft deshalb, dass **kein** zweiter Pin
+zurückkehrt — weder in `ci.yml` noch als `rev:` auf ruff-pre-commit —, dass die
+ruff-Hooks `language: system` haben und mit `ruff check`/`ruff format` beginnen
+(ein `uvx ruff@…` wäre ein Pin am Pin vorbei), und dass `ruff-pin` vorhanden ist
+und vor ihnen steht. Ein Gleichstands-Vergleich allein wäre zu schwach: Ein
+zurückgekehrter Pin stimmt am Tag seiner Rückkehr mit `pyproject.toml` überein
+und hebelt sie trotzdem aus. Der Hook greift erst nach `pre-commit install`
 im Klon; ohne diesen Schritt bleibt die CI das einzige Gate. Sein Scope ist per
 `files: ^(src|tests|scripts)/` deckungsgleich mit der CI und mit den
 hatch-Skripten `lint`/`fmt`. Wer einen Scope ändert, ändert alle — das prüft
