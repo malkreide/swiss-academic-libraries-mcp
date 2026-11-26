@@ -45,8 +45,8 @@ Settings → Branches, Regel für `main`:
 
 1. **Require status checks to pass before merging**, mit den fünf Namen oben.
    Deckt die CI ab — und nur sie.
-2. **Require branches to be up to date before merging — bis 25.11. belegt nicht
-   wirksam.**
+2. **Require branches to be up to date before merging — belegt nicht wirksam,
+   auch nach dem Speichern am 26.11.**
    Anlass war **#101**: Ein dazwischen liegender `main`-Merge liess das grüne
    Häkchen auf einen Commit zeigen, den es nicht mehr gab. Die Option wurde am
    2026-11-24 als gesetzt gemeldet; die Messung widerspricht:
@@ -67,8 +67,9 @@ Settings → Branches, Regel für `main`:
    `clean`-Werte darüber sind dafür kein eigener Beleg: Welchen Zustand die API
    bei wirksamer Option meldet, steht auf den gelesenen Doku-Seiten nicht.
 
-   Am 2026-11-26 als gespeichert gemeldet. Danach gibt es nur Indizien, dass
-   sie weiter nicht greift — belegt ist es nicht (Messprotokoll am Ende).
+   Am 2026-11-26 als gespeichert gemeldet. Danach ebenso nicht wirksam: #139
+   ging am 26.11. um 04:38:13 UTC mit fehlendem Inhalts-Commit durch
+   (Messprotokoll am Ende).
 3. **Do not allow bypassing the above settings.** Ohne das gilt die Regel für
    Administratoren nicht — und in einem Repo, das eine Person allein betreibt,
    ist das dieselbe Person.
@@ -101,6 +102,7 @@ ein solcher PR vor dem Merge aktualisiert werden. Erwartet war dafür der Zustan
 | 24./25.11.2026 | #132 | 2 Commits mit Inhalt | `clean`; gemergt mit Rückstand |
 | 26.11.2026 | #134 | nur Merge-Commit `a5b2464`, Baum identisch | `clean`; gemergt mit Rückstand — nicht eindeutig |
 | 26.11.2026 03:33:14–03:33:30, ready, viermal | #135 | Inhalts-Commit `3e2923b` und Merge-Commit `aee4b99`, kein Konflikt | `clean`; erst nach dem Aktualisieren gemergt — Indiz, kein Beleg |
+| 26.11.2026 04:37:04–04:37:13, ready, dreimal; gemergt 04:38:13 | #139 | Inhalts-Commit `d6da326` und Merge-Commit `9e96194`, kein Konflikt | `clean`; **gemergt mit Rückstand** (`176c08d`, Eltern `9e96194` und `a21e579`) — **Beleg: greift nicht** |
 
 #134 war als Probe zu schwach: Dass GitHub eine Lücke von nur einem
 Merge-Commit bei identischem Baum nicht als «veraltet» wertet, liess sich nicht
@@ -108,11 +110,15 @@ ausschliessen. #135 schloss diese Lücke — ihm fehlte Inhalt —, hier stand
 zuerst trotzdem «eindeutig», und das war zu stark: Es stützt sich allein auf
 `mergeable_state`, und dass dieser bei wirksamer Option `behind` meldet, ist
 auf den gelesenen Doku-Seiten nicht belegt. Die Doku sagt nur, der Branch
-müsse vor dem Merge aktuell sein. Eindeutig ist bisher nur #132, vor dem
+müsse vor dem Merge aktuell sein. Eindeutig war deshalb nur #132, vor dem
 Speichern: ein Merge mit fehlendem Inhalt, der durchging.
 
-Belegen liesse sich der Stand nach dem 26.11. durch einen Merge-Versuch an
-einem PR mit fehlendem Inhalt. Lehnt die API ihn ab, greift die Option; geht
-er durch, greift sie nicht — und der PR ist gemergt. Oder ohne Risiko im
-Browser: Bei wirksamer Option ist der Merge-Knopf eines solchen PR gesperrt,
-bis «Update branch» geklickt wurde.
+#139 liefert denselben Beleg für die Zeit danach. Er war als Probe für den
+Browser gebaut — der Merge-Knopf sollte zeigen, ob die Option greift — und
+wurde gemergt, ohne dass «Update branch» geklickt worden wäre: Der Kopf blieb
+`a21e579`, dem `d6da326` fehlte. Eine wirksame Option hätte genau diesen Merge
+gesperrt. Die Probe-Datei, die er mitbrachte, ist im Folge-PR wieder entfernt.
+
+Warum die Option nicht greift, ist von hier nicht lesbar. Das Speichern wurde
+gemeldet; ob es eine andere Regel traf oder nicht durchging, zeigt nur die
+Einstellungsseite.

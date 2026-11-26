@@ -584,11 +584,11 @@ gemeldet, bevor die CI es tat.
 
 **Branch-Schutz auf `main`, Stand 26.11.2026:** Verlangt sind die fünf
 Check-Runs aus `ci.yml`, `enforcement_level: "everyone"`, kein Ruleset.
-«Require branches to be up to date» greift **nicht**, jedenfalls bis zum
-25.11.: #132 ging mit zwei fehlenden Inhalts-Commits durch. Nach dem
-gemeldeten Speichern am 26.11. gibt es nur Indizien — #135 meldete mit
-fehlendem Inhalt `clean`, gemergt wurde er erst nach dem Aktualisieren. Das
-Messprotokoll steht in `docs/branch-protection.md`.
+«Require branches to be up to date» greift **nicht** — vor und nach dem
+gemeldeten Speichern am 26.11. Belegt durch zwei Merges mit fehlendem Inhalt,
+die durchgingen: #132 (25.11.) und #139 (26.11., 04:38:13 UTC). Dazwischen lagen
+nur Indizien (#135 meldete `clean`). Warum die Option nicht greift, zeigt nur
+die Einstellungsseite. Das Messprotokoll steht in `docs/branch-protection.md`.
 
 **Live-Tests sind geplant, nicht nur ausgeschlossen.** `.github/workflows/live-tests.yml`
 läuft wöchentlich per cron (`43 4 * * 1`) plus `workflow_dispatch` gegen die
