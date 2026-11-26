@@ -109,6 +109,48 @@ Die Kosten der Ableitung sind gemessen: ein Arbeitstag, an dem der PR-Text den
 falschen Namen trug und in den Einstellungen nach einer Zeichenfolge gesucht
 wurde, die dort nicht steht.
 
+**Die eingetragenen Kontexte liest man auch ohne Admin-Recht — aus dem
+Branch-Endpunkt, nicht aus dem Schutz-Endpunkt.** Am 24.11.2026 in
+`swiss-academic-libraries-mcp` gemessen:
+
+```
+GET repos/<owner>/<repo>/branches/main/protection          → 403 Resource not accessible by integration
+PATCH …/protection/required_status_checks                   → 403 Write access … not permitted through this proxy
+GET repos/<owner>/<repo>/branches/main  → "protection": {"required_status_checks":
+      {"contexts": [...], "checks": [{"app_id": 15368, "context": ...}], "enforcement_level": "everyone"}}
+GET repos/<owner>/<repo>/rulesets       → []
+GET repos/<owner>/<repo>/rules/branches/main → []
+```
+
+Lesen geht also, Schreiben nicht, und die Zusammenfassung nennt die Kontexte
+wörtlich mitsamt der App, die sie liefern muss. Für «welcher Name ist
+eingetragen» ist das der Weg ohne Merge-Versuch. Was sie **nicht** zeigt:
+`strict` («Require branches to be up to date»), Review-Pflichten,
+Push-Beschränkungen. Ob sie in den drei Repos der Tabelle oben die verwaisten
+Kontexte ebenso nennt, ist ungemessen — gemessen ist ein Repo.
+
+**`strict` lässt sich nur am Merge belegen, nicht am Zustand.** Die Doku sagt
+dazu nur: «The branch **must** be up to date with the base branch before
+merging.» Welchen `mergeable_state` ein zurückliegender PR dann meldet, steht
+auf den gelesenen Seiten nicht; erwartet war `behind`, gesehen wurde es nie.
+Ein `clean` ist deshalb ein Indiz, kein Beleg. Belegt ist die Option erst
+durch einen Merge: Geht einer mit Rückstand durch, greift sie nicht; lehnt die
+API ihn ab, greift sie. Der zweite Fall kostet nichts, der erste merged — der
+Versuch braucht deshalb die Zustimmung dessen, dem der PR gehört.
+
+Damit die Probe überhaupt etwas misst, vier Bedingungen, alle aus Fehlversuchen
+am 24.–26.11.2026:
+
+- **Dem Kopf muss Inhalt fehlen, nicht bloss ein Merge-Commit.** Bei
+  identischem Baum ist offen, ob GitHub den Stand als veraltet wertet.
+- **Kein Konflikt.** `dirty` überdeckt jeden anderen Zustand; eine Probe, die
+  dieselben Zeilen ändert wie der fehlende Commit, misst nichts.
+- **Nicht als Draft, und erst nach grüner CI.** Vorher stehen `blocked` oder
+  `clean`, die nichts über `strict` sagen.
+- **Den Branch nicht vor der Messung aktualisieren.** Wer `main` hineinmergt,
+  um das Ergebnis einzutragen, hat die Probe beendet — der Merge danach belegt
+  nichts mehr.
+
 **`get_status` sagt in diesem Portfolio nichts über die CI — und sagt es im
 Wortlaut «pending».** Am 17.9.2026 auf zwei Commits gemessen, beide mit fünf
 grün abgeschlossenen Checks:
@@ -539,6 +581,14 @@ Die zwei greifen ineinander: Wer einen Gate-Schritt in `ci.yml` ergänzt und
 den Block oben nicht nachzieht, macht `check_gate_consistency.py` rot — beim
 Einbau des Versions-Gates ist genau das passiert, und der Guard hat es
 gemeldet, bevor die CI es tat.
+
+**Branch-Schutz auf `main`, Stand 26.11.2026:** Verlangt sind die fünf
+Check-Runs aus `ci.yml`, `enforcement_level: "everyone"`, kein Ruleset.
+«Require branches to be up to date» greift **nicht**, jedenfalls bis zum
+25.11.: #132 ging mit zwei fehlenden Inhalts-Commits durch. Nach dem
+gemeldeten Speichern am 26.11. gibt es nur Indizien — #135 meldete mit
+fehlendem Inhalt `clean`, gemergt wurde er erst nach dem Aktualisieren. Das
+Messprotokoll steht in `docs/branch-protection.md`.
 
 **Live-Tests sind geplant, nicht nur ausgeschlossen.** `.github/workflows/live-tests.yml`
 läuft wöchentlich per cron (`43 4 * * 1`) plus `workflow_dispatch` gegen die
