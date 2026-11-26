@@ -1,6 +1,6 @@
 # Branch-Schutz für `main`: was heute wirkt
 
-> Stand **2026-11-25**. Alle Angaben zum Ist-Zustand sind an diesem Tag gegen
+> Stand **2026-11-26**. Alle Angaben zum Ist-Zustand sind an diesem Tag gegen
 > das Repo gemessen, nicht aus der GitHub-Dokumentation übernommen; wo etwas
 > ungemessen blieb, steht es als ungemessen dabei. Die erste Fassung vom
 > 2026-09-17 mass `protected: false`; die Regel ist seither gesetzt.
@@ -63,10 +63,8 @@ Settings → Branches, Regel für `main`:
    gespeichert wurde oder an einer anderen Regel hängt, ist von hier nicht
    lesbar; belegt ist nur, dass sie auf `main` nicht greift.
 
-   Am 2026-11-26 als gespeichert gemeldet. Gemessen wird erneut an dem PR, der
-   diesen Absatz bringt: Er setzt auf `5a4d631` auf, dem Kopf von #133, und ihm
-   fehlt der Merge-Commit `a5b2464` — der Baum ist derselbe wie auf `main`,
-   ein Konflikt kann `behind` also nicht überdecken.
+   Am 2026-11-26 als gespeichert gemeldet. Auch danach greift die Option
+   nicht; die eindeutige Messung ist #135 (Messprotokoll am Ende).
 3. **Do not allow bypassing the above settings.** Ohne das gilt die Regel für
    Administratoren nicht — und in einem Repo, das eine Person allein betreibt,
    ist das dieselbe Person.
@@ -97,3 +95,8 @@ GitHub sie nach grüner CI als `behind` und sperrt den Merge bis «Update branch
 |---|---|---|---|
 | 24./25.11.2026 | #132 | 2 Commits mit Inhalt | `clean`; gemergt mit Rückstand |
 | 26.11.2026 | #134 | nur Merge-Commit `a5b2464`, Baum identisch | `clean`; gemergt mit Rückstand — nicht eindeutig |
+| 26.11.2026 03:33:14–03:33:30, ready, viermal | #135 | Inhalts-Commit `3e2923b` und Merge-Commit `aee4b99`, kein Konflikt | `clean` — **eindeutig: greift nicht** |
+
+#134 war als Probe zu schwach: Dass GitHub eine Lücke von nur einem
+Merge-Commit bei identischem Baum nicht als «veraltet» wertet, liess sich nicht
+ausschliessen. #135 schliesst das aus — ihm fehlte Inhalt.
