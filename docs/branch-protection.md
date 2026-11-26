@@ -80,3 +80,15 @@ veraltetem erst, wenn Punkt 2 greift —, und den Merge vier Sekunden nach
   und Ähnliches zeigt sie nicht.
 - Dass GitHub die Selbst-Freigabe verweigert. Bekanntes Plattformverhalten,
   hier **nicht** nachgemessen.
+
+---
+
+## Messprotokoll «Require branches to be up to date»
+
+Gemessen an PRs, die absichtlich hinter `main` liegen. Greift die Option, meldet
+GitHub sie nach grüner CI als `behind` und sperrt den Merge bis «Update branch».
+
+| Datum (UTC) | PR | fehlt gegenüber `main` | Ergebnis |
+|---|---|---|---|
+| 24./25.11.2026 | #132 | 2 Commits mit Inhalt | `clean`; gemergt mit Rückstand |
+| 26.11.2026 | #134 | nur Merge-Commit `a5b2464`, Baum identisch | `clean`; gemergt mit Rückstand — nicht eindeutig |
