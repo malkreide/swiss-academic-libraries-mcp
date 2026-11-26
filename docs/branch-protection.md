@@ -62,6 +62,11 @@ Settings → Branches, Regel für `main`:
    durch (`cd8943c`, Eltern `3fe6136` und `c811ae3`). Ob die Option nicht
    gespeichert wurde oder an einer anderen Regel hängt, ist von hier nicht
    lesbar; belegt ist nur, dass sie auf `main` nicht greift.
+
+   Am 2026-11-26 als gespeichert gemeldet. Gemessen wird erneut an dem PR, der
+   diesen Absatz bringt: Er setzt auf `5a4d631` auf, dem Kopf von #133, und ihm
+   fehlt der Merge-Commit `a5b2464` — der Baum ist derselbe wie auf `main`,
+   ein Konflikt kann `behind` also nicht überdecken.
 3. **Do not allow bypassing the above settings.** Ohne das gilt die Regel für
    Administratoren nicht — und in einem Repo, das eine Person allein betreibt,
    ist das dieselbe Person.
