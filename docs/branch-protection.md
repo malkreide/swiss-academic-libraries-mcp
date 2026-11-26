@@ -122,3 +122,77 @@ gesperrt. Die Probe-Datei, die er mitbrachte, ist im Folge-PR wieder entfernt.
 Warum die Option nicht greift, ist von hier nicht lesbar. Das Speichern wurde
 gemeldet; ob es eine andere Regel traf oder nicht durchging, zeigt nur die
 Einstellungsseite.
+
+---
+
+## Vermutungen zur Ursache — ungeprüft
+
+> Stand **2026-11-26**. Anders als der Rest dieser Notiz stützt sich dieser
+> Abschnitt auf die GitHub-Dokumentation, nicht auf eine Messung am Repo.
+> Zitiert wird wörtlich aus zwei Seiten:
+> [A] «Managing a branch protection rule»
+> (`docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule`),
+> [B] «About protected branches»
+> (`…/managing-protected-branches/about-protected-branches`). Keine der
+> Vermutungen ist belegt; geprüft werden kann jede nur auf der
+> Einstellungsseite.
+
+### 1. Das Kästchen wirkt nur zusammen mit verlangten Status-Checks — für `main` ausgeschlossen
+
+«Require branches to be up to date» ist in der Doku ein Unterpunkt der
+Status-Checks. [A] führt ihn als eingerückten Punkt unter «Select **Require
+status checks to pass before merging**.», [B] unterscheidet die Fälle so:
+
+| Fall | Einstellung laut [B] |
+|---|---|
+| Strict | «The **Require branches to be up to date before merging** checkbox is checked.» |
+| Loose | «… checkbox is **not** checked.» |
+| Disabled | «The **Require status checks to pass before merging** checkbox is **not** checked.» |
+
+Zum Fall «Disabled» sagt [B]: «If required status checks aren't enabled,
+collaborators can merge the branch at any time», und zwar «regardless of
+whether it is up to date with the base branch». Daraus entstand die Vermutung,
+das Kästchen wirke nicht, solange in der Regel keine Status-Checks verlangt
+sind.
+
+**Für `main` trägt sie nicht.** Der Branch-Endpunkt nennt die fünf verlangten
+Kontexte (Ist-Zustand oben), die Status-Checks sind also aktiviert. Die
+schärfere Fassung, das Kästchen wirke erst ab mindestens einem eingetragenen
+Check, steht auf keiner der beiden Seiten. Sie bleibt hier stehen, damit
+niemand sie aus dem Gedächtnis neu aufbringt.
+
+### 2. Gespeichert wurde in einer Regel, die auf `main` nicht greift — offen
+
+Auf einen Branch wirkt immer nur eine einzige klassische Regel. [B]: «Only a
+single branch protection rule can apply at a time, which means it can be
+difficult to know which rule will apply when multiple versions of a rule
+target the same branch.» Welche greift, regelt [A]:
+
+- «… the rules that include a specific branch name have the highest priority»
+- «If there is more than one protected branch rule that references the same
+  specific branch name, then the branch rule created first will have higher
+  priority.»
+- «Protected branch rules that mention a special character, such as `*`, `?`,
+  or `]`, are applied in the order they were created, so older rules with these
+  characters have a higher priority.»
+
+Gibt es also neben der Regel, die die fünf Checks trägt, eine zweite, und wurde
+das Kästchen dort gesetzt, bliebe es auf `main` wirkungslos. Das wäre der Fall
+bei einem Muster wie `main*` neben `main`, oder bei einer zweiten Regel `main`,
+die nach der ersten angelegt wurde. Die Messung widerspricht dem nicht: Die Zusammenfassung
+im Branch-Endpunkt zeigt naheliegenderweise die Checks der Regel, die greift,
+und `strict` zeigt sie gar nicht.
+
+Rulesets kommen dafür nicht in Frage: `rulesets` und `rules/branches/main`
+sind leer (Ist-Zustand oben), und [B] nimmt sie von der Ein-Regel-Grenze
+ausdrücklich aus («This restriction does not apply to rulesets»).
+
+**Prüfen:** Settings → Branches. Wie viele Regeln stehen dort, mit welchem
+Muster, und in welcher ist «Require branches to be up to date before merging»
+angehakt? Ist es genau eine Regel `main` mit angehaktem Kästchen, ist diese
+Vermutung widerlegt.
+
+### 3. Das Speichern ging nicht durch — offen
+
+Bleibt übrig, wenn sich Vermutung 2 nicht bestätigt: Die Seite zeigt das
+Kästchen dann nicht angehakt. Dazu gibt die Doku nichts her.
